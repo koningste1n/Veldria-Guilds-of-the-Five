@@ -1,6 +1,5 @@
 """E4 passo (d): câmera afastada mostrando as duas formações, que aproxima no primeiro embate.
-Roda a mesma luta em tela em pé (390×844) e deitada (844×390) e salva as capturas que servem de mockup
-para a decisão de orientação do Kevin: testes/e4-cam-{pe,deitada}-{formacao,embate}.png.
+Tela em pé (390×844; decisão do Kevin em 15/10/2026). Salva testes/e4-cam-pe-{formacao,embate}.png.
 Uso: python3 testes/camera.py dist/index.html"""
 import asyncio, sys, pathlib
 from playwright.async_api import async_playwright
@@ -64,7 +63,6 @@ async def rodar(p, nome, w, h):
 async def main():
     async with async_playwright() as p:
         await rodar(p, 'pe', 390, 844)
-        await rodar(p, 'deitada', 844, 390)
     print(f'\n{ok} verificações OK, {len(falhas)} falhas'); [print(' -', f) for f in falhas]
     sys.exit(1 if falhas else 0)
 asyncio.run(main())

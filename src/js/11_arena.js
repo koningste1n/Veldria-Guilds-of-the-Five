@@ -19,16 +19,14 @@ const COR_SKILL = {
 };
 const nomeHabilidade = (id) => (SKILLS[id] || PERGAMINHOS[id] || { nome: id }).nome;
 
-/* ---- câmera: o mundo (384×216) é desenhado num buffer e a janela enquadra a ação ----
-   A janela mede 256×180 na tela em pé e 384×216 (a arena inteira) na tela deitada.
-   Três momentos (E4-d): 'formacao' — afastada, as duas formações inteiras, do preparo até o primeiro embate;
+/* ---- câmera: o mundo (384×216) é desenhado num buffer e a janela (256×180) enquadra a ação ----
+   Tela em pé (decisão do Kevin, 15/10/2026). Três momentos (E4-d): 'formacao' — afastada, as duas formações inteiras, do preparo até o primeiro embate;
    'embate' — aproxima e segue o centro dos embates (lutadores ao alcance um do outro, golpeando ou apanhando);
    e o foco pontual (camFoco) do SUPREMO e do golpe final, que continua como era. */
 const VISTA = { w: 256, h: 180 };
 const ZOOM_MAX = 1.75;
 const CAM = { quente: 1.2, rapidez: 3, rapidezEntrada: 2, entrada: 1.6, margemX: 48, margemY: 22, minW: 132, minH: 100 };
-const zoomTotal = () => Math.min(VISTA.w / ARENA.w, VISTA.h / ARENA.h);   // a arena inteira cabe (com faixas pretas quando a proporção difere)
-function ajustarJanela(deitada) { if (deitada) { VISTA.w = ARENA.w; VISTA.h = ARENA.h; } else { VISTA.w = 256; VISTA.h = 180; } }
+const zoomTotal = () => Math.min(VISTA.w / ARENA.w, VISTA.h / ARENA.h);   // a arena inteira cabe (com faixas pretas em cima e embaixo: a janela é mais alta que 16:9)
 // Um lutador está "no embate" se tem inimigo ao alcance (dele ou do inimigo), está golpeando, conjurando ou apanhando,
 // ou atira/é alvo de um projétil em voo. O calor dura CAM.quente segundos, para a câmera não pular entre grupos.
 function marcarEmbates(b, dt) {

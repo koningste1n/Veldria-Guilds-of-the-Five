@@ -65,7 +65,6 @@ function mostrarTutorial() {
 const NOVIDADES = {
   11: [
     ['estrela', 'Câmera de treinador', 'A luta começa com a câmera afastada, mostrando as duas formações inteiras. No primeiro embate ela aproxima e passa a seguir o centro da ação; o SUPREMO e o golpe final continuam em close.'],
-    ['expedicao', 'Tela deitada (experiência)', 'Se virar o celular na hora da luta, a arena fica à esquerda e o time à direita, com os bonecos maiores. É um teste para decidir a orientação do jogo.'],
   ],
   10: [
     ['estrela', 'Formação 3×3', 'No Elenco, o time agora fica numa grade de 3×3 casas: toque num mercenário e depois numa casa para mover (ou trocar de lugar). A luta começa com cada um na sua casa — quem está na frente segura o inimigo, quem atira fica atrás da própria linha de frente.'],

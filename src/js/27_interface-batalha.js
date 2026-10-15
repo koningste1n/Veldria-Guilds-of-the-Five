@@ -12,7 +12,6 @@ function iniciarLuta(ctx) {
   const reg = prepararRegistro(A, B, optsLuta, seed);   // retrato dos lados antes da luta, para o registro
   const b = criarBatalha(A, B, { ...optsLuta, seed });
   Luta = { b, ctx, reg, vel: STATE.config.vel, pausado: false, rodando: false, acc: 0, ultimo: 0, fimT: 0, terminou: false, raf: 0, ativo: true };
-  ajustarJanela(telaDeitada());   // E4-d: na tela deitada a janela da câmera é a arena inteira (384×216)
   montarTelaLuta(b);
   $('#luta').hidden = false; $('#app').hidden = true; $('#abas').hidden = true; $('#tutorial').hidden = true;
   window.scrollTo(0, 0);
@@ -58,7 +57,7 @@ function montarTelaLuta(b) {
       <div class="lt-meio"><span id="relogio">0:00</span><small id="furia" hidden>FÚRIA</small><button class="btn-som" data-act="som-luta" aria-label="Música da luta" id="btn-som">${canvasIcone(STATE.config.musica ? 'som' : 'mudo', 14)}</button></div>
       <div class="lt-lado dir"><div><b>${esc(B.nome)}</b><div class="barra time1"><i id="vida-time1" style="width:100%"></i></div></div>${canvasBrasao(B, 26)}</div>
     </div>
-    <div class="arena-wrap"><canvas id="arena" width="${VISTA.w}" height="${VISTA.h}" style="aspect-ratio:${VISTA.w}/${VISTA.h}" aria-label="Arena da batalha"></canvas><div id="banner" hidden></div><div id="contagem"></div></div>
+    <div class="arena-wrap"><canvas id="arena" width="${VISTA.w}" height="${VISTA.h}" aria-label="Arena da batalha"></canvas><div id="banner" hidden></div><div id="contagem"></div></div>
     <div class="hud-time ${meus.length > 3 ? 'compacto' : ''}">${meus.map((u) => `<div class="hud-u ${u.capitao ? 'cap' : ''}" data-uid="${u.uid}">
       ${canvasLook(u.look, 32, 'data-parado="1" data-vista="lado"')}
       <div class="hud-info"><b>${esc(u.nome)} ${u.capitao ? canvasIcone('coroa', 12) : ''}</b>
@@ -78,7 +77,6 @@ function montarTelaLuta(b) {
   hidratar($('#luta'));
   Luta.hud = meus.map((u) => { const el = $(`.hud-u[data-uid="${u.uid}"]`); return { u, el, hp: $('[data-hp]', el), cd: $('[data-cd]', el) }; });
 }
-const telaDeitada = () => window.innerWidth > window.innerHeight;
 const dicaModo = (b) => (b.modoAuto ? 'Modo Auto: o capitão usa o SUPREMO sozinho. Mude para Manual para mirar e escolher a hora.' : 'Modo Manual: toque num inimigo para o capitão mirar nele e toque em SUPREMO quando a barra encher.');
 function tocarArena(e) {
   if (!Luta || !Luta.b) return;

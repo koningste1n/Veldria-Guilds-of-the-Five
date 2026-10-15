@@ -154,7 +154,7 @@ Hoje, quem começa do zero não tem tutorial nenhum (o tutorial antigo de 6 dica
 | 3 | 3×3 roda a 30 passos/s no celular sem travar | `sim/` mede ms por passo (medido em Node: 6–16 µs por passo em 3v3 e 5v5, ~2.000× abaixo dos 33 ms); falta o teste no celular do Kevin |
 | 4 | Câmera: afastada mostrando a formação, aproxima no embate | ✅ em código e no `testes/camera.py` (15/10); falta o olhar do Kevin no celular |
 | 5 | 3v3 melhor de 3 (D7) | simulador + teste no celular |
-| 6 | Kevin aprovou a orientação de tela (em pé × deitada) depois do 1º teste 3×3 | decisão registrada aqui |
+| 6 | Kevin aprovou a orientação de tela (em pé × deitada) depois do 1º teste 3×3 | ✅ **em pé** (Kevin, 15/10/2026, com os 4 mockups) |
 | 7 | Save abre sem perda; fumaça e `registro.py` passam; reproduções antigas continuam idênticas | testes — (b): save v7 → v8 sem perda ✅; lutas de regras v1 avisam "versão anterior" em vez de reproduzir (previsto) ✅ |
 
 ### Ordem interna
@@ -166,7 +166,7 @@ Hoje, quem começa do zero não tem tutorial nenhum (o tutorial antigo de 6 dica
 | (c) | Formação 3×3 + posturas em simulação | ✅ 15/10 (regras v3, save v9) |
 | (d) | Tela do Preparo (grade 3×3 + postura por mercenário) e câmera afastada → aproxima | ✅ 15/10 (tela: v0.8; câmera: v0.9, save v11) |
 | (e) | 3v3 melhor de 3 | |
-| (f) | Ponto de decisão do Kevin: orientação da tela (levar dois mockups) | mockups prontos (`testes/e4-cam-*.png`); aguarda o Kevin |
+| (f) | Ponto de decisão do Kevin: orientação da tela (levar dois mockups) | ✅ 15/10: **em pé**. O layout deitado provisório e a janela 384×216 saíram do código |
 
 ### Decisões técnicas da E4
 
@@ -322,7 +322,14 @@ Capturas reais do jogo (não desenhos), geradas pelo `testes/camera.py`:
 | `testes/e4-cam-deitada-formacao.png` | Deitada (844×390), vista afastada: a arena inteira preenche a janela, sem faixas; bonecos ~30 % maiores (1,21 px por px) |
 | `testes/e4-cam-deitada-embate.png` | Deitada, câmera aproximada; time e comandos à direita |
 
-Leitura do Claude (para o Kevin bater com o celular na mão): **em pé** a formação 3×3 é legível na vista afastada, mas pequena (coluna 28 px de arena = 26 px de tela entre casas) e as faixas pretas comem 25 px em cima e embaixo; **deitada** a formação lê de longe e a arena ganha 30 %, ao custo de o jogador virar o celular só para a luta (o resto do jogo é em pé). Alternativa intermediária, se o Kevin quiser: janela 16:9 na tela em pé (256×144), sem faixas, arena mais baixa.
+Leitura do Claude na hora: em pé a formação 3×3 é legível na vista afastada, mas pequena e com faixas pretas; deitada lê de longe e a arena ganha 30 %, ao custo de virar o celular só para a luta.
+
+**Decisão do Kevin (15/10/2026): só em pé.** Consequências:
+
+| Decisão | Por quê |
+|---|---|
+| Layout deitado, `ajustarJanela()` e a nota "Tela deitada" saíram do código; a janela é fixa em 256×180 | "Apenas em pé": nada de meio caminho para manter |
+| A janela **continua 256×180** (não virou 16:9): a vista afastada tem faixas pretas em cima e embaixo por ~3 s; depois do primeiro embate a arena ocupa a janela inteira, como sempre | A luta em si (95 % do tempo) fica com o enquadramento que o Kevin já aprovou; a alternativa 256×144 encurtaria a arena a luta inteira para poupar 3 s de faixas. As faixas usam a mesma linguagem das faixas de cinema do golpe final |
 
 ## Próxima conversa começa por… (E4 passos e–f, **Fable 5.1**)
 

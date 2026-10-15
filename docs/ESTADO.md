@@ -4,7 +4,7 @@
 
 **Como trabalhar:** `docs/PROMPT-MAE.md` (papéis, regras, roteiro das etapas com critérios de pronto, handoff).
 
-_Atualizado em 15/10/2026 (**E4 concluída** com o veredito do Kevin; botão Confirmar formação, v0.10.1). Próxima: E5a._
+_Atualizado em 15/10/2026 (**E4 concluída**; **E5a aberta**: critério, curva e evoluções A/B aguardando o Kevin)._
 
 ## O que existe (v0.10.1, E4: cérebro v2, formação 3×3 com tela, câmera de treinador, partidas melhor de 3)
 
@@ -51,7 +51,7 @@ Os testes Playwright antigos (`luta.py`, `lideres.py`, `nuvem.py`, `perf.py`…)
 | E2 | Nome Veldria no jogo, save v6 (tutorial progressivo feito e **desligado** — ver Pendências) | 1 | Opus 5.5 | ✅ 15/10 |
 | E3 | Registro de partidas, ficha de recordes + melhores da temporada, simulador de balanço em Node | 1 | Opus 5.5 | ✅ 15/10 (aguarda teste do Kevin no celular) |
 | E4 | Motor novo: IA de utilidade, 3×3 + posturas, câmera, 3v3 melhor de 3; decisão de orientação de tela | 3–4 | **Fable 5.1** | ✅ **15/10** (4 conversas; veredito do Kevin no celular: tudo aprovado) |
-| E5a | Curva 1→100, Ascensão como portão, maestrias 20/50, Rank S, A/B nv. 15, catálogo com raridades, pity | 2 | **Fable 5.1** | |
+| E5a | Curva 1→100, Ascensão como portão, maestrias 20/50, Rank S, A/B nv. 15, catálogo com raridades, pity | 2 | **Fable 5.1** | 🟡 proposta enviada 15/10 |
 | E5b | Personalidades visíveis, rivais, identidade de build, relíquias 24+, renome, contrato diário, eventos semanais | 2 | Opus 5.5 | |
 | E6 | Classes novas em lotes de 2–4 | 1–2 | Opus 5.5 | |
 
@@ -368,8 +368,80 @@ Testes: `registro.py` (2 partidas assistidas com toques + 3 puladas = 12 lutas; 
 
 `testes/formacao.py` ganhou 5 verificações (botão ≥ 44 px, leva à Liga, tira a seleção, não muda casas/posturas, no intervalo só desseleciona). Captura: `testes/e4-formacao-sel.png`.
 
-## Próxima conversa começa por… (abrir a E5a, **Fable 5.1**)
+## E5a — em andamento (começou em 15/10/2026)
 
-1. Abrir a **E5a** (seção 5 do prompt-mãe): escrever o critério de pronto no `ESTADO.md` e levar ao Kevin, na primeira mensagem, **os números da curva 1→100** (Ascensão I no nv. 30 libera até 60; Ascensão II no nv. 60 libera até 100) e **a proposta de evoluções A/B por classe** (seção 8).
-2. Balanceamento da E5a parte da linha de base v2×v2 (`sim/resultados/*-v2.*`): Invocador 4 %/0 % e Guardião 44 %/22 % são decisões de desenho (esqueletos impondo presença; bloqueio físico do tanque), não só número. Arqueira (94 % no 3v3) e Criomante fortes demais.
-3. Ainda a confirmar com o Kevin (sem pressa): a função principal de cada classe (D1, proposta na seção da E3) e se o jogador novo precisa de algum tour enquanto o tutorial está desligado.
+> Começou no Opus 5.5 (o prompt-mãe indica Fable 5.1). Esta conversa só faz a proposta, as medições e o critério; a implementação espera a aprovação do Kevin.
+
+### Critério de pronto (proposta, aguardando o Kevin)
+
+| # | Critério | Como medir |
+|---|---|---|
+| 1 | Curva 1→100: `xpProx(n) = 50·n^1,5` mantida (1–29 idêntica à de hoje); teto 30 → Ascensão I → 60 → Ascensão II → 100 | Tabela abaixo; `testes/` sobe um mercenário até 100 |
+| 2 | Save antigo abre no lugar certo: nível, XP e Ascensões preservados; ninguém perde nível nem teto | Migração v12 → v13 testada com saves nv. 10 (asc 0), nv. 20 (asc 1), nv. 30 (asc 2) |
+| 3 | Diferença de nível no topo: **depende da decisão A/B do Kevin** (ver "Achado") | `node sim/nivel.js` (novo): nv. 100 Rank S × nv. 60, 1v1 e 3v3, espelho de classe |
+| 4 | Evoluções A/B no nv. 15 (irreversíveis), maestria de função no nv. 20 e de classe no nv. 50, Rank S no nv. 100: tudo visível na ficha | Teste de interface + captura |
+| 5 | Catálogo: 2 habilidades garantidas + 6 com raridades comum / incomum / rara / lendária; pergaminhos atuais migrados | Save com pergaminhos abre com eles no catálogo |
+| 6 | Proteção contra azar com contador visível e salvo no save | Teste: N aberturas sem lendário → a seguinte é lendária |
+| 7 | Balanço 3v3 (v2 × v2, nível 10): nenhuma classe abaixo de 20 % nem acima de 80 % (hoje: Invocador 0, Guardião 22, Arqueira 94) | `node sim/balanco.js --ia v2 --tam 3` |
+
+### Curva 1→100 proposta (mesma fórmula de hoje, estendida)
+
+Ritmo de referência: 10 partidas por dia (70 % de vitórias) + 8 h de Campo de Treino nv. 10. Rivais da Liga acompanham o nível do jogador (já é assim; o teto 30 dos rivais sobe para 100).
+
+| Nível | XP do nível | XP total | Vitórias por nível | Dias até aqui |
+|---|---|---|---|---|
+| 10 | 1.350 | 5.552 | 6 | ~0,5 |
+| 30 (Ascensão I) | 7.808 | 94.514 | 13 | ~7 |
+| 60 (Ascensão II) | 22.659 | 546.137 | 19 | ~33 |
+| 100 (Rank S) | 49.252 | 1.975.061 | 24 | ~94 |
+
+Os últimos 10 níveis levam ~19 % do tempo total (limite saudável: 40 %).
+
+### Achado: o combate é muito sensível a atributo (medido 15/10, `gap.js`, cérebro v2, espelho de classe)
+
+| Vantagem do lado A | Vitórias de A (1v1 / 3v3) |
+|---|---|
+| +2 % em VIDA/ATQ/DEF | 65 % / 74 % |
+| +4 % | 78 % / 84 % |
+| +8 % | 91 % / 97 % |
+| 1 nível a mais (nv. 21 × 20) | 74 % (1v1) |
+| nv. 100 × nv. 60 com o crescimento de hoje | 100 % |
+
+Consequência: "nv. 100 não vence nv. 60 por mais de 70 %" só é possível se do 60 ao 100 os atributos subirem ~2 % no total. Decisão do Kevin:
+
+| Opção | Atributos | Critério 3 |
+|---|---|---|
+| **A** (sugestão do Claude) | Crescem cheio até 30, metade de 30 a 60, quase nada de 60 a 100. Do 60 ao 100 o que se ganha são **escolhas**: uma a cada 10 níveis (vaga do catálogo, habilidade lendária) e o Rank S | nv. 100 × nv. 60 ≤ 70 %, como está no prompt-mãe |
+| B | Continuam crescendo (cada vez menos) até 100; a Torre é onde o nível alto aparece | Troca para: um nv. 60 com formação/contra-classe certa vence um nv. 70 em ≥ 30 % |
+
+### Evoluções A/B no nv. 15 (proposta para o Kevin)
+
+| Classe | Caminho A | Caminho B |
+|---|---|---|
+| Guardião | **Bastião**: Muralha provoca por 4 s numa área maior; escudo 15 % | **Égide**: escudo de 30 % que também cobre o aliado mais ferido; provoca 1 s |
+| Machadeiro | **Berserker**: Fúria até +50 % ATQ, −10 % DEF | **Ceifador**: Redemoinho puxa em vez de afastar e cura 20 % do dano causado |
+| Lanceira | **Cavaleira**: Investida com −40 % de recarga, atordoa 0,5 s | **Sentinela**: não avança; empurra e atordoa por 1,5 s quem chegar perto da retaguarda |
+| Arqueira | **Atiradora de Elite**: Chuva vira Tiro Certeiro (250 %, crítico garantido, 1 alvo) | **Batedora**: +20 % de velocidade no recuo; a Chuva deixa Lentidão de 20 % |
+| Piromante | **Incendiária**: explosão com o dobro da área e queimadura dobrada; dano direto 120 % | **Pira**: 260 % num alvo, sem área |
+| Criomante | **Geleira**: Congela garantido por 1,5 s; dano 120 % | **Nevasca**: a Lança atravessa e atinge todos na linha; Lentidão de 25 % |
+| Clériga | **Sacerdotisa**: Luz cura todos os aliados (120 %) | **Inquisidora**: cura 200 % e causa 150 % ATQ ao inimigo mais perto do curado |
+| Lâmina | **Assassina**: se o alvo do Passo morrer, a recarga zera | **Sombra**: depois do Passo, 2 s sem poder ser alvo |
+| Bardo | **Maestro**: Hino dura 12 s; Ritmo a cada 3º ataque | **Dissonante**: o Hino vira maldição: inimigos próximos −25 % ATQ e AGI por 6 s |
+| Invocador | **Legião**: 3 esqueletos (30 %), máx. 6, que **provocam** quem estiver perto | **Necromante**: 1 Cavaleiro de Ossos (VIDA 90 %, ATQ 60 %) que fica até morrer |
+
+Bastião e Legião/Necromante também atacam os dois problemas da linha de base (tanque que não segura, esqueletos ignorados).
+
+### Ascensões (proposta)
+
+| Ascensão | Nível | Custo | Efeito (igual ao de hoje) |
+|---|---|---|---|
+| I | 30 (libera até 60) | 5.000 ouro + 15 emblemas | +10 % atributos, +1 vaga |
+| II | 60 (libera até 100) | 20.000 ouro + 40 emblemas | +10 % atributos, +1 vaga |
+
+Migração: quem já tem Ascensões fica com elas e o teto novo correspondente (asc 0 → teto 30; asc 1 → 60; asc 2 → 100). Ninguém perde nada; os testers ficam adiantados. Os rivais da Liga já se ajustam pelo poder do time, então isso não desequilibra a Liga.
+
+## Próxima conversa começa por… (E5a, **Fable 5.1**)
+
+1. Ler as respostas do Kevin: curva 1→100 e Ascensões (ok?), opção A ou B do achado de atributos, evoluções A/B (ok ou ajustes). Registrar aqui e fechar o critério 3.
+2. Implementar na ordem: curva + Ascensões + migração v13 → `sim/nivel.js` → evoluções A/B (dados em `02`, efeitos no `10`/`10b`) → maestrias e Rank S → catálogo com raridades → pity.
+3. Ainda a confirmar com o Kevin (sem pressa): função principal de cada classe (D1) e se o jogador novo precisa de algum tour.

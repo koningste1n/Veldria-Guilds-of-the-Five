@@ -101,6 +101,7 @@ function htmlNovaExpedicao() {
     <div class="lista">${destinos}</div>`;
 }
 /* ---- ELENCO ---- */
+const BOTAO_CONFIRMAR = '<button class="btn primario enorme" data-act="confirmar-formacao">✓ Confirmar formação</button>';
 function telaElenco() {
   const time = timeMercs(), n = tamanhoTime(), faltam = n - time.length;
   if (UI.casaSel != null && !time.some((m) => m.pos === UI.casaSel)) UI.casaSel = null;
@@ -114,12 +115,13 @@ function telaElenco() {
       <div class="chips-grupo"><span class="rot">Postura de ${esc(sel.nome)}</span>
         ${Object.entries(POSTURAS).map(([v, P]) => `<button class="chip-btn alto ${(sel.postura || 'auto') === v ? 'on' : ''}" data-act="postura" data-id="${sel.id}" data-v="${v}">${P.nome}</button>`).join('')}</div>
       <small class="muted">${POSTURAS[sel.postura || 'auto'].desc} Toque numa casa para mover${time.length > 1 ? ' (ou trocar de lugar)' : ''}.</small>
+      ${BOTAO_CONFIRMAR}
       <div class="acoes">
         <button class="btn" data-act="abrir-merc" data-id="${sel.id}">Ficha</button>
         <button class="btn" data-act="capitao" data-id="${sel.id}" ${STATE.capitao === sel.id ? 'disabled' : ''}>${STATE.capitao === sel.id ? 'É o capitão' : 'Tornar capitão'}</button>
         <button class="btn" data-act="time-rem" data-id="${sel.id}">Tirar do time</button>
       </div>
-    </div>` : `<small class="muted">Toque num mercenário para mover, trocar de lugar ou mudar a postura.${faltam > 0 ? ` <b>${faltam === 1 ? 'Falta 1 titular' : `Faltam ${faltam} titulares`}</b>: toque em alguém do elenco e escolha "Pôr no time".` : ''}</small>`;
+    </div>` : `<small class="muted">Toque num mercenário para mover, trocar de lugar ou mudar a postura.${faltam > 0 ? ` <b>${faltam === 1 ? 'Falta 1 titular' : `Faltam ${faltam} titulares`}</b>: toque em alguém do elenco e escolha "Pôr no time".` : ''}</small>${time.length ? BOTAO_CONFIRMAR : ''}`;
   return `
   <section class="painel">
     <div class="painel-cab"><h2>Formação</h2><span class="tag">Poder ${fmt(poderLista(time))}</span></div>

@@ -5928,6 +5928,7 @@ function htmlNovaExpedicao() {
     <div class="lista">${destinos}</div>`;
 }
 /* ---- ELENCO ---- */
+const BOTAO_CONFIRMAR = '<button class="btn primario enorme" data-act="confirmar-formacao">✓ Confirmar formação</button>';
 function telaElenco() {
   const time = timeMercs(), n = tamanhoTime(), faltam = n - time.length;
   if (UI.casaSel != null && !time.some((m) => m.pos === UI.casaSel)) UI.casaSel = null;
@@ -5941,12 +5942,13 @@ function telaElenco() {
       <div class="chips-grupo"><span class="rot">Postura de ${esc(sel.nome)}</span>
         ${Object.entries(POSTURAS).map(([v, P]) => `<button class="chip-btn alto ${(sel.postura || 'auto') === v ? 'on' : ''}" data-act="postura" data-id="${sel.id}" data-v="${v}">${P.nome}</button>`).join('')}</div>
       <small class="muted">${POSTURAS[sel.postura || 'auto'].desc} Toque numa casa para mover${time.length > 1 ? ' (ou trocar de lugar)' : ''}.</small>
+      ${BOTAO_CONFIRMAR}
       <div class="acoes">
         <button class="btn" data-act="abrir-merc" data-id="${sel.id}">Ficha</button>
         <button class="btn" data-act="capitao" data-id="${sel.id}" ${STATE.capitao === sel.id ? 'disabled' : ''}>${STATE.capitao === sel.id ? 'É o capitão' : 'Tornar capitão'}</button>
         <button class="btn" data-act="time-rem" data-id="${sel.id}">Tirar do time</button>
       </div>
-    </div>` : `<small class="muted">Toque num mercenário para mover, trocar de lugar ou mudar a postura.${faltam > 0 ? ` <b>${faltam === 1 ? 'Falta 1 titular' : `Faltam ${faltam} titulares`}</b>: toque em alguém do elenco e escolha "Pôr no time".` : ''}</small>`;
+    </div>` : `<small class="muted">Toque num mercenário para mover, trocar de lugar ou mudar a postura.${faltam > 0 ? ` <b>${faltam === 1 ? 'Falta 1 titular' : `Faltam ${faltam} titulares`}</b>: toque em alguém do elenco e escolha "Pôr no time".` : ''}</small>${time.length ? BOTAO_CONFIRMAR : ''}`;
   return `
   <section class="painel">
     <div class="painel-cab"><h2>Formação</h2><span class="tag">Poder ${fmt(poderLista(time))}</span></div>
@@ -6625,7 +6627,8 @@ function htmlIntervalo() {
     <div class="formacao">${casas.join('')}</div>
     ${sel ? `<div class="form-acoes"><div class="chips-grupo"><span class="rot">Postura de ${esc(sel.nome)}</span>
         ${Object.entries(POSTURAS).map(([v, P]) => `<button class="chip-btn alto ${(sel.postura || 'auto') === v ? 'on' : ''}" data-act="postura" data-id="${sel.id}" data-v="${v}">${P.nome}</button>`).join('')}</div>
-      <small class="muted">${POSTURAS[sel.postura || 'auto'].desc} Toque numa casa para mover${time.length > 1 ? ' (ou trocar de lugar)' : ''}.</small></div>`
+      <small class="muted">${POSTURAS[sel.postura || 'auto'].desc} Toque numa casa para mover${time.length > 1 ? ' (ou trocar de lugar)' : ''}.</small>
+      <button class="btn largo" data-act="confirmar-formacao" data-onde="intervalo">✓ Confirmar formação</button></div>`
       : '<small class="muted">Toque num mercenário para mover, trocar de lugar ou mudar a postura. Todos voltam com a vida cheia.</small>'}
     <button class="btn primario enorme" data-act="proxima-rodada">Luta ${S.rodada + 1}</button>
   </div>`;
@@ -6840,7 +6843,7 @@ function abrirConfig() {
     <button class="btn" data-act="estatisticas">${canvasIcone('estatisticas', 16)} Ver estatísticas completas</button>
     ${STATE.criador.liberado ? `<button class="btn criador-btn" data-act="criador">${canvasIcone('criador', 16)} Modo Criador</button>` : ''}
     <button class="btn perigo" data-act="reiniciar">Reiniciar jogo</button>
-    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.10</button>`, { dados: { config: true } });
+    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.10.1</button>`, { dados: { config: true } });
 }
 function mostrarResumoOffline(r) {
   if (!r || r.minutos < 1) return;
@@ -7123,6 +7126,15 @@ const ACOES = {
     if (aqui) { aqui.pos = UI.casaSel; aqui.linha = linhaDePos(aqui.pos); }
     UI.casaSel = pos;
     aposMudanca();
+  },
+  // Kevin (15/10): um botão para fechar a edição da formação. No Elenco, salva e leva à Liga (onde está o LUTAR);
+  // no intervalo da partida, só tira a seleção (o botão "Luta N" continua sendo o que começa a próxima luta)
+  'confirmar-formacao': (el) => {
+    UI.casaSel = null;
+    if (el.dataset.onde === 'intervalo') { salvar(); atualizarModais(); toast('Formação confirmada.', 'ok'); return; }
+    ajustarTime(); salvar();
+    UI.aba = 'liga'; window.scrollTo(0, 0); render();
+    toast('Formação confirmada. Pronto para lutar!', 'ok');
   },
   'vender-merc': (el) => {
     const m = mercPorId(+el.dataset.id);

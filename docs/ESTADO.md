@@ -4,9 +4,9 @@
 
 **Como trabalhar:** `docs/PROMPT-MAE.md` (papéis, regras, roteiro das etapas com critérios de pronto, handoff).
 
-_Atualizado em 15/10/2026 (E4 fechada em código: câmera, orientação em pé, partida melhor de 3)._
+_Atualizado em 15/10/2026 (**E4 concluída** com o veredito do Kevin; botão Confirmar formação, v0.10.1). Próxima: E5a._
 
-## O que existe (v0.10, E4: cérebro v2, formação 3×3 com tela, câmera de treinador, partidas melhor de 3)
+## O que existe (v0.10.1, E4: cérebro v2, formação 3×3 com tela, câmera de treinador, partidas melhor de 3)
 
 - 10 classes: guardião, machadeiro, lanceira, arqueira, piromante, criomante, clérica, lâmina, bardo e invocador.
 - 5 divisões (Bronze → Lenda) em temporadas, Copa dos 4 primeiros com Líderes, cerca de 25 pergaminhos, cerca de 15 relíquias, consumíveis, Forja, Ascensão (2 níveis; teto de nível hoje = 30), Campeões.
@@ -50,7 +50,7 @@ Os testes Playwright antigos (`luta.py`, `lideres.py`, `nuvem.py`, `perf.py`…)
 | E1 | Código recuperado, no GitHub e publicado | — | — | ✅ |
 | E2 | Nome Veldria no jogo, save v6 (tutorial progressivo feito e **desligado** — ver Pendências) | 1 | Opus 5.5 | ✅ 15/10 |
 | E3 | Registro de partidas, ficha de recordes + melhores da temporada, simulador de balanço em Node | 1 | Opus 5.5 | ✅ 15/10 (aguarda teste do Kevin no celular) |
-| E4 | Motor novo: IA de utilidade, 3×3 + posturas, câmera, 3v3 melhor de 3; decisão de orientação de tela | 3–4 | **Fable 5.1** | ✅ **em código, 15/10** (3 conversas) — falta só o teste do Kevin no celular (critérios 3, 4 e 5) |
+| E4 | Motor novo: IA de utilidade, 3×3 + posturas, câmera, 3v3 melhor de 3; decisão de orientação de tela | 3–4 | **Fable 5.1** | ✅ **15/10** (4 conversas; veredito do Kevin no celular: tudo aprovado) |
 | E5a | Curva 1→100, Ascensão como portão, maestrias 20/50, Rank S, A/B nv. 15, catálogo com raridades, pity | 2 | **Fable 5.1** | |
 | E5b | Personalidades visíveis, rivais, identidade de build, relíquias 24+, renome, contrato diário, eventos semanais | 2 | Opus 5.5 | |
 | E6 | Classes novas em lotes de 2–4 | 1–2 | Opus 5.5 | |
@@ -143,7 +143,7 @@ Como está agora: `TUTORIAL_LIGADO = false` em `28_…`. Todo jogador (novo ou a
 
 Hoje, quem começa do zero não tem tutorial nenhum (o tutorial antigo de 6 dicas foi substituído). A confirmar com o Kevin se isso basta por enquanto ou se volta o tour antigo de 6 dicas.
 
-## E4 — em andamento (começou em 15/10/2026, Fable 5.1)
+## E4 — concluída em 15/10/2026 (v0.10.1, save v12)
 
 ### Critério de pronto da E4 (seção 5 do prompt-mãe)
 
@@ -151,11 +151,11 @@ Hoje, quem começa do zero não tem tutorial nenhum (o tutorial antigo de 6 dica
 |---|---|---|
 | 1 | Cérebro novo vence o atual com as mesmas regras e os mesmos lutadores: **média ≥ 55 %** na matriz completa (IA nova com a classe da linha × IA atual com a classe da coluna, 100 pares) e, no espelho (mesma classe dos dois lados), **nenhuma classe abaixo de 42 %** — o cérebro novo não pode piorar classe nenhuma | `node sim/balanco.js --duelo` (linha = IA nova, coluna = IA atual) |
 | 2 | Formação 3×3 + posturas (avançar, segurar, flanquear) configuradas no Preparo e lidas pelo cérebro novo | ✅ modelo, save v9, cérebro, `sim/formacao.js` (a escolha muda o resultado em até 74 pontos) e a grade 3×3 no Elenco (v0.8) |
-| 3 | 3×3 roda a 30 passos/s no celular sem travar | `sim/` mede ms por passo (medido em Node: 6–16 µs por passo em 3v3 e 5v5, ~2.000× abaixo dos 33 ms); falta o teste no celular do Kevin |
-| 4 | Câmera: afastada mostrando a formação, aproxima no embate | ✅ em código e no `testes/camera.py` (15/10); falta o olhar do Kevin no celular |
-| 5 | 3v3 melhor de 3 (D7) | ✅ em código (v0.10, save v12): Liga e Copa em melhor de 3 com intervalo; `registro.py`, `formacao.py` e `camera.py` cobrem; falta o olhar do Kevin |
+| 3 | 3×3 roda a 30 passos/s no celular sem travar | ✅ Node: 6–16 µs por passo (~2.000× abaixo dos 33 ms); **Kevin, 15/10: rodou sem travar no celular** |
+| 4 | Câmera: afastada mostrando a formação, aproxima no embate | ✅ `testes/camera.py` + **Kevin, 15/10: a aproximação no 1º embate funciona** |
+| 5 | 3v3 melhor de 3 (D7) | ✅ v0.10, save v12; **Kevin, 15/10: aprovada** (intervalo claro, duração ok) |
 | 6 | Kevin aprovou a orientação de tela (em pé × deitada) depois do 1º teste 3×3 | ✅ **em pé** (Kevin, 15/10/2026, com os 4 mockups) |
-| 7 | Save abre sem perda; fumaça e `registro.py` passam; reproduções antigas continuam idênticas | testes — (b): save v7 → v8 sem perda ✅; lutas de regras v1 avisam "versão anterior" em vez de reproduzir (previsto) ✅ |
+| 7 | Save abre sem perda; fumaça e `registro.py` passam; reproduções antigas continuam idênticas | ✅ v6 → v12 sem perda; fumaça, `registro`, `formacao`, `camera` passam; `sim/replay.js` 300/300; lutas de regras v1 avisam "versão anterior" (previsto) |
 
 ### Ordem interna
 
@@ -350,8 +350,26 @@ Vocabulário: **partida** = o confronto da Liga/Copa; **luta** = cada uma das at
 
 Testes: `registro.py` (2 partidas assistidas com toques + 3 puladas = 12 lutas; placares terminam 2×; formação mudada no intervalo; reprodução idêntica; v6 → v12), `formacao.py` (intervalo com grade; captura `testes/e4-intervalo.png`), `camera.py` (a luta 2 recomeça afastada), fumaça. Captura do resultado: `testes/e4-resultado-serie.png`.
 
-## Próxima conversa começa por… (fechar a E4 com o Kevin e abrir a E5a, **Fable 5.1**)
+### Veredito do Kevin no celular (15/10/2026) e o ajuste que saiu dele
 
-0. Ler o veredito do Kevin no celular (ficou em branco em 15/10): (1) as 3 lutas do cérebro novo (recuo, invocador, cura); (2) a grade de formação — dá para mover com o dedão? (3) a câmera: a aproximação no primeiro embate dá a sensação de "o meu time entrou em campo"? (4) **a partida melhor de 3**: o intervalo é claro? mudar a formação entre lutas mudou alguma partida? ficou longa demais? Ajustar e **marcar os critérios 3, 4 e 5 da E4** aqui.
+| Item | Veredito | Ação |
+|---|---|---|
+| Cérebro novo (recuo da arqueira, invocador, cura) | Aprovado | — |
+| Grade 3×3 com o dedão | Confortável, **mas falta um botão para confirmar a formação** | ✅ feito (v0.10.1) |
+| Câmera e desempenho | Aproxima no 1º embate; rodou sem travar | — |
+| Partida melhor de 3 | Aprovada | — |
+
+| Decisão (botão Confirmar formação) | Por quê |
+|---|---|
+| Botão dourado "✓ Confirmar formação" no Elenco, logo abaixo das posturas (com alguém selecionado) ou da dica (sem seleção) | Mover e trocar deixava o mercenário selecionado e não havia um "terminei". Abaixo das posturas fica onde o dedão já está, sem rolar |
+| No Elenco: tira a seleção, salva e leva à aba **Liga**, com toast "Formação confirmada. Pronto para lutar!" | O passo seguinte natural é lutar; a mudança já era salva a cada toque, o botão deixa isso visível |
+| No intervalo da partida: aparece só com alguém selecionado e só tira a seleção | Quem começa a próxima luta continua sendo o botão "Luta N" |
+| Sem mudança de formato do save (continua v12); rótulo v0.10.1; sem nota de novidades | Ajuste de interface, não fase nova |
+
+`testes/formacao.py` ganhou 5 verificações (botão ≥ 44 px, leva à Liga, tira a seleção, não muda casas/posturas, no intervalo só desseleciona). Captura: `testes/e4-formacao-sel.png`.
+
+## Próxima conversa começa por… (abrir a E5a, **Fable 5.1**)
+
 1. Abrir a **E5a** (seção 5 do prompt-mãe): escrever o critério de pronto no `ESTADO.md` e levar ao Kevin, na primeira mensagem, **os números da curva 1→100** (Ascensão I no nv. 30 libera até 60; Ascensão II no nv. 60 libera até 100) e **a proposta de evoluções A/B por classe** (seção 8).
-2. Balanceamento da E5a parte da linha de base v2×v2 (`sim/resultados/*-v2.*`): Invocador 4 %/0 % e Guardião 44 %/22 % são decisões de desenho (esqueletos impondo presença; bloqueio físico do tanque), não só número.
+2. Balanceamento da E5a parte da linha de base v2×v2 (`sim/resultados/*-v2.*`): Invocador 4 %/0 % e Guardião 44 %/22 % são decisões de desenho (esqueletos impondo presença; bloqueio físico do tanque), não só número. Arqueira (94 % no 3v3) e Criomante fortes demais.
+3. Ainda a confirmar com o Kevin (sem pressa): a função principal de cada classe (D1, proposta na seção da E3) e se o jogador novo precisa de algum tour enquanto o tutorial está desligado.

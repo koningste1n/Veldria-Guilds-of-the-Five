@@ -82,12 +82,26 @@ async def main():
         checa(on == 'segurar', f'ficha mostra a postura ({on})')
         await pg.click('#modais [data-act="fechar-modal"]'); await pg.wait_for_timeout(300)
 
+        # 5b) botão Confirmar formação (pedido do Kevin, 15/10): tira a seleção, salva e leva à Liga
+        await pg.click(f'.casa[data-pos="{a["pos"]}"]'); await pg.wait_for_timeout(250)
+        bt = await pg.query_selector('[data-act="confirmar-formacao"]')
+        checa(bt is not None and (await bt.bounding_box())['height'] >= 44, 'Elenco tem o botão Confirmar formação (≥ 44 px)')
+        await bt.click(); await pg.wait_for_timeout(400)
+        aba = await pg.eval_on_selector('.aba.ativa', 'e => e.dataset.id')
+        checa(aba == 'liga' and await pg.is_visible('[data-act="lutar-liga"]'), f'confirmar leva à Liga, com o LUTAR à vista ({aba})')
+        checa(await pg.evaluate('UI.casaSel') is None, 'confirmar tira a seleção da grade')
+        t4 = await time(pg)
+        checa({m['id']: (m['pos'], m['postura']) for m in t4} == {m['id']: (m['pos'], m['postura']) for m in t3}, 'confirmar não muda casas nem posturas')
+
         # 6) luta: o registro guarda casa e postura
-        await pg.click('[data-act="aba"][data-id="liga"]'); await pg.wait_for_timeout(300)
         await pg.click('[data-act="lutar-liga"]'); await pg.wait_for_timeout(700)
         await pg.click('[data-act="luta-pular"]'); await pg.wait_for_timeout(500)   # E4 (e): melhor de 3 — pula a 1ª rodada e para no intervalo
         checa(await pg.is_visible('[data-act="proxima-rodada"]'), 'intervalo entre lutas com a grade de formação')
         await pg.screenshot(path=str(PASTA / 'e4-intervalo.png'))
+        # no intervalo, com alguém selecionado, Confirmar formação só tira a seleção (a luta não começa)
+        await pg.click('#modais .casa:not(.vazia)'); await pg.wait_for_timeout(250)
+        await pg.click('#modais [data-act="confirmar-formacao"]'); await pg.wait_for_timeout(300)
+        checa(not await pg.query_selector('#modais .casa.sel') and await pg.is_visible('[data-act="proxima-rodada"]'), 'no intervalo, Confirmar tira a seleção e o intervalo continua aberto')
         for _ in range(3):
             await pg.click('[data-act="proxima-rodada"]'); await pg.wait_for_timeout(500)
             await pg.click('[data-act="luta-pular"]'); await pg.wait_for_timeout(500)

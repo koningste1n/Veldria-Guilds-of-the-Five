@@ -91,6 +91,15 @@ const ACOES = {
     UI.casaSel = pos;
     aposMudanca();
   },
+  // Kevin (15/10): um botão para fechar a edição da formação. No Elenco, salva e leva à Liga (onde está o LUTAR);
+  // no intervalo da partida, só tira a seleção (o botão "Luta N" continua sendo o que começa a próxima luta)
+  'confirmar-formacao': (el) => {
+    UI.casaSel = null;
+    if (el.dataset.onde === 'intervalo') { salvar(); atualizarModais(); toast('Formação confirmada.', 'ok'); return; }
+    ajustarTime(); salvar();
+    UI.aba = 'liga'; window.scrollTo(0, 0); render();
+    toast('Formação confirmada. Pronto para lutar!', 'ok');
+  },
   'vender-merc': (el) => {
     const m = mercPorId(+el.dataset.id);
     if (emExpedicao(m.id)) { toast('Está em expedição.', 'erro'); return; }

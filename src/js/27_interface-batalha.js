@@ -252,7 +252,8 @@ function htmlIntervalo() {
     <div class="formacao">${casas.join('')}</div>
     ${sel ? `<div class="form-acoes"><div class="chips-grupo"><span class="rot">Postura de ${esc(sel.nome)}</span>
         ${Object.entries(POSTURAS).map(([v, P]) => `<button class="chip-btn alto ${(sel.postura || 'auto') === v ? 'on' : ''}" data-act="postura" data-id="${sel.id}" data-v="${v}">${P.nome}</button>`).join('')}</div>
-      <small class="muted">${POSTURAS[sel.postura || 'auto'].desc} Toque numa casa para mover${time.length > 1 ? ' (ou trocar de lugar)' : ''}.</small></div>`
+      <small class="muted">${POSTURAS[sel.postura || 'auto'].desc} Toque numa casa para mover${time.length > 1 ? ' (ou trocar de lugar)' : ''}.</small>
+      <button class="btn largo" data-act="confirmar-formacao" data-onde="intervalo">✓ Confirmar formação</button></div>`
       : '<small class="muted">Toque num mercenário para mover, trocar de lugar ou mudar a postura. Todos voltam com a vida cheia.</small>'}
     <button class="btn primario enorme" data-act="proxima-rodada">Luta ${S.rodada + 1}</button>
   </div>`;

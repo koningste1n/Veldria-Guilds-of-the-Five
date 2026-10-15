@@ -4,7 +4,7 @@
 
 **Como trabalhar:** `docs/PROMPT-MAE.md` (papéis, regras, roteiro das etapas com critérios de pronto, handoff).
 
-_Atualizado em 15/10/2026 (**E5a em andamento**: blocos 1 e 2 publicados — níveis até 100 e evoluções A/B; v0.12, save v14, regras de combate v4)._
+_Atualizado em 15/10/2026 (**EV — Visuais publicada (v0.13, save v15)**; E5a pausada com os blocos 1 e 2 publicados; regras de combate v4)._
 
 ## O que existe (v0.10.1, E4: cérebro v2, formação 3×3 com tela, câmera de treinador, partidas melhor de 3)
 
@@ -52,6 +52,7 @@ Os testes Playwright antigos (`luta.py`, `lideres.py`, `nuvem.py`, `perf.py`…)
 | E3 | Registro de partidas, ficha de recordes + melhores da temporada, simulador de balanço em Node | 1 | Opus 5.5 | ✅ 15/10 (aguarda teste do Kevin no celular) |
 | E4 | Motor novo: IA de utilidade, 3×3 + posturas, câmera, 3v3 melhor de 3; decisão de orientação de tela | 3–4 | **Fable 5.1** | ✅ **15/10** (4 conversas; veredito do Kevin no celular: tudo aprovado) |
 | E5a | Curva 1→100, Ascensão como portão, maestrias 20/50, Rank S, A/B nv. 15, catálogo com raridades, pity | 2 | **Fable 5.1** | 🟡 blocos 1 e 2 de 4 publicados (v0.12) |
+| **EV** | **Visuais**: nitidez, fonte, bonecos com raças e roupas, animações, efeitos e impacto, visual das evoluções | 1 | Opus 5.5 | 🟡 publicada 15/10 (v0.13); aguarda o veredito do Kevin no celular |
 | E5b | Personalidades visíveis, rivais, identidade de build, relíquias 24+, renome, contrato diário, eventos semanais | 2 | Opus 5.5 | |
 | E6 | Classes novas em lotes de 2–4 | 1–2 | Opus 5.5 | |
 
@@ -507,8 +508,52 @@ Migração: quem já tem Ascensões fica com elas e o teto novo correspondente (
 
 Pendente de balanço geral (não é das evoluções): Arqueira ainda domina (88–95 % no 3v3 espelho), Guardião e Clériga fracos no teste espelho (mas o espelho de 3 iguais pune tanques e curas). Fica para o passo de balanço do fim da E5a, com o `sim/evolucoes.js` como medida de time real.
 
-## Próxima conversa começa por… (E5a bloco 3, **Fable 5.1**)
+## EV — Visuais (15/10/2026, v0.12.1 → v0.13, save v15)
 
-1. **Maestrias e Rank S**: maestria de função no nv. 20 (bônus pequeno ligado ao papel: tanque, atirador, mago…) e de classe no nv. 50 (um toque na habilidade); Rank S no nv. 100 com **no máximo +2 % de atributos** (fecha o critério 3 com `node sim/nivel.js --bonus 0.02`). Tudo em tabelas de dados (`02`), visível na ficha, save v15.
-2. Depois: catálogo de habilidades com raridades (critério 5) → pity visível (critério 6) → economia acima do 30 → balanço geral (Arqueira, Guardião, Clériga) com `sim/evolucoes.js` e `sim/balanco.js --tam 3`.
-3. A confirmar com o Kevin (sem pressa): função principal de cada classe (D1) e se o jogador novo precisa de algum tour.
+Pedido do Kevin: "o jogo até o momento está feio" — pausar a evolução, refazer personagens, animações, efeitos e fonte. Etapa registrada no `docs/PROMPT-MAE.md` (seção 5) como IMPORTANTÍSSIMA, com a regra de que nada novo sai sem visual próprio.
+
+### Critério de pronto
+
+| # | Critério | Resultado |
+|---|---|---|
+| 1 | Mesma nitidez na vista afastada e no zoom | ✅ técnico (`testes/visual.py`: canvas = CSS × densidade); falta o olho do Kevin |
+| 2 | Números legíveis sem cobrir o boneco | ✅ técnico (14 px normal, 19 px crítico, acima da barra) |
+| 3 | Cada mercenário reconhecível pelo visual | ✅ técnico (3 mercenários → 3 looks diferentes; 7 raças × 10 cabelos × 12 cores × 3 roupas × 4 cores) |
+| 4 | Habilidade de evolução ≠ ataque comum | ✅ Tiro Certeiro: carga + mira + rastro dourado + estouro + congelamento de 0,12 s + "CERTEIRO!" |
+| 5 | Kevin acha divertido de assistir | ⏳ teste no celular |
+| 6 | Save v14 → v15 sem perda; reproduções idênticas; sem erros | ✅ `visual.py`, `registro.py`, `evolucoes.py`, `nivel100.py`, `formacao.py`, `camera.py`, fumaça; `sim/replay.js` 300/300 |
+
+### O que mudou
+
+| Bloco | O quê | Onde |
+|---|---|---|
+| EV1 nitidez | O canvas da arena tem a resolução real da tela. O mundo é desenhado numa camada em escala **inteira** (k = ⌈escala⌉) e levado à tela com suavização ("sharp bilinear"): ao afastar nenhuma linha de pixel some (antes a arena 384×216 era *encolhida* com vizinho mais próximo), ao aproximar nenhum pixel fica torto. Bonecos andam em frações de pixel (1/k) | `11_arena.js` (`ajustarResolucao`, `desenharArena`, `desenharMundo`) |
+| EV1 fonte | Silkscreen/Pixelify → **Nunito** (texto) + **Lilita One** (títulos, números). Ambas OFL, embutidas (52 KB) | `src/fonts/`, `shell.html` |
+| EV1 números e barras | Números em pixels de tela (não crescem com o zoom), empilham por alvo, "pulam" ao nascer; crítico maior e dourado. Barras de vida vetoriais com rastro branco do dano; nome da habilidade vira legenda sob os pés | `11_arena.js` |
+| EV2 bonecos | **Vista única 3/4** (corpo de lado, rosto com os dois olhos, como o Eslabong); as vistas de frente/costas saíram (`08_…` apagado). Cabeça por raça, cabelo em duas camadas (frente por cima da cabeça, trás atrás do corpo), orelhas por cima do cabelo, chapéus que cobrem ou não o cabelo. Anão 2 px mais baixo, ogro 1 px mais largo de cada lado | `06b_aparencia.js` (dados), `07_…` (`desenharCabeca34`, `defDoLook`) |
+| EV2 aparência | `m.ap = { raca, pele, cabelo, penteado, barba, roupa, corRoupa }`. Look = 11 campos (os 5 antigos continuam válidos). Gerada pelo **id** (estável, sem gastar `Math.random`: o simulador gera os mesmos mercenários). Save v15: quem não tinha ganha uma, mantendo a cor do cabelo (e a pele, se humano). Editor **Aparência** na ficha (botões ≥ 44 px, "Sortear") | `06b`, `09`, `15`, `26`, `30`, `25` |
+| EV3 animações | Novas: esquiva, pulo, cura, levantar; piscar no idle; careta ao apanhar. Deslocamentos **só visuais** em `u.vis` (a simulação não lê): recuo ao apanhar, esquiva com imagem fantasma, investida/passo com pulo em arco, atordoado é jogado ao chão e fica deitado com estrelas até levantar; o alvo treme durante o congelamento do golpe | `07_…` (`quadros`), `11_arena.js` (`vis`, `deslocVis`, `quadroDe`) |
+| EV4 efeitos | Módulo novo de efeitos vetoriais (lisos): meia-lua de luz, faísca de impacto, onda de choque, feixe/estocada, pilar de luz, círculo mágico, explosão, raio, cúpula, linhas de velocidade, labareda, estalactites, notas, mira, carga. Corte de cada arma com a cor dela; impacto proporcional ao dano; projéteis com rastro brilhante. Cada habilidade e evolução tem assinatura: Bastião (anéis vermelhos), Égide (cúpula dourada no aliado), Ceifador (giro vermelho que puxa), Sentinela (varrida), Atiradora de Elite (Tiro Certeiro), Batedora (flechas verdes), Pira (coluna de fogo), Incendiária (explosão com labareda), Nevasca (feixe que atravessa), Sacerdotisa (pilares em todos), Inquisidora (raio dourado), Sombra (aura), Dissonante (anéis roxos) etc. SUPREMO com faixa diagonal na cor do time, retrato e nome do golpe | `14b_vfx-vetor.js`, `11_arena.js` (`vfxEvento`, `vfxSkill`, `desenharCutin`) |
+| EV5 evolução | `EVO_VISUAL`: cor de cada caminho (olhos/orbe, metal da arma e armadura puxados para ela), peças ganhas (capa na cor da evolução, ombreiras, auréola, pintura de guerra, olhos que brilham) e, na luta, aura no chão, faíscas subindo e um losango na cor da evolução ao lado da barra | `06b`, `07`, `14b`, `11` |
+
+### Decisões técnicas da EV
+
+| Decisão | Por quê |
+|---|---|
+| Raças **só visuais** | Mexer em atributos agora bagunçaria o balanço que a E5a ainda vai fechar. Se o Kevin quiser bônus de raça, entra como etapa própria com o simulador |
+| Uma vista só (3/4) | É o que o Eslabong faz e triplica o tempo de arte disponível por vista (cada roupa/cabelo/raça desenhada uma vez). A simulação continua guardando `vista`, só o desenho ignora |
+| Efeitos e números desenhados na camada de alta resolução, bonecos em pixel | Pedido do Kevin: "o personagem em pixel está ótimo, os efeitos não precisam ser pixelados" |
+| Tudo que é animação nova é **visual** (`u.vis`, eventos) | `REGRAS_COMBATE` não muda; reproduções antigas idênticas (300/300) |
+| Aparência pelo id, não sorteada no `gerarMerc` | Não muda a sequência de `Math.random` do simulador (linhas de base de balanço continuam comparáveis) |
+
+### Para o Kevin testar no celular
+
+1. Vista afastada × zoom: a nitidez é a mesma? 2. Os números de dano incomodam? 3. Elenco → ficha → **Aparência**: mude raça, cabelo, roupa. 4. Um time com Arqueira evoluída em **Atiradora de Elite**: o Tiro Certeiro se destaca? 5. Atordoado caindo no chão, esquiva, investida: leem bem? 6. Desempenho: travou em algum momento (muitas luzes ao mesmo tempo)?
+
+Capturas: `testes/ev-luta-formacao.png`, `testes/ev-luta-embate.png`, `testes/ev-aparencia.png`.
+
+## Próxima conversa começa por…
+
+1. **Veredito do Kevin sobre a EV** no celular (lista acima). Ajustes visuais que ele pedir vêm antes de qualquer outra coisa. Candidatos já vistos: mais penteados/rostos, roupas exclusivas por evolução (hoje são peças + cor), retratos maiores na ficha, desempenho em celular fraco (limitar efeitos se cair de 60 qps).
+2. Depois, voltar à **E5a bloco 3** (Fable 5.1): maestrias nv. 20/50 e Rank S (+2 % no máximo), tudo com visual próprio (regra da EV); depois catálogo com raridades → pity → economia acima do 30 → balanço geral.
+3. A confirmar com o Kevin (sem pressa): função principal de cada classe (D1), se o jogador novo precisa de algum tour, e se as raças devem ganhar bônus.

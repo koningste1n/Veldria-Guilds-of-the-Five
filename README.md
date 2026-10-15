@@ -4,7 +4,7 @@
 
 Jogo de gestão de guilda de mercenários com batalhas automáticas em arena, pixel art desenhada por código e feito para celular em pé. HTML + CSS + JavaScript puro, sem bibliotecas e sem nada externo.
 
-**Versão atual:** v0.8 (etapa E4, passo d: tela da formação) · save versão 10 · regras de combate v3.
+**Versão atual:** v0.13 (etapa EV: visuais) · save versão 15 · regras de combate v4.
 
 ## Como montar
 
@@ -25,6 +25,7 @@ Testes (precisam de Playwright):
 python3 testes/fumaca.py dist/index.html     # abre, cria guilda, sem erros, sem rolagem lateral, save sobrevive
 python3 testes/tutorial.py dist/index.html   # tutorial das 5 lutas + migração de save v5 → v6 (pulado com o tutorial desligado)
 python3 testes/registro.py dist/index.html   # registro de partidas, reprodução, recordes e migração v6 → v7
+python3 testes/visual.py dist/index.html     # EV: aparência (save v15), editor, arena na resolução da tela, animações e efeitos
 python3 testes/formacao.py dist/index.html   # grade de formação 3×3 e posturas no Elenco: mover, trocar, postura, luta registrada com casa e postura
 ```
 
@@ -42,7 +43,7 @@ node sim/replay.js             # 300 lutas variadas com toques do jogador (metad
 ## Estrutura
 
 - `src/shell.html` — HTML e CSS do jogo. `/*__JS__*/` marca onde entra o código e `/*__FONT:x__*/` onde entram as fontes.
-- `src/fonts/` — fontes Silkscreen e Pixelify Sans (licença OFL).
+- `src/fonts/` — fontes Nunito e Lilita One (licença OFL).
 - `src/js/NN_nome.js` — o código, em módulos concatenados na ordem numérica. **A ordem importa.**
 - `src/js/10b_cerebro-v2.js` — cérebro de utilidade da E4 (alvo, manobra, hora da habilidade). Ligado por lado da luta (`lado.ia`); o jogo usa `IA_JOGO = 'v2'` em todos os lados; sem `ia` vale a IA antiga do `10_combate.js` (só o simulador usa isso, como linha de base).
 
@@ -57,8 +58,8 @@ node sim/replay.js             # 300 lutas variadas com toques do jogador (metad
 | `src/js/04_dados-da-torre.js` | 37 |
 | `src/js/05_pixel.js` | 119 |
 | `src/js/06_bonecos-3240.js` | 109 |
+| `src/js/06b_aparencia.js` | raças, penteados, roupas, visual das evoluções (EV) |
 | `src/js/07_motor-de-bonecos-v3.js` | 556 |
-| `src/js/08_vistas-de-frente-e-de-costas.js` | 202 |
 | `src/js/09_mercenarios-e-itens.js` | 225 |
 | `src/js/10_combate.js` | 852 |
 | `src/js/10b_cerebro-v2.js` | 395 |

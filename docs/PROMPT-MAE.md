@@ -103,6 +103,22 @@ Estimativa total: 10 a 14 conversas. Uma etapa pode atravessar mais de uma conve
 | Proteção contra azar (D10) | Pity nos drops de raridade alta; contador visível ao jogador |
 | **Critério de pronto** | Simulador mostra que um nv. 100 Rank S não vence um nv. 60 por mais de 70 %; save antigo com nv. 30 abre no lugar certo da nova curva; A/B e maestrias aparecem na ficha |
 
+### EV — Visuais (IMPORTANTÍSSIMA; inserida pelo Kevin em 15/10/2026, pausando a E5a)
+
+> "Se o jogo não ficar bonito visualmente (mesmo que seja um jogo de pixels), não vai engajar." — Kevin
+
+| Entrega | Detalhe |
+|---|---|
+| Nitidez | Mesma qualidade de pixel perto e longe (arena na resolução real da tela) |
+| Fonte | Legível (Nunito + Lilita One); números de dano/cura/crítico pequenos, sem cobrir o boneco |
+| Bonecos | Vista 3/4 estilo Eslabong; raças (humano, elfo, anão, orc, ogro, porcino, felino), pele, cabelo, barba, 3 roupas por classe — nenhum mercenário igual ao outro; editor de Aparência na ficha |
+| Animações | Golpe, feitiço, flecha, pulo, esquiva, dash, cura, dano com recuo, atordoado deitado, levantar |
+| Efeitos | Não pixelados (luz, feixes, explosões); impacto no alvo (congelar o quadro, recuo, faíscas) estilo Super Smash Flash 2; cada habilidade e cada evolução com assinatura própria |
+| Evolução | A classe nova muda o boneco (peças, cor, aura) |
+| **Critério de pronto** | Kevin, no celular: (1) nitidez igual na vista afastada e no zoom; (2) lê os números sem esforço; (3) reconhece cada mercenário pelo visual; (4) distingue a habilidade de evolução do ataque comum (ex.: Tiro Certeiro × flecha); (5) "não vejo mais graça" virou "dá vontade de assistir". Técnico: save v15 sem perda, reproduções idênticas, sem erros |
+
+**Regra a partir da EV:** toda classe, habilidade ou evolução nova só é publicada com visual próprio (roupas do boneco + efeito da habilidade + impacto no alvo).
+
 ### E5b — Alma do jogo (2 conversas)
 
 | Entrega | Detalhe |
@@ -118,7 +134,7 @@ Estimativa total: 10 a 14 conversas. Uma etapa pode atravessar mais de uma conve
 
 ### E6 — Classes novas (1–2 conversas, depois do motor)
 
-Etiquetas de função (D1): tanque, corpo a corpo, assassino, distância, controle, suporte. Toda classe, atual ou nova, tem **uma função principal**. Classes novas entram em lotes de 2 a 4, cada uma com: função, 2 habilidades garantidas, catálogo de 6, boneco 32×40 nas 3 vistas, e passagem pelo simulador antes de publicar. **O Kevin define quantas e quais quando chegar aqui.**
+Etiquetas de função (D1): tanque, corpo a corpo, assassino, distância, controle, suporte. Toda classe, atual ou nova, tem **uma função principal**. Classes novas entram em lotes de 2 a 4, cada uma com: função, 2 habilidades garantidas, catálogo de 6, boneco na vista 3/4 com 3 roupas, efeito de habilidade próprio (regra da EV), e passagem pelo simulador antes de publicar. **O Kevin define quantas e quais quando chegar aqui.**
 
 ### Não entra (decidido em 14/10)
 

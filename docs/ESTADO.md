@@ -57,6 +57,26 @@ Os testes Playwright antigos (`luta.py`, `lideres.py`, `nuvem.py`, `perf.py`…)
 
 Critérios de pronto de cada etapa: `docs/PROMPT-MAE.md`, seção 5.
 
-## Próxima conversa começa por…
+## Próxima conversa começa por… (E2, Opus 5.5)
 
-E2. Primeira tarefa: propor ao Kevin a ordem de desbloqueio dos 7 menus no tutorial, depois implementar exportar/importar save em `15_estado-e-save.js` + Configurações (`28_…`).
+Achados de 14/10 (noite) que reduzem a E2:
+- **Exportar/Importar save já existe** (`exportarCodigo`/`importarCodigo` em `15_estado-e-save.js`, botões em Configurações, código `LDL1:`). Não refazer; só conferir que continua funcionando após a migração.
+- Tutorial atual: `TUTORIAL` em `28_…` com 6 balões que passeiam pelas abas antes da 1ª luta. Será **substituído** pelo tutorial progressivo.
+- Rótulo de versão: o jogo mostra `v0.4.1`, o README `v0.4`. A E2 fecha como **v0.5**, `VERSAO = 6`, nota de novidades `NOVIDADES[6]`.
+
+Escopo final da E2:
+1. Nome **Veldria: Guilds of the Five** em `src/shell.html` (title), rótulo de versão, nota de novidades, README. Chave do save não muda.
+2. Tutorial progressivo nas 5 primeiras lutas. **Proposta de ordem para o Kevin aprovar na abertura da conversa:**
+
+| Momento | Aba liberada | Por quê agora |
+|---|---|---|
+| Antes da 1ª luta | Só **Liga** (botão LUTAR em destaque) | O jogador precisa ver uma luta antes de qualquer menu |
+| Após a 1ª luta | **Elenco** | Acabou de ver o time lutar; agora entende capitão, Frente/Trás |
+| Após a 2ª luta | **Itens** | Ganhou um item ou poção e tem onde usar |
+| Após a 3ª luta | **Mercado** | Tem ouro suficiente para o 1º recruta |
+| Após a 4ª luta | **Guilda** | Cofre já encheu; expedições fazem sentido com reserva |
+| Após a 5ª luta | **Torre** + engrenagem de Configurações; tutorial encerra | Já domina o ciclo básico |
+
+Cada liberação: a aba aparece com um balão de uma frase (reaproveitar `#tutorial`), sem obrigar a entrar. Saves antigos (`tutorial = 99`) veem tudo liberado desde o início. `STATE.tutorial` passa a contar lutas concluídas (0–5); migração v5→v6: `tutorial >= 6 ? 99 : 99` para quem já jogava (ninguém com save antigo repete).
+
+3. Critério de pronto: jogador novo chega à 1ª luta em < 60 s sem ver outro menu; após a 5ª luta todas as abas estão visíveis; save v5 real abre em v6 sem perda e sem tutorial; fumaça passa; novo teste `testes/tutorial.py` cobre as 5 lutas.

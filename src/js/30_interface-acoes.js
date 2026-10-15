@@ -256,7 +256,7 @@ const ACOES = {
       <button class="btn primario enorme" data-act="fechar-modal">Vamos lá</button>`);
   },
   'abrir-bau': (el) => { const area = el.closest('#bau-area'); if (area && UI.ultimoDrop) { somTocar('bau'); vibrar(25, true); revelarDrop(area, UI.ultimoDrop); } },
-  'resultado-ok': () => { fecharTodosModais(); encerrarLuta(); UI.aba = UI.voltarPara || 'liga'; UI.voltarPara = null; render(); window.scrollTo(0, 0); },
+  'resultado-ok': () => { fecharTodosModais(); UI.aba = UI.voltarPara || 'liga'; UI.voltarPara = null; encerrarLuta(); render(); window.scrollTo(0, 0); },   // encerrarLuta por último: o tutorial pode levar à aba recém-liberada
   'luta-vel': (el) => { Luta.vel = +el.dataset.v; STATE.config.vel = Luta.vel; $$('.seg-btn').forEach((b) => b.classList.toggle('on', +b.dataset.v === Luta.vel)); },
   'luta-auto': () => {
     const b = Luta.b; b.modoAuto = !b.modoAuto; STATE.config.auto = b.modoAuto;
@@ -334,8 +334,10 @@ const ACOES = {
     STATE = null; UI.criacao = null; UI.aba = 'guilda'; fecharTodosModais(); $('#tutorial').hidden = true; mostrarCriacao();
   },
   'tutorial-prox': () => {
-    STATE.tutorial++; salvar(); mostrarTutorial(); renderAbas();
-    if (STATE.tutorial >= TUTORIAL.length && temNovidades()) mostrarNovidades();
+    STATE.tutorialVisto = STATE.tutorial;
+    if (STATE.tutorial >= TUT_FIM) STATE.tutorial = 99;   // tutorial concluído
+    salvar(); $('#tutorial').hidden = true; render();
+    if (!tutorialAtivo() && temNovidades()) mostrarNovidades();
   },
   'fechar-novidades': () => { STATE.novidades = []; salvar(); fecharModal(); },
   /* --- save na conta --- */

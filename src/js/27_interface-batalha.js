@@ -143,7 +143,7 @@ function encerrarLuta() {
   Luta = null; Arena.b = null;
   $('#luta').hidden = true; $('#luta').innerHTML = '';
   $('#app').hidden = false; $('#abas').hidden = false;
-  if (STATE.tutorial < TUTORIAL.length) mostrarTutorial();
+  if (tutorialAtivo()) mostrarTutorial();
 }
 function pularLuta() {
   const b = Luta.b;
@@ -174,6 +174,7 @@ function finalizarLuta() {
   const nv = Math.max(1, Math.round(nivelMedioTime()));
   let drop = null, copa = null, torre = null;
   STATE.stats.lutas++; if (vit) STATE.stats.vitorias++;
+  if (tutorialAtivo() && STATE.tutorial < TUT_FIM) STATE.tutorial++;   // cada luta do tutorial libera um menu
   const mvp = registrarEstatisticas(b, res, vit);
   if (ctx.tipo === 'torre') {
     torre = registrarAndar(vit);

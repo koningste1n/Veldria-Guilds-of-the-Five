@@ -1,6 +1,6 @@
 /* ============================ ESTADO E SAVE ============================ */
 const SAVE_KEY = 'ligaDasLaminas.save.v1';   // mesma chave da Fase 1: a versão fica dentro do save
-const VERSAO = 5;
+const VERSAO = 6;
 const consumiveisZerados = () => Object.fromEntries(Object.keys(CONSUMIVEIS).map((k) => [k, 0]));
 const criadorPadrao = () => ({ liberado: false, usado: false, sorteMult: 1, tempoMult: 1 });
 const statsPadrao = () => ({
@@ -22,7 +22,7 @@ function estadoNovo(guilda) {
     liga: null, amistoso: null,
     config: configPadrao(),
     stats: statsPadrao(), torre: torrePadrao(), historico: [],
-    pity: { semEpico: 0, semLendario: 0 }, tutorial: 0,
+    pity: { semEpico: 0, semLendario: 0 }, tutorial: 0, tutorialVisto: -1,
     criador: criadorPadrao(), novidades: [],
   };
 }
@@ -125,8 +125,13 @@ function validarSave(s) {
   if (versaoAntiga < 3 && !nov.includes(3)) nov.push(3);
   if (versaoAntiga < 4 && !nov.includes(4)) nov.push(4);
   if (versaoAntiga < 5 && !nov.includes(5)) nov.push(5);
-  st.novidades = nov.filter((f) => f >= 2 && f <= 5).sort();
+  if (versaoAntiga < 6 && !nov.includes(6) && (st.stats.lutas > 0 || st.tutorial >= 4)) nov.push(6);
+  st.novidades = nov.filter((f) => f >= 2 && f <= 6).sort();
   if (versaoAntiga < 3 && st.tutorial >= 4) st.tutorial = 99;   // quem já viu o tutorial antigo não o repete
+  // v6: tutorial progressivo. Quem já lutou (ou terminou o tutorial antigo) não repete nada.
+  if (versaoAntiga < 6) { st.tutorial = (st.tutorial >= 4 || st.stats.lutas > 0) ? 99 : 0; st.tutorialVisto = -1; }
+  st.tutorial = st.tutorial >= TUT_FIM + 1 ? 99 : clamp(st.tutorial | 0, 0, TUT_FIM);
+  if (typeof st.tutorialVisto !== 'number') st.tutorialVisto = -1;
   return st;
 }
 function normalizarLiga(st) {

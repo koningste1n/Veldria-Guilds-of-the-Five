@@ -95,7 +95,7 @@ function renderTopo() {
       <span title="Ouro">${canvasIcone('moeda', 16)}<b class="ouro" id="topo-ouro">${fmt(STATE.ouro)}</b></span>
       <span title="Emblemas">${canvasIcone('emblema', 16)}<b class="emb" id="topo-emb">${fmt(STATE.emblemas)}</b></span>
     </div>
-    <button class="btn-icone" data-act="config" aria-label="Configurações">${canvasIcone('engrenagem', 20)}</button>`;
+    ${liberado('config') ? `<button class="btn-icone" data-act="config" aria-label="Configurações">${canvasIcone('engrenagem', 20)}</button>` : ''}`;
   hidratar($('#topo'));
 }
 function avisoAba(id) {
@@ -106,9 +106,9 @@ function avisoAba(id) {
   return false;
 }
 function renderAbas() {
-  $('#abas').innerHTML = `<div class="wrap">${ABAS.map(([id, n]) => `<button class="aba ${UI.aba === id ? 'ativa' : ''}" data-act="aba" data-id="${id}">${avisoAba(id) ? '<i class="ponto" aria-label="novidade"></i>' : ''}${canvasIcone(id, 24, UI.aba === id ? { a: '#f0c24b', b: '#b8892a' } : { a: '#a99bb8', b: '#6f6383' })}<span>${n}</span></button>`).join('')}</div>`;
+  $('#abas').innerHTML = `<div class="wrap">${ABAS.filter(([id]) => liberado(id)).map(([id, n]) => `<button class="aba ${UI.aba === id ? 'ativa' : ''}" data-act="aba" data-id="${id}">${avisoAba(id) ? '<i class="ponto" aria-label="novidade"></i>' : ''}${canvasIcone(id, 24, UI.aba === id ? { a: '#f0c24b', b: '#b8892a' } : { a: '#a99bb8', b: '#6f6383' })}<span>${n}</span></button>`).join('')}</div>`;
   hidratar($('#abas'));
-  if (STATE.tutorial < TUTORIAL.length) $$('.aba').forEach((el) => el.classList.toggle('destaque', el.dataset.id === TUTORIAL[STATE.tutorial].aba && UI.aba !== el.dataset.id));
+  if (tutorialAtivo()) $$('.aba').forEach((el) => el.classList.toggle('destaque', el.dataset.id === TUTORIAL[STATE.tutorial].aba && UI.aba !== el.dataset.id));
 }
 function renderTela() {
   const telas = { guilda: telaGuilda, elenco: telaElenco, mercado: telaMercado, liga: telaLiga, torre: telaTorre, inventario: telaInventario };

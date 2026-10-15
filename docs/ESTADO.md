@@ -45,38 +45,37 @@ Os testes Playwright antigos (`luta.py`, `lideres.py`, `nuvem.py`, `perf.py`…)
 
 ## Ordem combinada
 
-| # | Etapa | Conversas | Status |
-|---|---|---|---|
-| E1 | Código recuperado, no GitHub e publicado | — | ✅ |
-| E2 | Exportar/importar save, nome Veldria no jogo, tutorial progressivo nas 5 primeiras lutas | 1–2 | próxima |
-| E3 | Registro de partidas, ficha de recordes + melhores da temporada, simulador de balanço em Node | 1–2 | |
-| E4 | Motor novo: IA de utilidade, 3×3 + posturas, câmera, 3v3 melhor de 3; decisão de orientação de tela | 3–4 | |
-| E5a | Curva 1→100, Ascensão como portão, maestrias 20/50, Rank S, A/B nv. 15, catálogo com raridades, pity | 2 | |
-| E5b | Personalidades visíveis, rivais, identidade de build, relíquias 24+, renome, contrato diário, eventos semanais | 2 | |
-| E6 | Classes novas em lotes de 2–4 | 1–2 | |
+| # | Etapa | Conversas | Modelo | Status |
+|---|---|---|---|---|
+| E1 | Código recuperado, no GitHub e publicado | — | — | ✅ |
+| E2 | Nome Veldria no jogo, tutorial progressivo nas 5 primeiras lutas, save v6 | 1 | Opus 5.5 | ✅ 15/10 |
+| E3 | Registro de partidas, ficha de recordes + melhores da temporada, simulador de balanço em Node | 1–2 | Opus 5.5 | **próxima** |
+| E4 | Motor novo: IA de utilidade, 3×3 + posturas, câmera, 3v3 melhor de 3; decisão de orientação de tela | 3–4 | **Fable 5.1** | |
+| E5a | Curva 1→100, Ascensão como portão, maestrias 20/50, Rank S, A/B nv. 15, catálogo com raridades, pity | 2 | **Fable 5.1** | |
+| E5b | Personalidades visíveis, rivais, identidade de build, relíquias 24+, renome, contrato diário, eventos semanais | 2 | Opus 5.5 | |
+| E6 | Classes novas em lotes de 2–4 | 1–2 | Opus 5.5 | |
 
 Critérios de pronto de cada etapa: `docs/PROMPT-MAE.md`, seção 5.
 
-## Próxima conversa começa por… (E2, Opus 5.5)
+## E2 — concluída em 15/10/2026 (v0.5, save v6)
 
-Achados de 14/10 (noite) que reduzem a E2:
-- **Exportar/Importar save já existe** (`exportarCodigo`/`importarCodigo` em `15_estado-e-save.js`, botões em Configurações, código `LDL1:`). Não refazer; só conferir que continua funcionando após a migração.
-- Tutorial atual: `TUTORIAL` em `28_…` com 6 balões que passeiam pelas abas antes da 1ª luta. Será **substituído** pelo tutorial progressivo.
-- Rótulo de versão: o jogo mostra `v0.4.1`, o README `v0.4`. A E2 fecha como **v0.5**, `VERSAO = 6`, nota de novidades `NOVIDADES[6]`.
+| Critério de pronto | Resultado |
+|---|---|
+| Jogador novo chega à 1ª luta em < 60 s sem ver outro menu | ✅ 3,5 s no teste; só a aba Liga e sem engrenagem |
+| Após a 5ª luta todas as abas visíveis | ✅ Liga → Elenco → Itens → Mercado → Guilda → Torre + engrenagem (ordem aprovada pelo Kevin) |
+| Save v5 abre em v6 sem perda e sem tutorial | ✅ lutas, mercenários e ouro preservados; mostra "Novidades da Fase 5 · Veldria" |
+| Exportar/importar save | ✅ já existia (código `LDL1:`); ida e volta testada em v6 |
+| Fumaça + `testes/tutorial.py` | ✅ 0 erros, 23/23 verificações |
 
-Escopo final da E2:
-1. Nome **Veldria: Guilds of the Five** em `src/shell.html` (title), rótulo de versão, nota de novidades, README. Chave do save não muda.
-2. Tutorial progressivo nas 5 primeiras lutas. **Proposta de ordem para o Kevin aprovar na abertura da conversa:**
+O que mudou no código:
+- `28_…`: `TUTORIAL` virou 6 passos com `libera` (abas), `TUT_FIM = 5`, `tutorialAtivo()`, `liberado(id)`; nota `NOVIDADES[6]`; rótulo "Veldria: Guilds of the Five · v0.5".
+- `15_…`: `VERSAO = 6`, campo `tutorialVisto`; migração: quem já lutou ou tinha o tutorial antigo ≥ 4 → `tutorial = 99`.
+- `25_…`: abas e engrenagem filtradas por `liberado()`.
+- `27_…`: cada luta do tutorial avança `STATE.tutorial`.
+- `30_…`: `resultado-ok` chama `encerrarLuta()` por último, para o tutorial levar à aba recém-liberada.
+- `src/shell.html`: título novo. Chave do save inalterada.
 
-| Momento | Aba liberada | Por quê agora |
-|---|---|---|
-| Antes da 1ª luta | Só **Liga** (botão LUTAR em destaque) | O jogador precisa ver uma luta antes de qualquer menu |
-| Após a 1ª luta | **Elenco** | Acabou de ver o time lutar; agora entende capitão, Frente/Trás |
-| Após a 2ª luta | **Itens** | Ganhou um item ou poção e tem onde usar |
-| Após a 3ª luta | **Mercado** | Tem ouro suficiente para o 1º recruta |
-| Após a 4ª luta | **Guilda** | Cofre já encheu; expedições fazem sentido com reserva |
-| Após a 5ª luta | **Torre** + engrenagem de Configurações; tutorial encerra | Já domina o ciclo básico |
+## Próxima conversa começa por… (E3, Opus 5.5)
 
-Cada liberação: a aba aparece com um balão de uma frase (reaproveitar `#tutorial`), sem obrigar a entrar. Saves antigos (`tutorial = 99`) veem tudo liberado desde o início. `STATE.tutorial` passa a contar lutas concluídas (0–5); migração v5→v6: `tutorial >= 6 ? 99 : 99` para quem já jogava (ninguém com save antigo repete).
-
-3. Critério de pronto: jogador novo chega à 1ª luta em < 60 s sem ver outro menu; após a 5ª luta todas as abas estão visíveis; save v5 real abre em v6 sem perda e sem tutorial; fumaça passa; novo teste `testes/tutorial.py` cobre as 5 lutas.
+1. Ler `10_combate.js` (`resumoBatalha`) e `23_estatisticas.js` / `31_…` para ver o que já é medido por lutador (dano, cura, abates, MVP já existem em `statsMercPadrao`).
+2. Escrever no `ESTADO.md` o critério de pronto da E3 (seção 5 do prompt-mãe) e começar pelo **simulador em Node** (`sim/balanco.js`), porque ele exige isolar o combate do desenho — o mesmo corte que o registro de partidas precisa.

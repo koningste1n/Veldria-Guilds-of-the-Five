@@ -1,10 +1,10 @@
 # Veldria: Guilds of the Five
 
-> Novo nome do jogo (antes "Liga das Lâminas"). Os textos dentro do jogo ainda usam o nome antigo; a troca entra numa próxima fase.
+> Antes "Liga das Lâminas". A chave do save (`ligaDasLaminas.save.v1`) e o arquivo `dist/liga-das-laminas.html` mantêm o nome antigo de propósito, para não perder progresso.
 
 Jogo de gestão de guilda de mercenários com batalhas automáticas em arena, pixel art desenhada por código e feito para celular em pé. HTML + CSS + JavaScript puro, sem bibliotecas e sem nada externo.
 
-**Versão atual:** Fase 4.1 · v0.4. É a mesma versão publicada no Claude, recuperada do HTML publicado em 14/10/2026 e conferida byte a byte.
+**Versão atual:** v0.5 (etapa E2) · save versão 6.
 
 ## Como montar
 
@@ -19,7 +19,12 @@ Gera dois arquivos em `dist/`:
 | `dist/liga-das-laminas.html` | Conteúdo publicado como artefato no Claude (save na nuvem por conta, testers convidados) |
 | `dist/index.html` | Página completa para abrir no navegador ou publicar no GitHub Pages (save no próprio aparelho) |
 
-Teste rápido (precisa de Playwright): `python3 testes/fumaca.py dist/index.html`
+Testes (precisam de Playwright):
+
+```
+python3 testes/fumaca.py dist/index.html     # abre, cria guilda, sem erros, sem rolagem lateral, save sobrevive
+python3 testes/tutorial.py dist/index.html   # tutorial das 5 lutas + migração de save v5 → v6
+```
 
 ## Estrutura
 

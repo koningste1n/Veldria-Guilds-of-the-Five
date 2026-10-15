@@ -29,28 +29,43 @@ function renderCriacao() {
 function abrirApp() {
   $('#criacao').hidden = true; $('#app').hidden = false; $('#abas').hidden = false;
   render();
-  if (STATE.tutorial < TUTORIAL.length) mostrarTutorial();
+  if (tutorialAtivo()) mostrarTutorial();
   else if (temNovidades()) mostrarNovidades();
 }
 
-/* ---- tutorial ---- */
+/* ---- tutorial progressivo (v0.5): cada uma das 5 primeiras lutas libera um menu ---- */
 const TUTORIAL = [
-  { aba: 'guilda', txt: 'Esta é a sede da sua guilda. O cofre da Bilheteria enche sozinho, até com o jogo fechado. Colete o ouro, melhore as construções e mande reservas em expedições.' },
-  { aba: 'elenco', txt: 'Este é o seu time. Toque num mercenário para ver os números, equipar itens e pergaminhos, escolher Frente ou Trás e definir o capitão.' },
-  { aba: 'liga', txt: 'Na Liga, toque em LUTAR. Os 4 primeiros jogam a Copa contra o Líder da divisão, e os 2 primeiros sobem de divisão. No modo Manual, você mira e solta o SUPREMO.' },
-  { aba: 'torre', txt: 'A Torre Infinita sobe sem fim: cada andar vencido rende ouro e, a cada 5, um baú. Os Guardiões esperam a cada 10 andares.' },
-  { aba: 'inventario', txt: 'Em Itens ficam as relíquias da guilda, a bolsa de consumíveis, o inventário e a Forja, que aprimora equipamentos.' },
-  { aba: 'mercado', txt: 'Na Taverna você recruta reforços e no Boticário compra consumíveis. O Potencial (F a S) diz quanto cada atributo cresce por nível. Boa sorte, mestre!' },
+  { libera: ['liga'], aba: 'liga', txt: 'Bem-vindo, mestre! Seus mercenários lutam sozinhos: você monta o time, eles executam. Toque em LUTAR e veja como cada um age conforme a sua função.' },
+  { libera: ['elenco'], aba: 'elenco', txt: 'Novo menu: Elenco. Toque num mercenário para ver os números, escolher Frente ou Trás e definir o capitão, que solta o SUPREMO.' },
+  { libera: ['inventario'], aba: 'inventario', txt: 'Novo menu: Itens. O que você ganha nas lutas fica aqui. Equipe pelo Elenco e o time fica mais forte na próxima.' },
+  { libera: ['mercado'], aba: 'mercado', txt: 'Novo menu: Mercado. Já dá para recrutar o primeiro reforço na Taverna. O Potencial (F a S) diz quanto cada atributo cresce por nível.' },
+  { libera: ['guilda'], aba: 'guilda', txt: 'Novo menu: Guilda. A sede trabalha por você: o cofre enche até com o jogo fechado e quem fica na reserva pode sair em expedição.' },
+  { libera: ['torre', 'config'], aba: 'torre', txt: 'Novo menu: Torre Infinita, com Guardiões a cada 10 andares. As configurações estão na engrenagem lá em cima. A guilda agora é toda sua!' },
 ];
+const TUT_FIM = TUTORIAL.length - 1;   // 5: depois da 5ª luta
+const tutorialAtivo = () => !!STATE && STATE.tutorial < 99;
+function liberado(id) {
+  if (!tutorialAtivo()) return true;
+  for (let i = 0; i <= STATE.tutorial; i++) if (TUTORIAL[i].libera.includes(id)) return true;
+  return false;
+}
 function mostrarTutorial() {
   const p = STATE.tutorial, el = $('#tutorial');
-  if (p >= TUTORIAL.length) { el.hidden = true; renderAbas(); return; }
+  if (!tutorialAtivo() || STATE.tutorialVisto >= p) { el.hidden = true; return; }
   const T = TUTORIAL[p];
-  if (UI.aba !== T.aba) { UI.aba = T.aba; render(); }
+  if (UI.aba !== T.aba) UI.aba = T.aba;
+  render();
+  const lutar = p === 0 && $('[data-act="lutar-liga"]');
+  if (lutar) lutar.scrollIntoView({ block: 'center' }); else window.scrollTo(0, 0);
   el.hidden = false;
-  el.innerHTML = `<div class="tut-balao"><small>Dica ${p + 1} de ${TUTORIAL.length}</small><p>${T.txt}</p><button class="btn primario pequeno" data-act="tutorial-prox">${p === TUTORIAL.length - 1 ? 'Começar' : 'Próximo'}</button></div>`;
+  el.innerHTML = `<div class="tut-balao"><small>${p === 0 ? 'Primeiros passos' : `Luta ${p} de ${TUT_FIM} · menu liberado`}</small><p>${T.txt}</p><button class="btn primario pequeno" data-act="tutorial-prox">${p === TUT_FIM ? 'Começar' : 'Entendi'}</button></div>`;
 }
 const NOVIDADES = {
+  6: [
+    ['coroa', 'Agora é Veldria: Guilds of the Five', 'O jogo ganhou nome novo. Seu save, seus mercenários e sua divisão continuam iguais.'],
+    ['liga', 'Começo mais simples para novos jogadores', 'Quem começa agora vê só a Liga e ganha um menu novo a cada uma das 5 primeiras lutas. Para você, nada muda: tudo continua liberado.'],
+    ['engrenagem', 'Exportar e importar save', 'Em Configurações: copie o código do save para guardar ou continuar em outro aparelho.'],
+  ],
   2: [
     ['estrela', 'Personagens em 32×32', 'Todos redesenhados, com animações de respirar, andar, atacar, conjurar, levar dano e comemorar.'],
     ['pergaminho', 'Pergaminhos de habilidade', '25 habilidades extras (ativas e passivas). 1º espaço no nível 5, mais 1 por Ascensão.'],
@@ -84,7 +99,7 @@ const NOVIDADES = {
     ['engrenagem', 'Save na sua conta', 'Jogando dentro do Claude com a sua conta, o progresso também fica salvo nela e você continua de outro aparelho. Veja em Configurações onde o seu progresso está salvo.'],
   ],
 };
-const ROTULO_FASE = { 5: '4.1' };
+const ROTULO_FASE = { 5: '4.1', 6: '5 · Veldria' };
 function mostrarNovidades() {
   const fases = (STATE.novidades || []).slice().sort((a, b) => b - a);
   const bloco = (f) => `${fases.length > 1 ? `<span class="rot">Fase ${ROTULO_FASE[f] || f}</span>` : ''}<div class="lista novidades">${NOVIDADES[f].map(([ic, t, d]) => `<div class="card">${canvasIcone(ic, 28, ic === 'torre' ? { a: '#e9dfc9', b: '#a99bb8' } : null)}<div class="card-corpo"><b>${t}</b><small>${d}</small></div></div>`).join('')}</div>`;
@@ -121,7 +136,7 @@ function abrirConfig() {
     <button class="btn" data-act="estatisticas">${canvasIcone('estatisticas', 16)} Ver estatísticas completas</button>
     ${STATE.criador.liberado ? `<button class="btn criador-btn" data-act="criador">${canvasIcone('criador', 16)} Modo Criador</button>` : ''}
     <button class="btn perigo" data-act="reiniciar">Reiniciar jogo</button>
-    <button class="versao" data-act="versao">Liga das Lâminas · Fase 4.1 · v0.4.1</button>`, { dados: { config: true } });
+    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.5</button>`, { dados: { config: true } });
 }
 function mostrarResumoOffline(r) {
   if (!r || r.minutos < 1) return;

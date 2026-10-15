@@ -63,6 +63,10 @@ function mostrarTutorial() {
   el.innerHTML = `<div class="tut-balao"><small>${p === 0 ? 'Primeiros passos' : `Luta ${p} de ${TUT_FIM} · menu liberado`}</small><p>${T.txt}</p><button class="btn primario pequeno" data-act="tutorial-prox">${p === TUT_FIM ? 'Começar' : 'Entendi'}</button></div>`;
 }
 const NOVIDADES = {
+  10: [
+    ['estrela', 'Formação 3×3', 'No Elenco, o time agora fica numa grade de 3×3 casas: toque num mercenário e depois numa casa para mover (ou trocar de lugar). A luta começa com cada um na sua casa — quem está na frente segura o inimigo, quem atira fica atrás da própria linha de frente.'],
+    ['expedicao', 'Posturas', 'Cada mercenário tem uma postura: Automática, Avançar (vai para cima), Segurar (espera o inimigo vir e protege os aliados) ou Flanquear (contorna pelas laterais até a retaguarda). A escolha muda o resultado: um trio corpo a corpo flanqueando vence uma muralha que parado não vence.'],
+  ],
   8: [
     ['expedicao', 'Lutadores que pensam', 'Cada mercenário agora pontua o que fazer a cada instante, de acordo com a sua função: arqueiras e magos recuam atirando (até a parede — aí lutam), ninguém mais perde tempo batendo em esqueleto em vez de no Invocador, a Chuva de Flechas espera o alvo parar e a Clériga cura na hora certa. A tática escolhida na ficha continua mandando.'],
     ['pergaminho', 'Lutas antigas', 'As regras de combate mudaram de versão: o botão "Conferir" das lutas anteriores avisa que elas não podem mais ser reproduzidas. As novas, sim.'],
@@ -108,7 +112,7 @@ const NOVIDADES = {
     ['engrenagem', 'Save na sua conta', 'Jogando dentro do Claude com a sua conta, o progresso também fica salvo nela e você continua de outro aparelho. Veja em Configurações onde o seu progresso está salvo.'],
   ],
 };
-const ROTULO_FASE = { 5: '4.1', 6: '5 · Veldria', 7: '6 · Recordes', 8: '7 · Cérebro' };
+const ROTULO_FASE = { 5: '4.1', 6: '5 · Veldria', 7: '6 · Recordes', 8: '7 · Cérebro', 10: '8 · Formação' };
 function mostrarNovidades() {
   const fases = (STATE.novidades || []).slice().sort((a, b) => b - a);
   const bloco = (f) => `${fases.length > 1 ? `<span class="rot">Fase ${ROTULO_FASE[f] || f}</span>` : ''}<div class="lista novidades">${NOVIDADES[f].map(([ic, t, d]) => `<div class="card">${canvasIcone(ic, 28, ic === 'torre' ? { a: '#e9dfc9', b: '#a99bb8' } : null)}<div class="card-corpo"><b>${t}</b><small>${d}</small></div></div>`).join('')}</div>`;
@@ -145,7 +149,7 @@ function abrirConfig() {
     <button class="btn" data-act="estatisticas">${canvasIcone('estatisticas', 16)} Ver estatísticas completas</button>
     ${STATE.criador.liberado ? `<button class="btn criador-btn" data-act="criador">${canvasIcone('criador', 16)} Modo Criador</button>` : ''}
     <button class="btn perigo" data-act="reiniciar">Reiniciar jogo</button>
-    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.7</button>`, { dados: { config: true } });
+    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.8</button>`, { dados: { config: true } });
 }
 function mostrarResumoOffline(r) {
   if (!r || r.minutos < 1) return;

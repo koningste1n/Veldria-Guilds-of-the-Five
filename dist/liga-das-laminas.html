@@ -140,6 +140,23 @@ small { font-size: 13px; }
 .slot.capitao { box-shadow: inset 0 0 0 2px var(--ouro); }
 .slot .coroa { position: absolute; top: 6px; right: 6px; }
 .slot.vazio { justify-content: center; min-height: 120px; cursor: default; color: var(--muted); }
+/* grade de formação 3×3 (E4): mesma orientação da arena, inimigo à direita */
+.form-rotulos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; font-family: var(--f-display); font-size: 10px; color: var(--muted); text-align: center; letter-spacing: .5px; }
+.form-inimigo { font-family: var(--f-display); font-size: 9px; color: #ff9a8a; text-align: right; letter-spacing: .5px; margin-bottom: -6px; }
+.formacao { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.casa { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 104px; padding: 8px 2px 6px; background: var(--painel2); border: 0; clip-path: var(--entalhe); box-shadow: inset 0 0 0 2px var(--linha); cursor: pointer; min-width: 0; text-align: center; color: var(--tinta); }
+.casa b { font-size: 12px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.casa small { color: var(--muted); font-size: 10px; }
+.casa.vazia { background: none; box-shadow: inset 0 0 0 2px var(--linha-esc); border: 2px dashed var(--linha); color: var(--fraco); }
+.casa.vazia.alvo { border-color: var(--ouro-esc); }
+.casa.vazia.alvo small { color: var(--ouro); }
+.casa.capitao { box-shadow: inset 0 0 0 2px var(--ouro); }
+.casa.campeao { box-shadow: inset 0 0 0 2px var(--ouro-esc); background: linear-gradient(180deg, #3a2d1a, var(--painel2) 60%); }
+.casa.sel { background: #3c3152; box-shadow: inset 0 0 0 3px var(--ouro); }
+.casa .coroa { position: absolute; top: 6px; right: 6px; }
+.postura-tag { font-family: var(--f-display); font-size: 9px; color: var(--ouro); letter-spacing: .3px; }
+.form-acoes { display: flex; flex-direction: column; gap: 8px; }
+.chip-btn.alto { min-height: 44px; }
 .linha-tag { font-family: var(--f-display); font-size: 9px; padding: 2px 5px; margin-top: 2px; background: var(--linha-esc); clip-path: var(--entalhe); }
 .linha-tag.frente { color: var(--tocha); }
 .linha-tag.tras { color: var(--gelo); }
@@ -4476,7 +4493,7 @@ function fxPonta(c, x, y, cor) { for (let i = 0; i < 6; i++) { const a = (i / 6)
 
 /* ============================ ESTADO E SAVE ============================ */
 const SAVE_KEY = 'ligaDasLaminas.save.v1';   // mesma chave da Fase 1: a versão fica dentro do save
-const VERSAO = 9;   // v9 (E4 c): mercenário ganha pos (casa na formação 3×3) e postura; v8 só marcava a nota de novidades do cérebro novo
+const VERSAO = 10;   // v10 (E4 d): formato igual ao v9, só marca a nota da tela de formação; v9 (E4 c): pos (casa na formação 3×3) e postura; v8 só marcava a nota do cérebro novo
 const consumiveisZerados = () => Object.fromEntries(Object.keys(CONSUMIVEIS).map((k) => [k, 0]));
 const criadorPadrao = () => ({ liberado: false, usado: false, sorteMult: 1, tempoMult: 1 });
 const statsPadrao = () => ({
@@ -4515,6 +4532,7 @@ function iniciarJogoNovo(guilda) {
   STATE.mercs = iniciais;
   STATE.time = iniciais.map((m) => m.id);
   STATE.capitao = iniciais[1].id;
+  ajustarTime();   // cada titular na sua casa da formação (Guardião na frente, Arqueira e Clériga atrás)
   STATE.consumiveis.pocaoFuria = 1;   // presente de boas-vindas para conhecer os consumíveis
   renovarTaverna(false);
   novaTemporada(1);
@@ -4610,6 +4628,8 @@ function validarSave(s) {
   if (st.amistoso) { st.amistoso.mercs = mercsValidos(st.amistoso.mercs); if (!st.amistoso.mercs.length) st.amistoso = null; }
   if (st.liga) normalizarLiga(st);
   if (!Array.isArray(st.time)) st.time = [];
+  // titulares em casas únicas (quem vinha de um save antigo caía todo mundo na mesma casa)
+  { const tit = st.time.map((id) => st.mercs.find((m) => m.id === id)).filter(Boolean); const casas = resolverFormacao(tit); tit.forEach((m, i) => { m.pos = casas[i]; m.linha = linhaDePos(m.pos); }); }
   // Novidades a mostrar: lista das fases que o jogador ainda não viu
   const nov = Array.isArray(s.novidades) ? s.novidades.slice() : (s.novidades ? [2] : []);
   if (versaoAntiga < 2 && !nov.includes(2)) nov.push(2);
@@ -4619,7 +4639,8 @@ function validarSave(s) {
   if (versaoAntiga < 6 && !nov.includes(6) && (st.stats.lutas > 0 || st.tutorial >= 4)) nov.push(6);
   if (versaoAntiga < 7 && !nov.includes(7) && st.stats.lutas > 0) nov.push(7);
   if (versaoAntiga < 8 && !nov.includes(8) && st.stats.lutas > 0) nov.push(8);
-  st.novidades = nov.filter((f) => f >= 2 && f <= 8).sort();   // v9 não tem nota: a tela da formação chega no passo (d)
+  if (versaoAntiga < 10 && !nov.includes(10) && st.stats.lutas > 0) nov.push(10);   // v9 não tinha nota: a formação só ganhou tela no v10
+  st.novidades = nov.filter((f) => f >= 2 && f <= 10).sort();
   if (versaoAntiga < 3 && st.tutorial >= 4) st.tutorial = 99;   // quem já viu o tutorial antigo não o repete
   // v6: tutorial progressivo. Quem já lutou (ou terminou o tutorial antigo) não repete nada.
   if (versaoAntiga < 6) { st.tutorial = (st.tutorial >= 4 || st.stats.lutas > 0) ? 99 : 0; st.tutorialVisto = -1; }
@@ -4664,6 +4685,9 @@ const ajustarAscPorNivel = (m) => { m.ascensoes = Math.max(m.ascensoes || 0, m.n
 function ajustarTime() {
   STATE.time = [...new Set(STATE.time)].filter((id) => mercPorId(id) && !emExpedicao(id));
   const n = tamanhoTime();
+  // cada titular numa casa só (a mesma regra que a luta usa para desempatar)
+  const casas = resolverFormacao(STATE.time.map(mercPorId));
+  STATE.time.forEach((id, i) => { const m = mercPorId(id); if (m.pos !== casas[i]) { m.pos = casas[i]; m.linha = linhaDePos(m.pos); } });
   if (STATE.time.length > n) {
     const t = STATE.time.slice(0, n);
     if (STATE.time.includes(STATE.capitao) && !t.includes(STATE.capitao)) t[n - 1] = STATE.capitao;
@@ -5545,7 +5569,7 @@ function atualizarStatusNuvem() {
 
 /* ============================ INTERFACE: BASE ============================ */
 const UI = {
-  aba: 'guilda', filtroInv: 'todos', modais: [], criacao: null, ultimoDrop: null, toquesVersao: 0, expSel: new Set(),
+  aba: 'guilda', filtroInv: 'todos', modais: [], criacao: null, ultimoDrop: null, toquesVersao: 0, expSel: new Set(), casaSel: null,
   criador: { merc: null, tipo: 'arma', raridade: 4, nivel: 10, unico: null, perg: 'furiaDragao', rel: 'penaFenix' },
 };
 let Luta = null;
@@ -5833,18 +5857,47 @@ function htmlNovaExpedicao() {
 }
 /* ---- ELENCO ---- */
 function telaElenco() {
-  const time = timeMercs(), n = tamanhoTime(), slots = [];
-  for (let i = 0; i < n; i++) slots.push(time[i] ? slotTime(time[i], n) : '<div class="slot vazio"><b>Vaga livre</b><small>Escolha alguém do elenco</small></div>');
+  const time = timeMercs(), n = tamanhoTime(), faltam = n - time.length;
+  if (UI.casaSel != null && !time.some((m) => m.pos === UI.casaSel)) UI.casaSel = null;
+  const sel = UI.casaSel != null ? time.find((m) => m.pos === UI.casaSel) : null;
+  // a grade na tela tem a mesma orientação da arena: o time fica à esquerda e o inimigo vem da direita,
+  // então a coluna da Frente é a da direita. Linhas = fileiras (cima, centro, baixo).
+  const casas = [];
+  for (let fil = 0; fil < 3; fil++) for (const col of [2, 1, 0]) casas.push(casaFormacao(posDe(col, fil), time.find((m) => m.pos === posDe(col, fil)), sel));
+  const acoes = sel ? `
+    <div class="form-acoes">
+      <div class="chips-grupo"><span class="rot">Postura de ${esc(sel.nome)}</span>
+        ${Object.entries(POSTURAS).map(([v, P]) => `<button class="chip-btn alto ${(sel.postura || 'auto') === v ? 'on' : ''}" data-act="postura" data-id="${sel.id}" data-v="${v}">${P.nome}</button>`).join('')}</div>
+      <small class="muted">${POSTURAS[sel.postura || 'auto'].desc} Toque numa casa para mover${time.length > 1 ? ' (ou trocar de lugar)' : ''}.</small>
+      <div class="acoes">
+        <button class="btn" data-act="abrir-merc" data-id="${sel.id}">Ficha</button>
+        <button class="btn" data-act="capitao" data-id="${sel.id}" ${STATE.capitao === sel.id ? 'disabled' : ''}>${STATE.capitao === sel.id ? 'É o capitão' : 'Tornar capitão'}</button>
+        <button class="btn" data-act="time-rem" data-id="${sel.id}">Tirar do time</button>
+      </div>
+    </div>` : `<small class="muted">Toque num mercenário para mover, trocar de lugar ou mudar a postura.${faltam > 0 ? ` <b>${faltam === 1 ? 'Falta 1 titular' : `Faltam ${faltam} titulares`}</b>: toque em alguém do elenco e escolha "Pôr no time".` : ''}</small>`;
   return `
   <section class="painel">
-    <div class="painel-cab"><h2>Time titular</h2><span class="tag">Poder ${fmt(poderLista(time))}</span></div>
-    <div class="slots" style="--n:${n}">${slots.join('')}</div>
-    <p class="dica">Toque num mercenário para ver os números, equipar itens e pergaminhos, escolher a linha e o capitão. O capitão transforma a habilidade em SUPREMO. Na Divisão ${divAtual().nome}, o time tem ${n} titulares.</p>
+    <div class="painel-cab"><h2>Formação</h2><span class="tag">Poder ${fmt(poderLista(time))}</span></div>
+    <div class="form-inimigo">o inimigo vem da direita ▶</div>
+    <div class="form-rotulos"><span>Trás</span><span>Meio</span><span>Frente</span></div>
+    <div class="formacao">${casas.join('')}</div>
+    ${acoes}
+    <p class="dica">A luta começa com cada um na sua casa. Quem fica na frente segura o inimigo; quem atira fica atrás da própria linha de frente. O capitão transforma a habilidade em SUPREMO. Na Divisão ${divAtual().nome}, o time tem ${n} titulares.</p>
   </section>
   <section class="painel">
     <div class="painel-cab"><h2>Elenco</h2><span class="muted">${STATE.mercs.length}/${limiteElenco()}</span></div>
     <div class="lista">${STATE.mercs.map((m) => cardMerc(m)).join('')}</div>
   </section>`;
+}
+function casaFormacao(pos, m, sel) {
+  if (!m) return `<button class="casa vazia ${sel ? 'alvo' : ''}" data-act="casa" data-pos="${pos}" aria-label="Casa livre: ${FORMACAO.colunas[posColuna(pos)]} ${FORMACAO.fileiras[posFileira(pos)]}"><small>${sel ? 'mover aqui' : '—'}</small></button>`;
+  const cap = STATE.capitao === m.id, P = POSTURAS[m.postura || 'auto'];
+  return `<button class="casa ${sel && sel.id === m.id ? 'sel' : ''} ${cap ? 'capitao' : ''} ${m.campeao ? 'campeao' : ''}" data-act="casa" data-pos="${pos}">
+    ${cap ? `<span class="coroa">${canvasIcone('coroa', 14)}</span>` : ''}
+    ${canvasLook(lookMeu(m), 44)}
+    <b>${nomeMerc(m)}</b><small>${CLASSES[m.classe].papel} · nv. ${m.nivel}</small>
+    ${m.postura && m.postura !== 'auto' ? `<span class="postura-tag">${P.nome}</span>` : ''}
+  </button>`;
 }
 function slotTime(m, n) {
   const cap = STATE.capitao === m.id;
@@ -5908,8 +5961,9 @@ function htmlFicha(m, modo) {
     ${htmlAscensao(m)}
     <span class="rot">Equipamentos</span>
     <div class="equips">${slot('arma')}${slot('armadura')}${slot('amuleto')}</div>
-    <div class="chips-grupo"><span class="rot">Linha no início da luta</span>
-      ${[['frente', 'Frente'], ['tras', 'Trás']].map(([v, n]) => `<button class="chip-btn ${m.linha === v ? 'on' : ''}" data-act="linha" data-id="${m.id}" data-v="${v}">${n}</button>`).join('')}</div>
+    <div class="chips-grupo"><span class="rot">Postura</span>
+      ${Object.entries(POSTURAS).map(([v, P]) => `<button class="chip-btn ${(m.postura || 'auto') === v ? 'on' : ''}" data-act="postura" data-id="${m.id}" data-v="${v}">${P.nome}</button>`).join('')}</div>
+    <small class="muted">${POSTURAS[m.postura || 'auto'].desc}${noTime ? ` Casa na formação: ${FORMACAO.colunas[posColuna(m.pos)]} · ${FORMACAO.fileiras[posFileira(m.pos)]} (mova na grade do Elenco).` : ''}</small>
     <div class="chips-grupo"><span class="rot">Alvo preferido</span>
       ${taticas.map(([v, n]) => `<button class="chip-btn ${m.tatica === v ? 'on' : ''}" data-act="tatica" data-id="${m.id}" data-v="${v}">${n}</button>`).join('')}</div>
     ${exp ? '<p class="dica">Em expedição: volta para o elenco quando você coletar na Guilda (ou chame de volta).</p>' : ''}
@@ -6554,6 +6608,10 @@ function mostrarTutorial() {
   el.innerHTML = `<div class="tut-balao"><small>${p === 0 ? 'Primeiros passos' : `Luta ${p} de ${TUT_FIM} · menu liberado`}</small><p>${T.txt}</p><button class="btn primario pequeno" data-act="tutorial-prox">${p === TUT_FIM ? 'Começar' : 'Entendi'}</button></div>`;
 }
 const NOVIDADES = {
+  10: [
+    ['estrela', 'Formação 3×3', 'No Elenco, o time agora fica numa grade de 3×3 casas: toque num mercenário e depois numa casa para mover (ou trocar de lugar). A luta começa com cada um na sua casa — quem está na frente segura o inimigo, quem atira fica atrás da própria linha de frente.'],
+    ['expedicao', 'Posturas', 'Cada mercenário tem uma postura: Automática, Avançar (vai para cima), Segurar (espera o inimigo vir e protege os aliados) ou Flanquear (contorna pelas laterais até a retaguarda). A escolha muda o resultado: um trio corpo a corpo flanqueando vence uma muralha que parado não vence.'],
+  ],
   8: [
     ['expedicao', 'Lutadores que pensam', 'Cada mercenário agora pontua o que fazer a cada instante, de acordo com a sua função: arqueiras e magos recuam atirando (até a parede — aí lutam), ninguém mais perde tempo batendo em esqueleto em vez de no Invocador, a Chuva de Flechas espera o alvo parar e a Clériga cura na hora certa. A tática escolhida na ficha continua mandando.'],
     ['pergaminho', 'Lutas antigas', 'As regras de combate mudaram de versão: o botão "Conferir" das lutas anteriores avisa que elas não podem mais ser reproduzidas. As novas, sim.'],
@@ -6599,7 +6657,7 @@ const NOVIDADES = {
     ['engrenagem', 'Save na sua conta', 'Jogando dentro do Claude com a sua conta, o progresso também fica salvo nela e você continua de outro aparelho. Veja em Configurações onde o seu progresso está salvo.'],
   ],
 };
-const ROTULO_FASE = { 5: '4.1', 6: '5 · Veldria', 7: '6 · Recordes', 8: '7 · Cérebro' };
+const ROTULO_FASE = { 5: '4.1', 6: '5 · Veldria', 7: '6 · Recordes', 8: '7 · Cérebro', 10: '8 · Formação' };
 function mostrarNovidades() {
   const fases = (STATE.novidades || []).slice().sort((a, b) => b - a);
   const bloco = (f) => `${fases.length > 1 ? `<span class="rot">Fase ${ROTULO_FASE[f] || f}</span>` : ''}<div class="lista novidades">${NOVIDADES[f].map(([ic, t, d]) => `<div class="card">${canvasIcone(ic, 28, ic === 'torre' ? { a: '#e9dfc9', b: '#a99bb8' } : null)}<div class="card-corpo"><b>${t}</b><small>${d}</small></div></div>`).join('')}</div>`;
@@ -6636,7 +6694,7 @@ function abrirConfig() {
     <button class="btn" data-act="estatisticas">${canvasIcone('estatisticas', 16)} Ver estatísticas completas</button>
     ${STATE.criador.liberado ? `<button class="btn criador-btn" data-act="criador">${canvasIcone('criador', 16)} Modo Criador</button>` : ''}
     <button class="btn perigo" data-act="reiniciar">Reiniciar jogo</button>
-    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.7</button>`, { dados: { config: true } });
+    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.8</button>`, { dados: { config: true } });
 }
 function mostrarResumoOffline(r) {
   if (!r || r.minutos < 1) return;
@@ -6907,6 +6965,19 @@ const ACOES = {
   capitao: (el) => { STATE.capitao = +el.dataset.id; toast('Novo capitão definido.', 'ok'); aposMudanca(); },
   linha: (el) => { const m = mercPorId(+el.dataset.id); m.pos = posDe(el.dataset.v === 'frente' ? 0 : 2, posFileira(m.pos)); m.linha = linhaDePos(m.pos); aposMudanca(); },
   tatica: (el) => { mercPorId(+el.dataset.id).tatica = el.dataset.v; aposMudanca(); },
+  postura: (el) => { mercPorId(+el.dataset.id).postura = POSTURAS[el.dataset.v] ? el.dataset.v : 'auto'; aposMudanca(); },
+  // grade de formação: 1º toque seleciona o mercenário; 2º toque numa casa move (ou troca de lugar com quem está lá)
+  casa: (el) => {
+    const pos = +el.dataset.pos, time = timeMercs(), aqui = time.find((m) => m.pos === pos);
+    if (UI.casaSel == null) { if (aqui) { UI.casaSel = pos; render(); } return; }
+    if (pos === UI.casaSel) { UI.casaSel = null; render(); return; }
+    const sel = time.find((m) => m.pos === UI.casaSel);
+    if (!sel) { UI.casaSel = null; render(); return; }
+    sel.pos = pos; sel.linha = linhaDePos(pos);
+    if (aqui) { aqui.pos = UI.casaSel; aqui.linha = linhaDePos(aqui.pos); }
+    UI.casaSel = pos;
+    aposMudanca();
+  },
   'vender-merc': (el) => {
     const m = mercPorId(+el.dataset.id);
     if (emExpedicao(m.id)) { toast('Está em expedição.', 'erro'); return; }
@@ -7204,7 +7275,7 @@ document.addEventListener('click', (e) => {
   if (!el || el.disabled) return;
   const fn = ACOES[el.dataset.act];
   if (!fn) return;
-  if (el.matches('.btn, .aba, .chip-btn, .seg-btn, .tile, .tile-cons, .rel-tile, .chip-merc, .card[role="button"], .slot')) somTocar('clique');
+  if (el.matches('.btn, .aba, .chip-btn, .seg-btn, .tile, .tile-cons, .rel-tile, .chip-merc, .card[role="button"], .slot, .casa')) somTocar('clique');
   e.preventDefault(); e.stopPropagation(); fn(el, e);
 });
 document.addEventListener('keydown', (e) => {

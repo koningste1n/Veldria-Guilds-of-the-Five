@@ -1,6 +1,6 @@
 /* ============================ INTERFACE: BASE ============================ */
 const UI = {
-  aba: 'guilda', filtroInv: 'todos', modais: [], criacao: null, ultimoDrop: null, toquesVersao: 0, expSel: new Set(),
+  aba: 'guilda', filtroInv: 'todos', modais: [], criacao: null, ultimoDrop: null, toquesVersao: 0, expSel: new Set(), casaSel: null,
   criador: { merc: null, tipo: 'arma', raridade: 4, nivel: 10, unico: null, perg: 'furiaDragao', rel: 'penaFenix' },
 };
 let Luta = null;

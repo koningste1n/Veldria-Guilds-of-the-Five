@@ -4,9 +4,9 @@
 
 **Como trabalhar:** `docs/PROMPT-MAE.md` (papéis, regras, roteiro das etapas com critérios de pronto, handoff).
 
-_Atualizado em 15/10/2026 (E4, passos a, b e c-simulação)._
+_Atualizado em 15/10/2026 (E4, passos a–c e tela da formação)._
 
-## O que existe (v0.7, E4 passo b)
+## O que existe (v0.8, E4: cérebro v2, formação 3×3 com tela)
 
 - 10 classes: guardião, machadeiro, lanceira, arqueira, piromante, criomante, clérica, lâmina, bardo e invocador.
 - 5 divisões (Bronze → Lenda) em temporadas, Copa dos 4 primeiros com Líderes, cerca de 25 pergaminhos, cerca de 15 relíquias, consumíveis, Forja, Ascensão (2 níveis; teto de nível hoje = 30), Campeões.
@@ -277,11 +277,22 @@ Linha de base v2×v2 refeita (`sim/resultados/*-v2.*`): 1v1 Crio 80 · Mach 75 �
 
 **O jogo publicado já luta com a grade e as regras v3**, mas o jogador ainda não vê nem mexe na formação (todo mundo está na casa padrão da sua linha, postura automática). Candidato para a E5a/rules: bloqueio físico de verdade (hoje unidades se atravessam; a separação é só um empurrão de 16 px), que faria o tanque segurar a linha sem depender só do alvo do inimigo.
 
+### Tela da formação — concluída em 15/10/2026 (v0.8, save v10)
+
+| O que mudou | Onde |
+|---|---|
+| Aba **Elenco** abre com a grade 3×3 ("Formação"): mesma orientação da arena (inimigo vem da direita, coluna Frente à direita). 1º toque seleciona o mercenário, 2º toque numa casa move (ou troca de lugar com quem estava lá); toque de novo na mesma casa desseleciona | `26_interface-telas.js` (`casaFormacao`), `30_…` (ação `casa`), CSS `.formacao`/`.casa` |
+| Com alguém selecionado: 4 chips de postura (≥ 44 px) com a descrição, e botões Ficha · Tornar capitão · Tirar do time | `26`, `30` (ação `postura`) |
+| Ficha: os chips Frente/Trás viraram chips de **postura** + linha "Casa na formação: Frente · Centro (mova na grade do Elenco)" | `26` |
+| Titulares sempre em casas únicas: `ajustarTime()` e a abertura do save aplicam o mesmo `resolverFormacao` da luta (antes a guilda nova nascia com Arqueira e Clériga na mesma casa) | `15_estado-e-save.js` |
+| Save **v10** = formato do v9; só marca a nota "Fase 8 · Formação" (quem passou direto pelo v9 na última hora também recebe) | `15`, `28` |
+| `testes/formacao.py` (18 verificações): grade, mover, trocar, postura, 44 px, sem rolagem, ficha, luta registrada com casa e postura, reprodução idêntica | `testes/` |
+
+Capturas: `testes/e4-formacao.png` e `testes/e4-formacao-sel.png`.
+
 ## Próxima conversa começa por… (E4 passo d, **Fable 5.1**)
 
-0. Ler o veredito do Kevin sobre as 3 lutas no celular (recuo, invocador, cura) — ainda não chegou — e ajustar `IA2` se pareceu bug.
-1. **Tela do Preparo com a grade 3×3** (frontend-design): grade 3×3 com os retratos arrastáveis ou toque-seleciona-toque-coloca (botões ≥ 44 px, tela de 390 px), postura por mercenário (4 chips), capitão marcado. Substitui os chips Frente/Trás da ficha. Teste Playwright: mudar a casa e a postura, lutar, conferir no registro (`pos`/`postura` do lado A).
-2. **Câmera**: afastada no início mostrando as duas formações, aproxima no primeiro embate (`11_arena.js`, câmera já existe). Decidir o enquadramento para 384×216 numa tela em pé.
-3. Nota de novidades "Fase 8 · Formação" quando a tela estiver pronta (save v10 só se o formato mudar; senão, marcar a nota de outro jeito).
-4. Preparar os **dois mockups** (em pé × deitada) para o ponto de decisão do Kevin (f) — podem ser feitos com o Visualizer/artefato na própria conversa.
-5. Depois: (e) 3v3 melhor de 3.
+0. Ler o veredito do Kevin: (1) as 3 lutas do cérebro novo (recuo, invocador, cura) e (2) **a grade de formação no celular** — dá para mover com o dedão? a orientação (inimigo à direita) ficou clara? Ajustar antes de seguir.
+1. **Câmera** (`11_arena.js`, a câmera já existe): afastada no início mostrando as duas formações, aproxima no primeiro embate (quando uma unidade entra no alcance de outra) e segue o centro de massa dos embates. Decidir o enquadramento para 384×216 numa tela em pé — e é aqui que se vê se a formação cabe em pé.
+2. Preparar os **dois mockups** (em pé × deitada) para o ponto de decisão do Kevin (f): podem ser capturas reais da arena com a câmera nova, uma em cada orientação.
+3. Depois: (e) 3v3 melhor de 3.

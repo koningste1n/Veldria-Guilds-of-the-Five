@@ -102,18 +102,47 @@ function htmlNovaExpedicao() {
 }
 /* ---- ELENCO ---- */
 function telaElenco() {
-  const time = timeMercs(), n = tamanhoTime(), slots = [];
-  for (let i = 0; i < n; i++) slots.push(time[i] ? slotTime(time[i], n) : '<div class="slot vazio"><b>Vaga livre</b><small>Escolha alguém do elenco</small></div>');
+  const time = timeMercs(), n = tamanhoTime(), faltam = n - time.length;
+  if (UI.casaSel != null && !time.some((m) => m.pos === UI.casaSel)) UI.casaSel = null;
+  const sel = UI.casaSel != null ? time.find((m) => m.pos === UI.casaSel) : null;
+  // a grade na tela tem a mesma orientação da arena: o time fica à esquerda e o inimigo vem da direita,
+  // então a coluna da Frente é a da direita. Linhas = fileiras (cima, centro, baixo).
+  const casas = [];
+  for (let fil = 0; fil < 3; fil++) for (const col of [2, 1, 0]) casas.push(casaFormacao(posDe(col, fil), time.find((m) => m.pos === posDe(col, fil)), sel));
+  const acoes = sel ? `
+    <div class="form-acoes">
+      <div class="chips-grupo"><span class="rot">Postura de ${esc(sel.nome)}</span>
+        ${Object.entries(POSTURAS).map(([v, P]) => `<button class="chip-btn alto ${(sel.postura || 'auto') === v ? 'on' : ''}" data-act="postura" data-id="${sel.id}" data-v="${v}">${P.nome}</button>`).join('')}</div>
+      <small class="muted">${POSTURAS[sel.postura || 'auto'].desc} Toque numa casa para mover${time.length > 1 ? ' (ou trocar de lugar)' : ''}.</small>
+      <div class="acoes">
+        <button class="btn" data-act="abrir-merc" data-id="${sel.id}">Ficha</button>
+        <button class="btn" data-act="capitao" data-id="${sel.id}" ${STATE.capitao === sel.id ? 'disabled' : ''}>${STATE.capitao === sel.id ? 'É o capitão' : 'Tornar capitão'}</button>
+        <button class="btn" data-act="time-rem" data-id="${sel.id}">Tirar do time</button>
+      </div>
+    </div>` : `<small class="muted">Toque num mercenário para mover, trocar de lugar ou mudar a postura.${faltam > 0 ? ` <b>${faltam === 1 ? 'Falta 1 titular' : `Faltam ${faltam} titulares`}</b>: toque em alguém do elenco e escolha "Pôr no time".` : ''}</small>`;
   return `
   <section class="painel">
-    <div class="painel-cab"><h2>Time titular</h2><span class="tag">Poder ${fmt(poderLista(time))}</span></div>
-    <div class="slots" style="--n:${n}">${slots.join('')}</div>
-    <p class="dica">Toque num mercenário para ver os números, equipar itens e pergaminhos, escolher a linha e o capitão. O capitão transforma a habilidade em SUPREMO. Na Divisão ${divAtual().nome}, o time tem ${n} titulares.</p>
+    <div class="painel-cab"><h2>Formação</h2><span class="tag">Poder ${fmt(poderLista(time))}</span></div>
+    <div class="form-inimigo">o inimigo vem da direita ▶</div>
+    <div class="form-rotulos"><span>Trás</span><span>Meio</span><span>Frente</span></div>
+    <div class="formacao">${casas.join('')}</div>
+    ${acoes}
+    <p class="dica">A luta começa com cada um na sua casa. Quem fica na frente segura o inimigo; quem atira fica atrás da própria linha de frente. O capitão transforma a habilidade em SUPREMO. Na Divisão ${divAtual().nome}, o time tem ${n} titulares.</p>
   </section>
   <section class="painel">
     <div class="painel-cab"><h2>Elenco</h2><span class="muted">${STATE.mercs.length}/${limiteElenco()}</span></div>
     <div class="lista">${STATE.mercs.map((m) => cardMerc(m)).join('')}</div>
   </section>`;
+}
+function casaFormacao(pos, m, sel) {
+  if (!m) return `<button class="casa vazia ${sel ? 'alvo' : ''}" data-act="casa" data-pos="${pos}" aria-label="Casa livre: ${FORMACAO.colunas[posColuna(pos)]} ${FORMACAO.fileiras[posFileira(pos)]}"><small>${sel ? 'mover aqui' : '—'}</small></button>`;
+  const cap = STATE.capitao === m.id, P = POSTURAS[m.postura || 'auto'];
+  return `<button class="casa ${sel && sel.id === m.id ? 'sel' : ''} ${cap ? 'capitao' : ''} ${m.campeao ? 'campeao' : ''}" data-act="casa" data-pos="${pos}">
+    ${cap ? `<span class="coroa">${canvasIcone('coroa', 14)}</span>` : ''}
+    ${canvasLook(lookMeu(m), 44)}
+    <b>${nomeMerc(m)}</b><small>${CLASSES[m.classe].papel} · nv. ${m.nivel}</small>
+    ${m.postura && m.postura !== 'auto' ? `<span class="postura-tag">${P.nome}</span>` : ''}
+  </button>`;
 }
 function slotTime(m, n) {
   const cap = STATE.capitao === m.id;
@@ -177,8 +206,9 @@ function htmlFicha(m, modo) {
     ${htmlAscensao(m)}
     <span class="rot">Equipamentos</span>
     <div class="equips">${slot('arma')}${slot('armadura')}${slot('amuleto')}</div>
-    <div class="chips-grupo"><span class="rot">Linha no início da luta</span>
-      ${[['frente', 'Frente'], ['tras', 'Trás']].map(([v, n]) => `<button class="chip-btn ${m.linha === v ? 'on' : ''}" data-act="linha" data-id="${m.id}" data-v="${v}">${n}</button>`).join('')}</div>
+    <div class="chips-grupo"><span class="rot">Postura</span>
+      ${Object.entries(POSTURAS).map(([v, P]) => `<button class="chip-btn ${(m.postura || 'auto') === v ? 'on' : ''}" data-act="postura" data-id="${m.id}" data-v="${v}">${P.nome}</button>`).join('')}</div>
+    <small class="muted">${POSTURAS[m.postura || 'auto'].desc}${noTime ? ` Casa na formação: ${FORMACAO.colunas[posColuna(m.pos)]} · ${FORMACAO.fileiras[posFileira(m.pos)]} (mova na grade do Elenco).` : ''}</small>
     <div class="chips-grupo"><span class="rot">Alvo preferido</span>
       ${taticas.map(([v, n]) => `<button class="chip-btn ${m.tatica === v ? 'on' : ''}" data-act="tatica" data-id="${m.id}" data-v="${v}">${n}</button>`).join('')}</div>
     ${exp ? '<p class="dica">Em expedição: volta para o elenco quando você coletar na Guilda (ou chame de volta).</p>' : ''}

@@ -78,6 +78,19 @@ const ACOES = {
   capitao: (el) => { STATE.capitao = +el.dataset.id; toast('Novo capitão definido.', 'ok'); aposMudanca(); },
   linha: (el) => { const m = mercPorId(+el.dataset.id); m.pos = posDe(el.dataset.v === 'frente' ? 0 : 2, posFileira(m.pos)); m.linha = linhaDePos(m.pos); aposMudanca(); },
   tatica: (el) => { mercPorId(+el.dataset.id).tatica = el.dataset.v; aposMudanca(); },
+  postura: (el) => { mercPorId(+el.dataset.id).postura = POSTURAS[el.dataset.v] ? el.dataset.v : 'auto'; aposMudanca(); },
+  // grade de formação: 1º toque seleciona o mercenário; 2º toque numa casa move (ou troca de lugar com quem está lá)
+  casa: (el) => {
+    const pos = +el.dataset.pos, time = timeMercs(), aqui = time.find((m) => m.pos === pos);
+    if (UI.casaSel == null) { if (aqui) { UI.casaSel = pos; render(); } return; }
+    if (pos === UI.casaSel) { UI.casaSel = null; render(); return; }
+    const sel = time.find((m) => m.pos === UI.casaSel);
+    if (!sel) { UI.casaSel = null; render(); return; }
+    sel.pos = pos; sel.linha = linhaDePos(pos);
+    if (aqui) { aqui.pos = UI.casaSel; aqui.linha = linhaDePos(aqui.pos); }
+    UI.casaSel = pos;
+    aposMudanca();
+  },
   'vender-merc': (el) => {
     const m = mercPorId(+el.dataset.id);
     if (emExpedicao(m.id)) { toast('Está em expedição.', 'erro'); return; }
@@ -375,7 +388,7 @@ document.addEventListener('click', (e) => {
   if (!el || el.disabled) return;
   const fn = ACOES[el.dataset.act];
   if (!fn) return;
-  if (el.matches('.btn, .aba, .chip-btn, .seg-btn, .tile, .tile-cons, .rel-tile, .chip-merc, .card[role="button"], .slot')) somTocar('clique');
+  if (el.matches('.btn, .aba, .chip-btn, .seg-btn, .tile, .tile-cons, .rel-tile, .chip-merc, .card[role="button"], .slot, .casa')) somTocar('clique');
   e.preventDefault(); e.stopPropagation(); fn(el, e);
 });
 document.addEventListener('keydown', (e) => {

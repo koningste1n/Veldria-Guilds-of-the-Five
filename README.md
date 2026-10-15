@@ -4,7 +4,7 @@
 
 Jogo de gestão de guilda de mercenários com batalhas automáticas em arena, pixel art desenhada por código e feito para celular em pé. HTML + CSS + JavaScript puro, sem bibliotecas e sem nada externo.
 
-**Versão atual:** v0.7 (etapa E4, passo c) · save versão 9 · regras de combate v3.
+**Versão atual:** v0.8 (etapa E4, passo d: tela da formação) · save versão 10 · regras de combate v3.
 
 ## Como montar
 
@@ -25,6 +25,7 @@ Testes (precisam de Playwright):
 python3 testes/fumaca.py dist/index.html     # abre, cria guilda, sem erros, sem rolagem lateral, save sobrevive
 python3 testes/tutorial.py dist/index.html   # tutorial das 5 lutas + migração de save v5 → v6 (pulado com o tutorial desligado)
 python3 testes/registro.py dist/index.html   # registro de partidas, reprodução, recordes e migração v6 → v7
+python3 testes/formacao.py dist/index.html   # grade de formação 3×3 e posturas no Elenco: mover, trocar, postura, luta registrada com casa e postura
 ```
 
 Simulador (Node, sem tela, usa o mesmo código de `src/js/`):

@@ -1,6 +1,6 @@
 /* ============================ ESTADO E SAVE ============================ */
 const SAVE_KEY = 'ligaDasLaminas.save.v1';   // mesma chave da Fase 1: a versão fica dentro do save
-const VERSAO = 9;   // v9 (E4 c): mercenário ganha pos (casa na formação 3×3) e postura; v8 só marcava a nota de novidades do cérebro novo
+const VERSAO = 10;   // v10 (E4 d): formato igual ao v9, só marca a nota da tela de formação; v9 (E4 c): pos (casa na formação 3×3) e postura; v8 só marcava a nota do cérebro novo
 const consumiveisZerados = () => Object.fromEntries(Object.keys(CONSUMIVEIS).map((k) => [k, 0]));
 const criadorPadrao = () => ({ liberado: false, usado: false, sorteMult: 1, tempoMult: 1 });
 const statsPadrao = () => ({
@@ -39,6 +39,7 @@ function iniciarJogoNovo(guilda) {
   STATE.mercs = iniciais;
   STATE.time = iniciais.map((m) => m.id);
   STATE.capitao = iniciais[1].id;
+  ajustarTime();   // cada titular na sua casa da formação (Guardião na frente, Arqueira e Clériga atrás)
   STATE.consumiveis.pocaoFuria = 1;   // presente de boas-vindas para conhecer os consumíveis
   renovarTaverna(false);
   novaTemporada(1);
@@ -134,6 +135,8 @@ function validarSave(s) {
   if (st.amistoso) { st.amistoso.mercs = mercsValidos(st.amistoso.mercs); if (!st.amistoso.mercs.length) st.amistoso = null; }
   if (st.liga) normalizarLiga(st);
   if (!Array.isArray(st.time)) st.time = [];
+  // titulares em casas únicas (quem vinha de um save antigo caía todo mundo na mesma casa)
+  { const tit = st.time.map((id) => st.mercs.find((m) => m.id === id)).filter(Boolean); const casas = resolverFormacao(tit); tit.forEach((m, i) => { m.pos = casas[i]; m.linha = linhaDePos(m.pos); }); }
   // Novidades a mostrar: lista das fases que o jogador ainda não viu
   const nov = Array.isArray(s.novidades) ? s.novidades.slice() : (s.novidades ? [2] : []);
   if (versaoAntiga < 2 && !nov.includes(2)) nov.push(2);
@@ -143,7 +146,8 @@ function validarSave(s) {
   if (versaoAntiga < 6 && !nov.includes(6) && (st.stats.lutas > 0 || st.tutorial >= 4)) nov.push(6);
   if (versaoAntiga < 7 && !nov.includes(7) && st.stats.lutas > 0) nov.push(7);
   if (versaoAntiga < 8 && !nov.includes(8) && st.stats.lutas > 0) nov.push(8);
-  st.novidades = nov.filter((f) => f >= 2 && f <= 8).sort();   // v9 não tem nota: a tela da formação chega no passo (d)
+  if (versaoAntiga < 10 && !nov.includes(10) && st.stats.lutas > 0) nov.push(10);   // v9 não tinha nota: a formação só ganhou tela no v10
+  st.novidades = nov.filter((f) => f >= 2 && f <= 10).sort();
   if (versaoAntiga < 3 && st.tutorial >= 4) st.tutorial = 99;   // quem já viu o tutorial antigo não o repete
   // v6: tutorial progressivo. Quem já lutou (ou terminou o tutorial antigo) não repete nada.
   if (versaoAntiga < 6) { st.tutorial = (st.tutorial >= 4 || st.stats.lutas > 0) ? 99 : 0; st.tutorialVisto = -1; }
@@ -188,6 +192,9 @@ const ajustarAscPorNivel = (m) => { m.ascensoes = Math.max(m.ascensoes || 0, m.n
 function ajustarTime() {
   STATE.time = [...new Set(STATE.time)].filter((id) => mercPorId(id) && !emExpedicao(id));
   const n = tamanhoTime();
+  // cada titular numa casa só (a mesma regra que a luta usa para desempatar)
+  const casas = resolverFormacao(STATE.time.map(mercPorId));
+  STATE.time.forEach((id, i) => { const m = mercPorId(id); if (m.pos !== casas[i]) { m.pos = casas[i]; m.linha = linhaDePos(m.pos); } });
   if (STATE.time.length > n) {
     const t = STATE.time.slice(0, n);
     if (STATE.time.includes(STATE.capitao) && !t.includes(STATE.capitao)) t[n - 1] = STATE.capitao;

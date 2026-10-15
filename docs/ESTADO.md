@@ -4,15 +4,15 @@
 
 **Como trabalhar:** `docs/PROMPT-MAE.md` (papéis, regras, roteiro das etapas com critérios de pronto, handoff).
 
-_Atualizado em 15/10/2026 (E4, passo d: câmera e mockups de orientação)._
+_Atualizado em 15/10/2026 (E4 fechada em código: câmera, orientação em pé, partida melhor de 3)._
 
-## O que existe (v0.9, E4: cérebro v2, formação 3×3 com tela, câmera de treinador)
+## O que existe (v0.10, E4: cérebro v2, formação 3×3 com tela, câmera de treinador, partidas melhor de 3)
 
 - 10 classes: guardião, machadeiro, lanceira, arqueira, piromante, criomante, clérica, lâmina, bardo e invocador.
 - 5 divisões (Bronze → Lenda) em temporadas, Copa dos 4 primeiros com Líderes, cerca de 25 pergaminhos, cerca de 15 relíquias, consumíveis, Forja, Ascensão (2 níveis; teto de nível hoje = 30), Campeões.
 - Sede ociosa, expedições, Acampamento, Torre Infinita com Guardiões a cada 10 andares, estatísticas, Modo Criador (7 toques na versão).
 - Bonecos 32×40 com membros por cinemática inversa e 3 vistas, arena 384×216 com câmera, VFX direcionais, sons sintetizados, vibração e câmera lenta.
-- Combate com passo fixo de 1/30 s e semente aleatória; "pular luta"; IA por função.
+- Combate com passo fixo de 1/30 s e semente aleatória; "pular luta"; cérebro de utilidade por função (v2); formação 3×3 + posturas; Liga e Copa em partidas melhor de 3 com intervalo para ajustar a formação.
 - Save em `localStorage` (`ligaDasLaminas.save.v1`) com **versão dentro do save (v5) e migrações encadeadas**; save na nuvem por conta no artefato do Claude, com resolução de conflito entre aparelhos.
 
 ## Perdido na migração
@@ -50,7 +50,7 @@ Os testes Playwright antigos (`luta.py`, `lideres.py`, `nuvem.py`, `perf.py`…)
 | E1 | Código recuperado, no GitHub e publicado | — | — | ✅ |
 | E2 | Nome Veldria no jogo, save v6 (tutorial progressivo feito e **desligado** — ver Pendências) | 1 | Opus 5.5 | ✅ 15/10 |
 | E3 | Registro de partidas, ficha de recordes + melhores da temporada, simulador de balanço em Node | 1 | Opus 5.5 | ✅ 15/10 (aguarda teste do Kevin no celular) |
-| E4 | Motor novo: IA de utilidade, 3×3 + posturas, câmera, 3v3 melhor de 3; decisão de orientação de tela | 3–4 | **Fable 5.1** | **em andamento** — (a) ✅, (b) ✅, (c) ✅, tela da formação ✅, (d) câmera ✅ 15/10; faltam (e) 3v3 melhor de 3 e (f) a decisão de orientação do Kevin |
+| E4 | Motor novo: IA de utilidade, 3×3 + posturas, câmera, 3v3 melhor de 3; decisão de orientação de tela | 3–4 | **Fable 5.1** | ✅ **em código, 15/10** (3 conversas) — falta só o teste do Kevin no celular (critérios 3, 4 e 5) |
 | E5a | Curva 1→100, Ascensão como portão, maestrias 20/50, Rank S, A/B nv. 15, catálogo com raridades, pity | 2 | **Fable 5.1** | |
 | E5b | Personalidades visíveis, rivais, identidade de build, relíquias 24+, renome, contrato diário, eventos semanais | 2 | Opus 5.5 | |
 | E6 | Classes novas em lotes de 2–4 | 1–2 | Opus 5.5 | |
@@ -153,7 +153,7 @@ Hoje, quem começa do zero não tem tutorial nenhum (o tutorial antigo de 6 dica
 | 2 | Formação 3×3 + posturas (avançar, segurar, flanquear) configuradas no Preparo e lidas pelo cérebro novo | ✅ modelo, save v9, cérebro, `sim/formacao.js` (a escolha muda o resultado em até 74 pontos) e a grade 3×3 no Elenco (v0.8) |
 | 3 | 3×3 roda a 30 passos/s no celular sem travar | `sim/` mede ms por passo (medido em Node: 6–16 µs por passo em 3v3 e 5v5, ~2.000× abaixo dos 33 ms); falta o teste no celular do Kevin |
 | 4 | Câmera: afastada mostrando a formação, aproxima no embate | ✅ em código e no `testes/camera.py` (15/10); falta o olhar do Kevin no celular |
-| 5 | 3v3 melhor de 3 (D7) | simulador + teste no celular |
+| 5 | 3v3 melhor de 3 (D7) | ✅ em código (v0.10, save v12): Liga e Copa em melhor de 3 com intervalo; `registro.py`, `formacao.py` e `camera.py` cobrem; falta o olhar do Kevin |
 | 6 | Kevin aprovou a orientação de tela (em pé × deitada) depois do 1º teste 3×3 | ✅ **em pé** (Kevin, 15/10/2026, com os 4 mockups) |
 | 7 | Save abre sem perda; fumaça e `registro.py` passam; reproduções antigas continuam idênticas | testes — (b): save v7 → v8 sem perda ✅; lutas de regras v1 avisam "versão anterior" em vez de reproduzir (previsto) ✅ |
 
@@ -165,7 +165,7 @@ Hoje, quem começa do zero não tem tutorial nenhum (o tutorial antigo de 6 dica
 | (b) | Ligar na interface (todas as lutas passam a usar o cérebro novo; `REGRAS_COMBATE` sobe) | ✅ 15/10 (v0.7, save v8, regras v2) |
 | (c) | Formação 3×3 + posturas em simulação | ✅ 15/10 (regras v3, save v9) |
 | (d) | Tela do Preparo (grade 3×3 + postura por mercenário) e câmera afastada → aproxima | ✅ 15/10 (tela: v0.8; câmera: v0.9, save v11) |
-| (e) | 3v3 melhor de 3 | |
+| (e) | 3v3 melhor de 3 | ✅ 15/10 (v0.10, save v12) |
 | (f) | Ponto de decisão do Kevin: orientação da tela (levar dois mockups) | ✅ 15/10: **em pé**. O layout deitado provisório e a janela 384×216 saíram do código |
 
 ### Decisões técnicas da E4
@@ -331,8 +331,27 @@ Leitura do Claude na hora: em pé a formação 3×3 é legível na vista afastad
 | Layout deitado, `ajustarJanela()` e a nota "Tela deitada" saíram do código; a janela é fixa em 256×180 | "Apenas em pé": nada de meio caminho para manter |
 | A janela **continua 256×180** (não virou 16:9): a vista afastada tem faixas pretas em cima e embaixo por ~3 s; depois do primeiro embate a arena ocupa a janela inteira, como sempre | A luta em si (95 % do tempo) fica com o enquadramento que o Kevin já aprovou; a alternativa 256×144 encurtaria a arena a luta inteira para poupar 3 s de faixas. As faixas usam a mesma linguagem das faixas de cinema do golpe final |
 
-## Próxima conversa começa por… (E4 passos e–f, **Fable 5.1**)
+### (e) partida melhor de 3 — concluída em 15/10/2026 (v0.10, save v12)
 
-0. Ler o veredito do Kevin (ele ficou em branco na conversa de 15/10): (1) as 3 lutas do cérebro novo (recuo, invocador, cura); (2) a grade de formação no celular — dá para mover com o dedão? a orientação (inimigo à direita) ficou clara?; (3) **a câmera nova** — a aproximação no primeiro embate dá a sensação de "o meu time entrou em campo"?; (4) **a decisão (f): em pé ou deitada**, com os 4 mockups em `testes/e4-cam-*.png` e virando o celular numa luta de verdade. Registrar a decisão aqui.
-1. Se "em pé": decidir se a janela vira 16:9 (256×144, sem faixas) ou fica 256×180 com faixas na vista afastada. Se "deitada": a tela de luta deitada deixa de ser provisória (rever HUD, SUPREMO e toque no inimigo em Manual) e avisar o jogador para virar o celular na hora da luta.
-2. Depois: **(e) 3v3 melhor de 3** (D7) — o formato da partida muda (rodadas), então o registro de partidas e os recordes precisam saber o que é "uma luta" e o que é "uma partida"; decidir e anotar antes de codar.
+Vocabulário: **partida** = o confronto da Liga/Copa; **luta** = cada uma das até 3 lutas dentro dela (no código, `serie.rodada`; "Rodada" na tela continua sendo a rodada da Liga, para não confundir).
+
+| Decisão | Por quê |
+|---|---|
+| Formato em tabela de dados: `FORMATO_PARTIDA = { liga: 3, copa: 3, amistoso: 1, torre: 1 }` (`02_dados.js`); vence quem ganhar `metaDe()` = 2 | Amistoso é teste rápido; a Torre já é uma sequência de lutas e os Guardiões são únicos — melhor de 3 triplicaria a subida. Mudar é trocar um número |
+| Cada luta da partida é uma luta inteira: semente nova, vida e recargas cheias, invocações zeradas; a mesma formação e posturas do Elenco, **salvo o que o jogador mudar no intervalo** | É o coração do D7 na sensação-alvo: o jogador reage ("flanquearam a minha arqueira: vou pô-la atrás e mandar o tanque Segurar"). Sem isso melhor de 3 seria só menos sorte |
+| Intervalo = modal sobre a arena: título "Luta N: vencida!/perdida", placar grande, dano/cura da luta, a grade 3×3 com os chips de postura (mesmos `casaFormacao`/ações `casa`/`postura` do Elenco), botão "Luta N+1" | Reaproveita a tela da formação; `atualizarModais()` redesenha o intervalo a cada toque |
+| O rival **não** ajusta a formação entre lutas | Fica para a E5b (rivais com personalidade); hoje seria aleatório |
+| Recompensas (ouro, XP, baú, taverna, tutorial, sequência de vitórias, Líder mais derrotado) **uma vez por partida**; `stats.lutas`/`vitorias` contam partidas; novo `stats.rodadas` conta lutas (migração v12: `rodadas = lutas`) | Senão a economia triplicaria. As estatísticas por mercenário (`m.stats.lutas`, MVP, abates) e os "melhores da temporada" continuam por luta, que é o que aconteceu de verdade |
+| Registro: cada luta é um registro próprio (semente, reprodução) com `serie: { id, rodada, de, placar }`; MVP e barras do resultado somam as lutas (`somarRodadas`) | A reprodução por luta continua idêntica (300/300 no `sim/replay.js`; `registro.py` com partidas inteiras). As 10 reproduções guardadas cobrem ~3–4 partidas |
+| Consumíveis do Preparo: consumidos uma vez, valem para a partida inteira | Senão o jogador pagaria 3× |
+| Rivais entre si na Liga também jogam melhor de 3 (`registrarRodada`), somando abates para o saldo | Classificação justa com o mesmo formato |
+| "Vencer agora" (Modo Criador) fecha a partida inteira; "Pular" pula só a luta atual e cai no intervalo | O intervalo é a decisão do jogador; pular a partida inteira seria pular a decisão |
+| Save **v12**: `stats.rodadas` + nota "Fase 10 · Melhor de 3"; rótulo v0.10 | Padrão das fases anteriores |
+
+Testes: `registro.py` (2 partidas assistidas com toques + 3 puladas = 12 lutas; placares terminam 2×; formação mudada no intervalo; reprodução idêntica; v6 → v12), `formacao.py` (intervalo com grade; captura `testes/e4-intervalo.png`), `camera.py` (a luta 2 recomeça afastada), fumaça. Captura do resultado: `testes/e4-resultado-serie.png`.
+
+## Próxima conversa começa por… (fechar a E4 com o Kevin e abrir a E5a, **Fable 5.1**)
+
+0. Ler o veredito do Kevin no celular (ficou em branco em 15/10): (1) as 3 lutas do cérebro novo (recuo, invocador, cura); (2) a grade de formação — dá para mover com o dedão? (3) a câmera: a aproximação no primeiro embate dá a sensação de "o meu time entrou em campo"? (4) **a partida melhor de 3**: o intervalo é claro? mudar a formação entre lutas mudou alguma partida? ficou longa demais? Ajustar e **marcar os critérios 3, 4 e 5 da E4** aqui.
+1. Abrir a **E5a** (seção 5 do prompt-mãe): escrever o critério de pronto no `ESTADO.md` e levar ao Kevin, na primeira mensagem, **os números da curva 1→100** (Ascensão I no nv. 30 libera até 60; Ascensão II no nv. 60 libera até 100) e **a proposta de evoluções A/B por classe** (seção 8).
+2. Balanceamento da E5a parte da linha de base v2×v2 (`sim/resultados/*-v2.*`): Invocador 4 %/0 % e Guardião 44 %/22 % são decisões de desenho (esqueletos impondo presença; bloqueio físico do tanque), não só número.

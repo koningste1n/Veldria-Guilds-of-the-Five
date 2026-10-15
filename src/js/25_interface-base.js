@@ -77,6 +77,7 @@ function atualizarModais() {
     else if (d.criador) atualizarModal(w, htmlCriador());
     else if (d.reliquias) atualizarModal(w, htmlEscolhaReliquia());
     else if (d.estatisticas) atualizarModal(w, htmlEstatisticas());
+    else if (d.intervalo) atualizarModal(w, htmlIntervalo());
   }
 }
 

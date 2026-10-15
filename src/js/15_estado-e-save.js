@@ -1,6 +1,6 @@
 /* ============================ ESTADO E SAVE ============================ */
 const SAVE_KEY = 'ligaDasLaminas.save.v1';   // mesma chave da Fase 1: a versão fica dentro do save
-const VERSAO = 11;   // v11 (E4 d): formato igual ao v10, só marca a nota da câmera nova; v10 (E4 d): formato igual ao v9, só marca a nota da tela de formação; v9 (E4 c): pos (casa na formação 3×3) e postura; v8 só marcava a nota do cérebro novo
+const VERSAO = 12;   // v12 (E4 e): stats.rodadas (lutas = partidas; rodadas = lutas dentro delas) e a nota da partida melhor de 3; v11 (E4 d): só marcava a nota da câmera nova; v10 (E4 d): formato igual ao v9, só marca a nota da tela de formação; v9 (E4 c): pos (casa na formação 3×3) e postura; v8 só marcava a nota do cérebro novo
 const consumiveisZerados = () => Object.fromEntries(Object.keys(CONSUMIVEIS).map((k) => [k, 0]));
 const criadorPadrao = () => ({ liberado: false, usado: false, sorteMult: 1, tempoMult: 1 });
 const statsPadrao = () => ({
@@ -8,6 +8,8 @@ const statsPadrao = () => ({
   dano: 0, cura: 0, abates: 0, mortes: 0, supremos: 0, baus: 0, ouroGanho: 0, tempoLuta: 0, torreLutas: 0, guardioes: 0,
   // v7 (E3): ficha de rastro
   seqAtual: 0, seqRecorde: 0, tempoJogo: 0, lideresVencidos: {}, partidasN: 0,
+  // v12 (E4 e): rodadas = lutas dentro das partidas (lutas e vitórias contam partidas)
+  rodadas: 0,
 });
 const torrePadrao = () => ({ recorde: 0, inimigo: null, tributoDia: '', lutas: 0 });
 const configPadrao = () => ({ vel: 1, auto: true, dif: 'normal', som: 0.7, musica: false, vibrar: true, lenta: true });
@@ -148,7 +150,9 @@ function validarSave(s) {
   if (versaoAntiga < 8 && !nov.includes(8) && st.stats.lutas > 0) nov.push(8);
   if (versaoAntiga < 10 && !nov.includes(10) && st.stats.lutas > 0) nov.push(10);   // v9 não tinha nota: a formação só ganhou tela no v10
   if (versaoAntiga < 11 && !nov.includes(11) && st.stats.lutas > 0) nov.push(11);
-  st.novidades = nov.filter((f) => f >= 2 && f <= 11).sort();
+  if (versaoAntiga < 12 && !nov.includes(12) && st.stats.lutas > 0) nov.push(12);
+  st.novidades = nov.filter((f) => f >= 2 && f <= 12).sort();
+  if (versaoAntiga < 12) st.stats.rodadas = st.stats.lutas;   // até o v11 toda partida tinha uma luta só
   if (versaoAntiga < 3 && st.tutorial >= 4) st.tutorial = 99;   // quem já viu o tutorial antigo não o repete
   // v6: tutorial progressivo. Quem já lutou (ou terminou o tutorial antigo) não repete nada.
   if (versaoAntiga < 6) { st.tutorial = (st.tutorial >= 4 || st.stats.lutas > 0) ? 99 : 0; st.tutorialVisto = -1; }

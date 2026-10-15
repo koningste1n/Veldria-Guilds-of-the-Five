@@ -82,10 +82,10 @@ const ACOES = {
   // grade de formação: 1º toque seleciona o mercenário; 2º toque numa casa move (ou troca de lugar com quem está lá)
   casa: (el) => {
     const pos = +el.dataset.pos, time = timeMercs(), aqui = time.find((m) => m.pos === pos);
-    if (UI.casaSel == null) { if (aqui) { UI.casaSel = pos; render(); } return; }
-    if (pos === UI.casaSel) { UI.casaSel = null; render(); return; }
+    if (UI.casaSel == null) { if (aqui) { UI.casaSel = pos; render(); atualizarModais(); } return; }
+    if (pos === UI.casaSel) { UI.casaSel = null; render(); atualizarModais(); return; }
     const sel = time.find((m) => m.pos === UI.casaSel);
-    if (!sel) { UI.casaSel = null; render(); return; }
+    if (!sel) { UI.casaSel = null; render(); atualizarModais(); return; }
     sel.pos = pos; sel.linha = linhaDePos(pos);
     if (aqui) { aqui.pos = UI.casaSel; aqui.linha = linhaDePos(aqui.pos); }
     UI.casaSel = pos;
@@ -285,6 +285,7 @@ const ACOES = {
   },
   'luta-pausa': () => { Luta.pausado = !Luta.pausado; $('#btn-pausa').textContent = Luta.pausado ? 'Continuar' : 'Pausar'; },
   'luta-pular': () => pularLuta(),
+  'proxima-rodada': () => proximaRodada(),
   'luta-vencer': () => vencerAgora(),
   supremo: () => {
     const b = Luta.b, cap = b.units.find((u) => u.team === 0 && u.capitao);

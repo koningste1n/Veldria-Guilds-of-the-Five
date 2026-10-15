@@ -22,9 +22,20 @@ async def luta_assistida(pg):
     await pg.click('[data-act="luta-vel"][data-v="3"]')
     if (await pg.text_content('#btn-auto')).strip() == 'Auto': await pg.click('#btn-auto')
     cv = await pg.query_selector('#arena'); box = await cv.bounding_box()
-    toques = 0
-    for _ in range(400):
+    toques = 0; entradas = 0; rodadas = 0
+    for _ in range(900):
         if await pg.query_selector('[data-act="resultado-ok"]'): break
+        if await pg.query_selector('[data-act="proxima-rodada"]'):   # E4 (e): intervalo entre rodadas — mexe na formação e segue
+            entradas = max(entradas, await pg.evaluate('Luta ? Luta.b.entradas.length : -1')); rodadas += 1
+            casas = await pg.eval_on_selector_all('#modais .casa:not(.vazia)', 'els => els.map((e) => e.dataset.pos)')
+            livre = await pg.eval_on_selector_all('#modais .casa.vazia', 'els => els.map((e) => e.dataset.pos)')
+            if casas and livre:
+                await pg.click(f'#modais .casa[data-pos="{casas[0]}"]'); await pg.wait_for_timeout(200)
+                await pg.click('#modais [data-act="postura"][data-v="flanquear"]'); await pg.wait_for_timeout(200)
+                await pg.click(f'#modais .casa[data-pos="{livre[0]}"]'); await pg.wait_for_timeout(200)
+                MUDANCAS.append((casas[0], livre[0]))
+            await pg.click('[data-act="proxima-rodada"]'); await pg.wait_for_timeout(2800)
+            continue
         alvo = await pg.evaluate("""() => { const b = Luta && Luta.b; if (!b) return null;
             const u = b.units.find((o) => o.vivo && o.team === 1); if (!u) return null;
             const cv = document.querySelector('#arena'), r = cv.getBoundingClientRect();
@@ -40,9 +51,16 @@ async def luta_assistida(pg):
         if sup and random.random() < 0.5: await sup.click(); toques += 1
         if random.random() < 0.03: await pg.click('#btn-auto'); await pg.click('#btn-auto')
         await pg.wait_for_timeout(150)
-    entradas = await pg.evaluate('Luta ? Luta.b.entradas.length : -1')
+    entradas = max(entradas, await pg.evaluate('Luta ? Luta.b.entradas.length : -1'))
     await pg.click('[data-act="resultado-ok"]'); await pg.wait_for_timeout(500)
     return toques, entradas
+MUDANCAS = []
+async def pular_partida(pg):
+    for _ in range(4):
+        await pg.click('[data-act="luta-pular"]'); await pg.wait_for_timeout(500)
+        if await pg.query_selector('[data-act="resultado-ok"]'): break
+        await pg.click('[data-act="proxima-rodada"]'); await pg.wait_for_timeout(500)
+    await pg.click('[data-act="resultado-ok"]'); await pg.wait_for_timeout(400)
 
 async def main():
     async with async_playwright() as p:
@@ -62,27 +80,32 @@ async def main():
             checa(entradas > 0, f'luta assistida {k+1}: {toques} toques, {entradas} entradas registradas')
         for k in range(3):
             await pg.click('[data-act="lutar-liga"]'); await pg.wait_for_timeout(700)
-            await pg.click('[data-act="luta-pular"]'); await pg.wait_for_timeout(500)
-            await pg.click('[data-act="resultado-ok"]'); await pg.wait_for_timeout(400)
+            await pular_partida(pg)
         st = await pg.evaluate("JSON.parse(localStorage.getItem('ligaDasLaminas.save.v1'))")
-        checa(st['versao'] == 11, f"save na versão 11 ({st['versao']})")
+        checa(st['versao'] == 12, f"save na versão 12 ({st['versao']})")
         # E4 (c): todo mercenário tem casa na formação 3×3 e postura; linha derivada da coluna
         checa(all(isinstance(m.get('pos'), int) and 0 <= m['pos'] <= 8 and m.get('postura') in ('auto', 'avancar', 'segurar', 'flanquear') and m['linha'] == ('frente' if m['pos'] < 3 else 'tras') for m in st['mercs']), 'mercenários com pos (0–8), postura e linha derivada da coluna')
         P = st['partidas']
-        checa(len(P) == 5, f'5 partidas registradas ({len(P)})')
-        campos = all(all(k in p for k in ('seed', 'regras', 'times', 'vencedor', 'tempo', 'passos', 'replay')) for p in P)
-        checa(campos, 'cada registro tem semente, regras, times, vencedor, duração e dados de reprodução')
+        series = {p['serie']['id'] for p in P if p.get('serie')}
+        checa(len(series) == 5 and 10 <= len(P) <= 15 and all(p['serie'] and p['serie']['de'] == 3 for p in P), f'5 partidas melhor de 3 = {len(P)} lutas registradas, cada uma com rodada e placar')
+        checa(st['stats']['lutas'] == 5 and st['stats']['rodadas'] == len(P), f"estatísticas: {st['stats']['lutas']} partidas, {st['stats']['rodadas']} rodadas")
+        placares = [p['serie']['placar'] for p in P if p['serie']['rodada'] == max(q['serie']['rodada'] for q in P if q['serie']['id'] == p['serie']['id'])]
+        checa(all(max(pl) == 2 for pl in placares), f'toda partida termina com 2 rodadas de um lado: {placares}')
+        checa(len(MUDANCAS) > 0 and all(a != b for a, b in MUDANCAS), f'formação mudada no intervalo em {len(MUDANCAS)} rodada(s): {MUDANCAS}')
+        campos = all(all(k in p for k in ('seed', 'regras', 'times', 'vencedor', 'tempo', 'passos')) for p in P) and all('replay' in p for p in P[-10:]) and not any('replay' in p for p in P[:-10])
+        checa(campos, 'cada registro tem semente, regras, times, vencedor, duração; as 10 mais recentes também os dados de reprodução')
+        P = P[-10:]   # daqui em diante, só as lutas com reprodução
         lut = P[0]['times'][0][0]
         checa(all(k in lut for k in ('id', 'nv', 'itens', 'dano', 'cura', 'rec', 'ab', 'mo')), f'por lutador: id, nível, itens, dano, recebido, abates, mortes, curas')
 
         # 2) reprodução a partir do registro salvo (como se viesse do save)
-        res = await pg.evaluate("JSON.parse(localStorage.getItem('ligaDasLaminas.save.v1')).partidas.map((p) => conferirPartida(p))")
-        checa(res == ['igual'] * 5, f'reproduzir do registro dá o mesmo resultado: {res}')
+        res = await pg.evaluate("JSON.parse(localStorage.getItem('ligaDasLaminas.save.v1')).partidas.slice(-10).map((p) => conferirPartida(p))")
+        checa(res == ['igual'] * len(P), f'reproduzir do registro dá o mesmo resultado: {res}')
         # E4 (b): as lutas do jogo usam o cérebro v2 e as regras v2; uma luta de regras antigas avisa em vez de reproduzir
         ia = [(p['regras'], p['replay']['A'].get('ia'), p['replay']['B'].get('ia')) for p in P]
         checa(all(x == (3, 'v2', 'v2') for x in ia), f'toda luta com regras v3 e cérebro v2 nos dois lados: {ia[0]}')
         checa(all('pos' in m and 'postura' in m for p in P for t in (p['replay']['A'], p['replay']['B']) for m in t['mercs']), 'o registro guarda casa e postura de cada lutador')
-        antiga = await pg.evaluate("(() => { const p = JSON.parse(JSON.stringify(JSON.parse(localStorage.getItem('ligaDasLaminas.save.v1')).partidas[0])); p.regras = 1; return conferirPartida(p); })()")
+        antiga = await pg.evaluate("(() => { const p = JSON.parse(JSON.stringify(JSON.parse(localStorage.getItem('ligaDasLaminas.save.v1')).partidas.slice(-1)[0])); p.regras = 1; return conferirPartida(p); })()")
         checa(antiga == 'regras', f'luta de regras antigas não reproduz (avisa "{antiga}")')
         # e o botão Conferir na tela
         await pg.click('[data-act="config"]'); await pg.wait_for_timeout(300)
@@ -114,7 +137,7 @@ async def main():
         # 4) migração: save v6 (sem os campos novos) abre em v7 sem perda
         v6 = dict(st); v6['versao'] = 6
         for k in ('partidas', 'temporadaRec'): v6.pop(k, None)
-        for k in ('seqAtual', 'seqRecorde', 'tempoJogo', 'lideresVencidos', 'partidasN'): v6['stats'].pop(k, None)
+        for k in ('seqAtual', 'seqRecorde', 'tempoJogo', 'lideresVencidos', 'partidasN', 'rodadas'): v6['stats'].pop(k, None)
         for m in v6['mercs']: m.pop('pos', None); m.pop('postura', None)   # v6 não tinha formação
         v6['novidades'] = []
         # página nova (a antiga grava o próprio save ao sair, por isso não dá para trocar o save por baixo dela)
@@ -125,9 +148,9 @@ async def main():
             "if (!sessionStorage.getItem('v6')) { sessionStorage.setItem('v6', '1'); localStorage.setItem('ligaDasLaminas.save.v1', " + json.dumps(json.dumps(v6)) + "); }")
         await pg.goto(ARQ.as_uri()); await pg.wait_for_timeout(1500)
         st2 = await pg.evaluate("JSON.parse(localStorage.getItem('ligaDasLaminas.save.v1'))")
-        checa(st2['versao'] == 11, 'save v6 abre como v11')
+        checa(st2['versao'] == 12, 'save v6 abre como v12')
         checa([m['id'] for m in st2['mercs']] == [m['id'] for m in v6['mercs']] and st2['ouro'] >= v6['ouro'] and st2['stats']['lutas'] == v6['stats']['lutas'], 'mercenários, ouro e lutas preservados')
-        checa(st2['partidas'] == [] and st2['stats']['seqRecorde'] == 0, 'campos novos criados vazios')
+        checa(st2['partidas'] == [] and st2['stats']['seqRecorde'] == 0 and st2['stats']['rodadas'] == v6['stats']['lutas'], 'campos novos criados vazios; rodadas = lutas antigas')
         checa(all((m['pos'] // 3 == 0) == (v['linha'] == 'frente') and m['postura'] == 'auto' for m, v in zip(st2['mercs'], v6['mercs'])), 'migração: linha Frente → coluna da frente, Trás → coluna de trás, postura automática')
         tit = [m for m in st2['mercs'] if m['id'] in st2['time']]
         checa(len({m['pos'] for m in tit}) == len(tit) and all(m['pos'] in (1, 7) for m in st2['mercs'] if m['id'] not in st2['time']), 'titulares em casas únicas; reservas no centro da sua coluna')
@@ -136,10 +159,10 @@ async def main():
 
         checa(not erros, f'sem erros no console {erros[:3]}')
         tam = len(json.dumps(st))
-        print(f'tamanho do save com 5 partidas: {tam/1024:.1f} KB')
+        print(f'tamanho do save com 5 partidas ({len(P)} lutas): {tam/1024:.1f} KB')
         com = sum(len(json.dumps(x)) for x in P) / len(P); sem = sum(len(json.dumps({k: v for k, v in x.items() if k != 'replay'})) for x in P) / len(P)
         rec = len(json.dumps(st.get('temporadaRec')))
-        est = tam - len(json.dumps(P)) + 10 * com + 40 * sem
+        est = tam - len(json.dumps(st['partidas'])) + 10 * com + 40 * sem
         print(f'partida: {com/1024:.1f} KB com reprodução, {sem/1024:.1f} KB sem · temporada: {rec/1024:.1f} KB · save estimado com 50 partidas: {est/1024:.0f} KB (limite da nuvem: 234 KB)')
         checa(est < 160 * 1024, 'save com 50 partidas cabe com folga no limite da nuvem')
         await b.close()

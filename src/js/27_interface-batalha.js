@@ -4,10 +4,16 @@ function iniciarLuta(ctx) {
   if (timeMercs().length < tamanhoTime()) { toast(`Monte um time com ${tamanhoTime()} mercenários no Elenco.`, 'erro'); UI.aba = 'elenco'; render(); return; }
   const preparo = preparoAtivo();
   ctx.usados = consumirPreparo();
-  let A, B, opts = {};
-  if (ctx.tipo === 'torre') ({ A, B, opts } = ladosTorre(preparo));
-  else { A = ladoJogador(preparo); B = ladoDeGuilda(ctx.rival, multAdversario()); }
+  // E4 (e): a partida é uma série de rodadas (melhor de N, por tipo de luta). Consumíveis valem para a partida inteira.
+  ctx.serie = { id: Date.now(), max: rodadasDe(ctx.tipo), meta: metaDe(ctx.tipo), rodada: 0, placar: [0, 0], rodadas: [], preparo };
   salvar();
+  iniciarRodada(ctx);
+}
+function iniciarRodada(ctx) {
+  const S = ctx.serie; S.rodada++;
+  let A, B, opts = {};
+  if (ctx.tipo === 'torre') ({ A, B, opts } = ladosTorre(S.preparo));
+  else { A = ladoJogador(S.preparo); B = ladoDeGuilda(ctx.rival, multAdversario()); }
   const seed = (Math.random() * 1e9) | 0, optsLuta = { modoAuto: STATE.config.auto, ...opts };
   const reg = prepararRegistro(A, B, optsLuta, seed);   // retrato dos lados antes da luta, para o registro
   const b = criarBatalha(A, B, { ...optsLuta, seed });
@@ -21,14 +27,16 @@ function iniciarLuta(ctx) {
   Arena.aoEvento = eventoNaTela;
   cv.addEventListener('pointerdown', tocarArena);
   Luta.raf = requestAnimationFrame(loopLuta);
-  contagem(['3', '2', '1', 'Lute!'], () => {
+  contagem(S.max > 1 ? [`Luta ${S.rodada}`, '3', '2', '1', 'Lute!'] : ['3', '2', '1', 'Lute!'], () => {
     Luta.rodando = true;
     musicaIniciar();
     const md = ctx.tipo === 'torre' ? modDoAndar(ctx.rival.andar) : null;
-    if (ctx.rival.lider) { const Ld = LIDERES.find((l) => l.id === ctx.rival.lider); mostrarBanner(Ld.nome, Ld.desc); }
+    if (S.rodada > 1) mostrarBanner(`Luta ${S.rodada}`, `${S.placar[0]} × ${S.placar[1]} · vence quem fizer ${S.meta}`);
+    else if (ctx.rival.lider) { const Ld = LIDERES.find((l) => l.id === ctx.rival.lider); mostrarBanner(Ld.nome, Ld.desc); }
     else if (ctx.rival.guardiao) mostrarBanner(ctx.rival.mercs[0].nome, md ? `Guardião da Torre · ${md.nome}` : 'Guardião da Torre');
     else if (md) mostrarBanner(md.nome, md.desc);
     else if (ctx.usados.length) mostrarBanner('Preparo', ctx.usados.map((c) => CONSUMIVEIS[c].nome).join(' · '));
+    else if (S.max > 1) mostrarBanner(`Melhor de ${S.max}`, `vence quem ganhar ${S.meta} lutas`);
   });
 }
 // Avisos para os momentos especiais da luta (chefes, ressurreições, cópias)
@@ -54,7 +62,7 @@ function montarTelaLuta(b) {
   $('#luta').innerHTML = `<div class="luta-in">
     <div class="luta-topo">
       <div class="lt-lado">${canvasBrasao(A, 26)}<div><b>${esc(A.nome)}</b><div class="barra time0"><i id="vida-time0" style="width:100%"></i></div></div></div>
-      <div class="lt-meio"><span id="relogio">0:00</span><small id="furia" hidden>FÚRIA</small><button class="btn-som" data-act="som-luta" aria-label="Música da luta" id="btn-som">${canvasIcone(STATE.config.musica ? 'som' : 'mudo', 14)}</button></div>
+      <div class="lt-meio">${Luta.ctx.serie.max > 1 ? `<small class="placar-luta">Luta ${Luta.ctx.serie.rodada} · <b>${Luta.ctx.serie.placar[0]}</b>×<b>${Luta.ctx.serie.placar[1]}</b></small>` : ''}<span id="relogio">0:00</span><small id="furia" hidden>FÚRIA</small><button class="btn-som" data-act="som-luta" aria-label="Música da luta" id="btn-som">${canvasIcone(STATE.config.musica ? 'som' : 'mudo', 14)}</button></div>
       <div class="lt-lado dir"><div><b>${esc(B.nome)}</b><div class="barra time1"><i id="vida-time1" style="width:100%"></i></div></div>${canvasBrasao(B, 26)}</div>
     </div>
     <div class="arena-wrap"><canvas id="arena" width="${VISTA.w}" height="${VISTA.h}" aria-label="Arena da batalha"></canvas><div id="banner" hidden></div><div id="contagem"></div></div>
@@ -163,23 +171,40 @@ function vencerAgora() {
   STATE.criador.usado = true;
   if (!Luta.rodando) Luta.rodando = true;
 }
+// Fim de uma rodada: registra a luta; se a partida não acabou, abre o intervalo; se acabou, fecha a partida
 function finalizarLuta() {
-  const b = Luta.b, ctx = Luta.ctx;
+  const b = Luta.b, ctx = Luta.ctx, S = ctx.serie;
   const res = resumoBatalha(b);
   const vit = res.vencedor === 0;
+  S.placar[vit ? 0 : 1]++;
+  if (b.criador) S.placar[0] = S.meta;   // "Vencer agora" encerra a partida inteira
+  STATE.stats.rodadas++;
+  const mvp = registrarEstatisticas(b, res, vit);
+  registrarPartida(b, res, ctx, vit, mvp, Luta.reg);
+  S.rodadas.push({ vit, res, mvp, tempo: res.tempo, abates: res.abates });
+  musicaParar();
+  if (S.placar[0] < S.meta && S.placar[1] < S.meta) { salvar(); mostrarIntervalo(ctx); return; }
+  finalizarPartida(ctx);
+}
+// Fim da partida: recompensas, liga/copa/torre, resultado
+function finalizarPartida(ctx) {
+  const S = ctx.serie, b = Luta.b;
+  const vit = S.placar[0] >= S.meta;
+  const meus = somarRodadas(S.rodadas), ultimo = S.rodadas[S.rodadas.length - 1];
+  const res = { vencedor: vit ? 0 : 1, tempo: S.rodadas.reduce((t, r) => t + r.tempo, 0), unidades: [meus, ultimo.res.unidades[1]], abates: S.rodadas.reduce((a, r) => [a[0] + r.abates[0], a[1] + r.abates[1]], [0, 0]) };
   const nivelRival = ctx.rival.mercs.reduce((s, m) => s + m.nivel, 0) / ctx.rival.mercs.length;
   const fator = ctx.tipo === 'amistoso' ? ECO.amistosoRec : ctx.tipo === 'copa' ? 1.5 : ctx.tipo === 'torre' ? (vit ? 1 : 0.5) : 1;
   const xp = Math.round((ECO.xpBase + ECO.xpPorNivel * nivelRival) * (vit ? 1 : ECO.xpDerrota) * fator);
   const ouro = ctx.tipo === 'torre' ? 0 : Math.round((ECO.ouroBase + ECO.ouroPorNivel * nivelRival) * (vit ? 1 : ECO.ouroDerrota) * fator * DIFICULDADES[STATE.config.dif].rec * (1 + somaReliquia('ouro')));
   ganharOuro(ouro);
   const subidas = [];
-  for (const u of res.unidades[0]) { const m = mercPorId(u.merc.id); if (!m) continue; const s = darXp(m, xp); if (s) subidas.push(s); }
+  for (const u of meus) { const m = u.merc && mercPorId(u.merc.id); if (!m) continue; const s = darXp(m, xp); if (s) subidas.push(s); }
   const nv = Math.max(1, Math.round(nivelMedioTime()));
   let drop = null, copa = null, torre = null;
   STATE.stats.lutas++; if (vit) STATE.stats.vitorias++;
   if (tutorialAtivo() && STATE.tutorial < TUT_FIM) STATE.tutorial++;   // cada luta do tutorial libera um menu
-  const mvp = registrarEstatisticas(b, res, vit);
-  registrarPartida(b, res, ctx, vit, mvp, Luta.reg);
+  registrarRastro(ctx, vit);
+  const mvp = mvpDe(meus);   // MVP da partida: soma das rodadas
   if (ctx.tipo === 'torre') {
     torre = registrarAndar(vit);
     if (torre.bau >= 0) drop = darDrop(rolarRaridade(sorteGuilda(), torre.bau), nv);
@@ -198,7 +223,47 @@ function finalizarLuta() {
   if (STATE.taverna.lutas >= ECO.lutasRenovar) { renovarTaverna(false); renovou = true; }
   salvar();
   musicaParar();
-  mostrarResultado({ vit, res, xp, ouro, subidas, drop, ctx, renovou, copa, torre, mvp });
+  mostrarResultado({ vit, res, xp, ouro, subidas, drop, ctx, renovou, copa, torre, mvp, serie: S });
+}
+/* ---- intervalo entre rodadas (E4 e): placar + ajuste de formação e posturas ---- */
+function mostrarIntervalo(ctx) {
+  const r = ctx.serie.rodadas[ctx.serie.rodadas.length - 1];
+  somTocar(r.vit ? 'vitoria' : 'derrota'); vibrar(r.vit ? [30, 40] : 60, true);
+  UI.casaSel = null;
+  abrirModal(htmlIntervalo(), { semFechar: true, dados: { intervalo: true } });
+}
+function htmlIntervalo() {
+  if (!Luta) return '';
+  const ctx = Luta.ctx, S = ctx.serie, r = S.rodadas[S.rodadas.length - 1], time = timeMercs();
+  if (UI.casaSel != null && !time.some((m) => m.pos === UI.casaSel)) UI.casaSel = null;
+  const sel = UI.casaSel != null ? time.find((m) => m.pos === UI.casaSel) : null;
+  const casas = [];
+  for (let fil = 0; fil < 3; fil++) for (const col of [2, 1, 0]) casas.push(casaFormacao(posDe(col, fil), time.find((m) => m.pos === posDe(col, fil)), sel));
+  const meus = r.res.unidades[0], maxV = Math.max(1, ...meus.map((u) => Math.max(u.dano, u.cura)));
+  const falta = [S.meta - S.placar[0], S.meta - S.placar[1]];
+  return `<div class="resultado intervalo ${r.vit ? 'vit' : 'der'}">
+    <h2 class="res-titulo">Luta ${S.rodada}: ${r.vit ? 'vencida!' : 'perdida'}</h2>
+    <div class="placar-grande"><div><b>${S.placar[0]}</b><small>${esc(STATE.guilda.nome)}</small></div><span>×</span><div><b>${S.placar[1]}</b><small>${esc(ctx.rival.nome)}</small></div></div>
+    <p class="muted centro">${falta[0] === 1 && falta[1] === 1 ? 'Luta decisiva: quem vencer leva a partida.' : falta[0] === 1 ? 'Mais uma luta e a partida é sua.' : `Eles precisam de ${falta[1]}; você, de ${falta[0]}.`} ${r.vit ? '' : `${esc(mvpDe(r.res.unidades[1]).nome)} deu trabalho: ${fmt(mvpDe(r.res.unidades[1]).dano)} de dano.`}</p>
+    <div class="barras-res">${meus.map((u) => `<div class="br-linha"><span>${esc(u.nome)}${u.vivo ? '' : ' ✝'}</span><div class="br-barras"><div class="barra dano"><i style="width:${(u.dano / maxV) * 100}%"></i></div>${u.cura > 0 ? `<div class="barra cura"><i style="width:${(u.cura / maxV) * 100}%"></i></div>` : ''}</div><small>${fmt(u.dano)}${u.cura > 0 ? ` / +${fmt(u.cura)}` : ''}</small></div>`).join('')}</div>
+    <div class="painel-cab"><h3>Ajuste a formação</h3><span class="tag">Poder ${fmt(poderLista(time))}</span></div>
+    <div class="form-inimigo">o inimigo vem da direita ▶</div>
+    <div class="form-rotulos"><span>Trás</span><span>Meio</span><span>Frente</span></div>
+    <div class="formacao">${casas.join('')}</div>
+    ${sel ? `<div class="form-acoes"><div class="chips-grupo"><span class="rot">Postura de ${esc(sel.nome)}</span>
+        ${Object.entries(POSTURAS).map(([v, P]) => `<button class="chip-btn alto ${(sel.postura || 'auto') === v ? 'on' : ''}" data-act="postura" data-id="${sel.id}" data-v="${v}">${P.nome}</button>`).join('')}</div>
+      <small class="muted">${POSTURAS[sel.postura || 'auto'].desc} Toque numa casa para mover${time.length > 1 ? ' (ou trocar de lugar)' : ''}.</small></div>`
+      : '<small class="muted">Toque num mercenário para mover, trocar de lugar ou mudar a postura. Todos voltam com a vida cheia.</small>'}
+    <button class="btn primario enorme" data-act="proxima-rodada">Luta ${S.rodada + 1}</button>
+  </div>`;
+}
+function proximaRodada() {
+  if (!Luta || !Luta.terminou) return;
+  const ctx = Luta.ctx;
+  fecharTodosModais();
+  Luta.ativo = false; cancelAnimationFrame(Luta.raf);
+  UI.casaSel = null; ajustarTime(); salvar();
+  iniciarRodada(ctx);
 }
 function blocoBau(txt = 'Baú encontrado! Toque para abrir') {
   return `<div id="bau-area"><button class="btn-bau" data-act="abrir-bau">${canvasIcone('bau', 64)}<span>${txt}</span></button></div>`;
@@ -212,6 +277,7 @@ function mostrarResultado(r) {
   if (r.subidas.length) setTimeout(() => somTocar('nivel'), 900);
   const maxV = Math.max(1, ...meus.map((u) => Math.max(u.dano, u.cura)));
   const sub = r.ctx.tipo === 'liga' ? `Rodada ${L.encerrada ? 7 : L.rodada} de 7` : r.ctx.tipo === 'copa' ? `Copa · ${r.copa.etapa === 'semi' ? 'Semifinal' : 'Final'}` : r.ctx.tipo === 'torre' ? `Torre · Andar ${r.torre.n}` : 'Amistoso';
+  const placar = r.serie && r.serie.max > 1 ? `<div class="placar-grande"><div><b>${r.serie.placar[0]}</b><small>${esc(STATE.guilda.nome)}</small></div><span>×</span><div><b>${r.serie.placar[1]}</b><small>${esc(r.ctx.rival.nome)}</small></div></div>` : '';
   UI.ultimoDrop = r.drop;
   const extra = [];
   if (r.copa) {
@@ -225,7 +291,8 @@ function mostrarResultado(r) {
   }
   abrirModal(`<div class="resultado ${r.vit ? 'vit' : 'der'}">
     <h2 class="res-titulo">${r.vit ? 'Vitória!' : 'Derrota'}</h2>
-    <p class="muted">${sub}${r.ctx.tipo === 'torre' && !r.ctx.rival.guardiao ? '' : ` · contra ${esc(r.ctx.rival.nome)}`} · ${fmtTempo(r.res.tempo * 1000)}</p>
+    <p class="muted">${sub}${r.ctx.tipo === 'torre' && !r.ctx.rival.guardiao ? '' : ` · contra ${esc(r.ctx.rival.nome)}`} · ${fmtTempo(r.res.tempo * 1000)}${r.serie && r.serie.max > 1 ? ` · ${r.serie.rodada} lutas` : ''}</p>
+    ${placar}
     <div class="mvp">${canvasLook(mvp.look, 54)}<div><span class="tag ouro">${r.vit ? 'MVP' : 'Destaque'}</span><b>${esc(mvp.nome)}</b><small>${fmt(mvp.dano)} de dano · ${fmt(mvp.cura)} de cura · ${mvp.abates} ${mvp.abates === 1 ? 'abate' : 'abates'}</small></div></div>
     <div class="barras-res">${meus.map((u) => `<div class="br-linha"><span>${esc(u.nome)}</span><div class="br-barras"><div class="barra dano"><i style="width:${(u.dano / maxV) * 100}%"></i></div>${u.cura > 0 ? `<div class="barra cura"><i style="width:${(u.cura / maxV) * 100}%"></i></div>` : ''}</div><small>${fmt(u.dano)}${u.cura > 0 ? ` / +${fmt(u.cura)}` : ''}</small></div>`).join('')}</div>
     <div class="recompensas"><span>${canvasIcone('moeda', 18)} +${fmt(r.ouro + (r.copa ? r.copa.ouro : 0) + (r.torre ? r.torre.ouro : 0))} ouro</span><span>+${fmt(r.xp)} XP para cada um</span>${(r.copa && r.copa.emblemas) || (r.torre && r.torre.emblemas) ? `<span>${canvasIcone('emblema', 18)} +${(r.copa ? r.copa.emblemas : 0) + (r.torre ? r.torre.emblemas : 0)}</span>` : ''}</div>

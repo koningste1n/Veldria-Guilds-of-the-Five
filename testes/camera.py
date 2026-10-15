@@ -54,10 +54,19 @@ async def rodar(p, nome, w, h):
     checa(pequenos == 0, f'botões da luta com pelo menos 44 px ({pequenos} abaixo)')
     alt = await pg.evaluate("[document.querySelector('#luta').scrollHeight, innerHeight]")
     print(f'  info altura da tela de luta {alt[0]} px numa janela de {alt[1]} px' + (' (cabe sem rolar)' if alt[0] <= alt[1] + 1 else ' (rola)'))
+    # E4 (e): a partida é melhor de 3 — a 2ª rodada também tem de começar afastada
     await pg.click('[data-act="luta-pular"]'); await pg.wait_for_timeout(500)
+    checa(await pg.is_visible('[data-act="proxima-rodada"]'), 'intervalo entre lutas')
+    await pg.click('[data-act="proxima-rodada"]'); await pg.wait_for_timeout(900)
+    cam2 = await pg.evaluate("({ modo: Arena.camModo, zoom: Arena.cam.zoom, total: zoomTotal() })")
+    checa(cam2['modo'] == 'formacao' and abs(cam2['zoom'] - cam2['total']) < 1e-6, f'a luta 2 recomeça afastada (zoom {cam2["zoom"]:.3f})')
+    for _ in range(3):
+        await pg.click('[data-act="luta-pular"]'); await pg.wait_for_timeout(500)
+        if await pg.query_selector('[data-act="resultado-ok"]'): break
+        await pg.click('[data-act="proxima-rodada"]'); await pg.wait_for_timeout(500)
     await pg.click('[data-act="resultado-ok"]'); await pg.wait_for_timeout(300)
     res = await pg.evaluate("JSON.parse(localStorage.getItem('ligaDasLaminas.save.v1')).partidas.map((p) => conferirPartida(p))")
-    checa(res == ['igual'], f'a luta registrada reproduz igual: {res}')
+    checa(len(res) >= 2 and all(r == 'igual' for r in res), f'as rodadas registradas reproduzem igual: {res}')
     checa(not erros, f'sem erros de console: {erros[:3]}')
     await b.close()
 async def main():

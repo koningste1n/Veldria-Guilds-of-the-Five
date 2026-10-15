@@ -130,11 +130,16 @@ function registrarRodada(vitoria, abatesEu, abatesEles) {
     if (ia === 0 || ib === 0) continue;
     const gA = L.guildas[ia], gB = L.guildas[ib];
     ajustarRival(gA, L.rodada); ajustarRival(gB, L.rodada);
-    const bt = criarBatalha(ladoDeGuilda(gA, 1), ladoDeGuilda(gB, 1), { silencioso: true });
-    simularAteFim(bt);
-    const r = resumoBatalha(bt);
-    somarLutaRivais(bt, r, gA.nome, gB.nome);
-    marcar(gA, gB, r.vencedor === 0, r.abates[0], r.abates[1]);
+    // E4 (e): os rivais também jogam melhor de N (mesmo formato da partida do jogador)
+    const meta = metaDe('liga'), placar = [0, 0], ab = [0, 0];
+    while (placar[0] < meta && placar[1] < meta) {
+      const bt = criarBatalha(ladoDeGuilda(gA, 1), ladoDeGuilda(gB, 1), { silencioso: true });
+      simularAteFim(bt);
+      const r = resumoBatalha(bt);
+      somarLutaRivais(bt, r, gA.nome, gB.nome);
+      placar[r.vencedor]++; ab[0] += r.abates[0]; ab[1] += r.abates[1];
+    }
+    marcar(gA, gB, placar[0] >= meta, ab[0], ab[1]);
   }
   L.resultados = res;
   L.rodada++;

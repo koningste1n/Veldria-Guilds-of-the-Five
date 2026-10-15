@@ -328,6 +328,17 @@ label { font-family: var(--f-display); font-size: 10px; color: var(--muted); tex
 .br-barras { display: flex; flex-direction: column; gap: 2px; }
 .br-linha small { color: var(--muted); font-variant-numeric: tabular-nums; }
 .barra.dano i { background: var(--tocha); }
+/* partida melhor de N (E4 e): placar no topo da luta e no intervalo */
+.placar-luta { font-family: var(--f-display); font-size: 9px; color: var(--muted); letter-spacing: .5px; }
+.placar-luta b { color: var(--ouro); font-size: 11px; }
+.placar-grande { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px; background: var(--painel2); padding: 10px; clip-path: var(--entalhe); text-align: center; }
+.placar-grande b { display: block; font-family: var(--f-display); font-size: 32px; line-height: 1; }
+.placar-grande > div:first-child b { color: var(--bom); }
+.placar-grande > div:last-child b { color: var(--ruim); }
+.placar-grande small { display: block; color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 4px; }
+.placar-grande span { font-family: var(--f-display); font-size: 16px; color: var(--muted); }
+.resultado .painel-cab h3 { font-family: var(--f-display); font-size: 13px; }
+.resultado.intervalo .res-titulo { font-size: 22px; }
 .barra.cura i { background: var(--bom); }
 .recompensas { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 .recompensas > span { display: flex; align-items: center; gap: 6px; background: var(--linha-esc); padding: 6px 10px; clip-path: var(--entalhe); font-weight: 600; }

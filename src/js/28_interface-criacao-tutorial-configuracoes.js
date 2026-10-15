@@ -63,6 +63,10 @@ function mostrarTutorial() {
   el.innerHTML = `<div class="tut-balao"><small>${p === 0 ? 'Primeiros passos' : `Luta ${p} de ${TUT_FIM} · menu liberado`}</small><p>${T.txt}</p><button class="btn primario pequeno" data-act="tutorial-prox">${p === TUT_FIM ? 'Começar' : 'Entendi'}</button></div>`;
 }
 const NOVIDADES = {
+  12: [
+    ['liga', 'Partidas em melhor de 3', 'Na Liga e na Copa, cada partida agora tem até 3 lutas: vence quem ganhar 2. Todos voltam com a vida cheia a cada luta. Amistoso e Torre continuam com uma luta só.'],
+    ['estrela', 'Intervalo de treinador', 'Entre uma luta e outra você vê o placar e pode mover a formação e trocar as posturas antes de voltar à arena. As recompensas (ouro, XP, baú) vêm no fim da partida.'],
+  ],
   11: [
     ['estrela', 'Câmera de treinador', 'A luta começa com a câmera afastada, mostrando as duas formações inteiras. No primeiro embate ela aproxima e passa a seguir o centro da ação; o SUPREMO e o golpe final continuam em close.'],
   ],
@@ -115,7 +119,7 @@ const NOVIDADES = {
     ['engrenagem', 'Save na sua conta', 'Jogando dentro do Claude com a sua conta, o progresso também fica salvo nela e você continua de outro aparelho. Veja em Configurações onde o seu progresso está salvo.'],
   ],
 };
-const ROTULO_FASE = { 5: '4.1', 6: '5 · Veldria', 7: '6 · Recordes', 8: '7 · Cérebro', 10: '8 · Formação', 11: '9 · Câmera' };
+const ROTULO_FASE = { 5: '4.1', 6: '5 · Veldria', 7: '6 · Recordes', 8: '7 · Cérebro', 10: '8 · Formação', 11: '9 · Câmera', 12: '10 · Melhor de 3' };
 function mostrarNovidades() {
   const fases = (STATE.novidades || []).slice().sort((a, b) => b - a);
   const bloco = (f) => `${fases.length > 1 ? `<span class="rot">Fase ${ROTULO_FASE[f] || f}</span>` : ''}<div class="lista novidades">${NOVIDADES[f].map(([ic, t, d]) => `<div class="card">${canvasIcone(ic, 28, ic === 'torre' ? { a: '#e9dfc9', b: '#a99bb8' } : null)}<div class="card-corpo"><b>${t}</b><small>${d}</small></div></div>`).join('')}</div>`;
@@ -152,7 +156,7 @@ function abrirConfig() {
     <button class="btn" data-act="estatisticas">${canvasIcone('estatisticas', 16)} Ver estatísticas completas</button>
     ${STATE.criador.liberado ? `<button class="btn criador-btn" data-act="criador">${canvasIcone('criador', 16)} Modo Criador</button>` : ''}
     <button class="btn perigo" data-act="reiniciar">Reiniciar jogo</button>
-    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.9</button>`, { dados: { config: true } });
+    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.10</button>`, { dados: { config: true } });
 }
 function mostrarResumoOffline(r) {
   if (!r || r.minutos < 1) return;

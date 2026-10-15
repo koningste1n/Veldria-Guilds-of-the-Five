@@ -36,11 +36,13 @@ function registrarPartida(b, res, ctx, vit, mvp, reg) {
       dano: Math.round(u.dano), cura: Math.round(u.cura), rec: Math.round(u.recebido), ab: u.abates, mo: u.mortes, mvp: u === mvp ? 1 : 0,
     };
   };
-  const S = STATE.stats;
+  const S = STATE.stats, sr = ctx.serie;
   const p = {
     n: ++S.partidasN, quando: Date.now(), tipo: ctx.tipo, rival: ctx.rival.nome, andar: ctx.rival.andar || null,
     seed: reg.seed, regras: reg.regras, vit, vencedor: b.vencedor, tempo: Math.round(b.t * 10) / 10, passos: b.n,
     criador: !!b.criador, times: res.unidades.map((t) => t.map(lut)),
+    // E4 (e): numa partida melhor de N, cada rodada é uma luta registrada; `serie` diz qual rodada e o placar depois dela
+    serie: sr && sr.max > 1 ? { id: sr.id, rodada: sr.rodada, de: sr.max, placar: sr.placar.slice() } : null,
   };
   // Luta encerrada pelo Modo Criador ("Vencer agora") não é reproduzível
   if (!b.criador) { reg.replay.entradas = b.entradas.map((e) => ({ ...e })); p.replay = reg.replay; }
@@ -52,14 +54,28 @@ function registrarPartida(b, res, ctx, vit, mvp, reg) {
     const velho = STATE.partidas.find((x) => x.replay && x !== p);
     if (velho) delete velho.replay; else if (STATE.partidas.length > 1) STATE.partidas.shift(); else break;
   }
-  // ficha de rastro
-  S.seqAtual = vit ? S.seqAtual + 1 : 0;
-  S.seqRecorde = Math.max(S.seqRecorde, S.seqAtual);
-  if (vit && ctx.rival.lider) S.lideresVencidos[ctx.rival.lider] = (S.lideresVencidos[ctx.rival.lider] || 0) + 1;
   // melhores da temporada: meus heróis em toda luta; rivais só quando são guildas da liga
   somarHerois(res.unidades[0], STATE.guilda.nome, true, vit);
   if (ctx.tipo !== 'torre') somarHerois(res.unidades[1], ctx.rival.nome, false, !vit);
   return p;
+}
+// Ficha de rastro: conta partidas (não rodadas) — chamada uma vez, quando a partida termina
+function registrarRastro(ctx, vit) {
+  const S = STATE.stats;
+  S.seqAtual = vit ? S.seqAtual + 1 : 0;
+  S.seqRecorde = Math.max(S.seqRecorde, S.seqAtual);
+  if (vit && ctx.rival.lider) S.lideresVencidos[ctx.rival.lider] = (S.lideresVencidos[ctx.rival.lider] || 0) + 1;
+}
+// Soma os números dos meus lutadores ao longo das rodadas de uma partida (para o resultado e o MVP da partida)
+function somarRodadas(rodadas) {
+  const por = new Map();
+  for (const r of rodadas) for (const u of r.res.unidades[0]) {
+    const k = u.merc ? u.merc.id : u.uid;
+    const a = por.get(k) || { merc: u.merc, nome: u.nome, look: u.look, uid: u.uid, dano: 0, cura: 0, abates: 0, mortes: 0, vivo: true, maiorGolpe: 0 };
+    a.dano += u.dano; a.cura += u.cura; a.abates += u.abates; a.mortes += u.mortes || 0; a.vivo = u.vivo; a.maiorGolpe = Math.max(a.maiorGolpe, u.maiorGolpe || 0);
+    por.set(k, a);
+  }
+  return [...por.values()];
 }
 // O que aconteceu na tela, no mesmo formato de assinaturaLuta
 const assinaturaRegistro = (p) => ({ vencedor: p.vencedor, passos: p.passos, lutadores: p.times.flat().map((u) => [u.uid, u.dano, u.cura, u.rec, u.ab, u.mo]) });

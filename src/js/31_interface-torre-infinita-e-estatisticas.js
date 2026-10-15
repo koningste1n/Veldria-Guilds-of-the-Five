@@ -54,7 +54,7 @@ function htmlEstatisticas() {
   const S = STATE.stats, taxa = S.lutas ? Math.round((S.vitorias / S.lutas) * 100) : 0;
   const tile = (rot, valor, sub) => `<div class="kpi"><span class="rot">${rot}</span><b>${valor}</b>${sub ? `<small>${sub}</small>` : ''}</div>`;
   const kpis = [
-    tile('Vitórias', fmt(S.vitorias), `${fmt(S.lutas)} lutas · ${taxa}%`),
+    tile('Vitórias', fmt(S.vitorias), `${fmt(S.lutas)} partidas · ${taxa}%${S.rodadas > S.lutas ? ` · ${fmt(S.rodadas)} lutas` : ''}`),
     tile('Temporadas', fmt(S.temporadas), `${fmt(S.copas)} ${S.copas === 1 ? 'Copa' : 'Copas'} · ${fmt(S.promocoes)} ${S.promocoes === 1 ? 'promoção' : 'promoções'}`),
     tile('Guardiões', fmt(S.guardioes), `${fmt(S.torreLutas)} lutas na Torre`),
     tile('Maior golpe', fmt(S.maiorGolpe), `${fmt(S.supremos)} supremos`),
@@ -119,7 +119,7 @@ function htmlUltimasLutas() {
     const mvp = p.times[0].find((u) => u.mvp) || p.times[0][0];
     return `<div class="partida"><span class="tag ${p.vit ? 'vit' : 'der'}">${p.vit ? 'V' : 'D'}</span>
       <div class="pt-corpo"><b>${TIPO_LUTA[p.tipo] || p.tipo}${p.tipo === 'torre' && p.andar ? ` ${p.andar}` : ''} · ${esc(p.rival)}</b>
-        <small>Luta nº ${p.n} · ${fmtTempo(p.tempo * 1000)} · destaque: ${esc(mvp ? mvp.nome : '—')}${p.criador ? ' · Modo Criador' : ''}</small></div>
+        <small>Luta nº ${p.n}${p.serie ? ` · luta ${p.serie.rodada} de até ${p.serie.de} (${p.serie.placar[0]}×${p.serie.placar[1]})` : ''} · ${fmtTempo(p.tempo * 1000)} · destaque: ${esc(mvp ? mvp.nome : '—')}${p.criador ? ' · Modo Criador' : ''}</small></div>
       ${p.replay ? `<button class="btn pequeno" data-act="conferir-partida" data-n="${p.n}">Conferir</button>` : ''}</div>`;
   }).join('');
   return `<section class="est-sec"><h3>Últimas lutas</h3>

@@ -85,13 +85,19 @@ async def main():
         # 6) luta: o registro guarda casa e postura
         await pg.click('[data-act="aba"][data-id="liga"]'); await pg.wait_for_timeout(300)
         await pg.click('[data-act="lutar-liga"]'); await pg.wait_for_timeout(700)
-        await pg.click('[data-act="luta-pular"]'); await pg.wait_for_timeout(500)
+        await pg.click('[data-act="luta-pular"]'); await pg.wait_for_timeout(500)   # E4 (e): melhor de 3 — pula a 1ª rodada e para no intervalo
+        checa(await pg.is_visible('[data-act="proxima-rodada"]'), 'intervalo entre lutas com a grade de formação')
+        await pg.screenshot(path=str(PASTA / 'e4-intervalo.png'))
+        for _ in range(3):
+            await pg.click('[data-act="proxima-rodada"]'); await pg.wait_for_timeout(500)
+            await pg.click('[data-act="luta-pular"]'); await pg.wait_for_timeout(500)
+            if await pg.query_selector('[data-act="resultado-ok"]'): break
         await pg.click('[data-act="resultado-ok"]'); await pg.wait_for_timeout(400)
         reg = await pg.evaluate(SAVE + ".partidas[0].replay.A.mercs.map((m) => [m.id, m.pos, m.postura])")
         esperado = {m['id']: (m['pos'], m['postura']) for m in t3}
         checa(all(esperado.get(i) == (pos, post) for i, pos, post in reg), f'registro da luta com as casas e posturas escolhidas: {reg}')
         res = await pg.evaluate(SAVE + ".partidas.map((p) => conferirPartida(p))")
-        checa(res == ['igual'], f'reproduzir a luta dá o mesmo resultado: {res}')
+        checa(len(res) >= 2 and all(r == 'igual' for r in res), f'reproduzir as rodadas dá o mesmo resultado: {res}')
 
         checa(not erros, f'sem erros no console {erros[:3]}')
         await b.close()

@@ -73,6 +73,11 @@ const POSTURAS = {
   segurar: { nome: 'Segurar', desc: 'Mantém a posição e espera o inimigo vir; protege os aliados e recua mais.' },
   flanquear: { nome: 'Flanquear', desc: 'Contorna a linha de frente pelas laterais para alcançar a retaguarda.' },
 };
+// E4 (e), D7: formato da partida por tipo de luta. "Melhor de N": vence quem ganhar metaDe() rodadas; cada rodada é uma
+// luta inteira (vida e recargas voltam) e, entre rodadas, o jogador pode ajustar formação e posturas.
+const FORMATO_PARTIDA = { liga: { rodadas: 3 }, copa: { rodadas: 3 }, amistoso: { rodadas: 1 }, torre: { rodadas: 1 } };
+const rodadasDe = (tipo) => (FORMATO_PARTIDA[tipo] || { rodadas: 1 }).rodadas;
+const metaDe = (tipo) => Math.ceil(rodadasDe(tipo) / 2);
 // Funções (D1): etiquetas sobre as classes. Cada classe tem uma função principal.
 // Proposta da E3 (15/10/2026), a confirmar pelo Kevin.
 const FUNCOES = { tanque: 'Tanque', corpo: 'Corpo a corpo', assassino: 'Assassino', distancia: 'Distância', controle: 'Controle', suporte: 'Suporte' };

@@ -13,6 +13,9 @@
      querUsarV2      → usar esta habilidade agora? (p = 1 normal, 2 SUPREMO)
    Toda aleatoriedade passa por b.rng(): a luta continua reproduzível. */
 
+// Cérebro usado em todas as lutas do jogo (ladoJogador / ladoDeGuilda). O simulador escolhe por lado.
+const IA_JOGO = 'v2';
+
 const IA2 = {
   tick: 0.25,            // segundos entre decisões
   fixarAlvo: 0.15,       // bônus para o alvo atual (hysterese: não troca de alvo à toa)
@@ -118,7 +121,9 @@ function escolherManobra(b, u) {
       const maisRapido = velocidade(u, b) * 1.1 >= velocidade(ameaca, b) ? 1 : 0.55;
       // quanto da minha vida a ameaça tira em 8 s: de um esqueleto não se foge
       const letal = clamp(danoEstimado(ameaca, u) / intervalo(ameaca, b) * 8 / Math.max(1, u.vida), 0, 1);
-      const s = pesoRec * Math.pow(exposto, 0.7) * fuga.espaco * maisRapido * Math.pow(letal, 0.75);
+      // invocador: as invocações são a minha linha de frente; se elas estão em cima da ameaça, fico atrás delas em vez de fugir
+      const escudoVivo = b.units.some((o) => o.vivo && o.dono === u && dist(o, ameaca) < 40) ? 0.15 : 1;
+      const s = pesoRec * Math.pow(exposto, 0.7) * fuga.espaco * maisRapido * Math.pow(letal, 0.75) * escudoVivo;
       if (s > 0) opcoes.push({ s, modo: 'fuga', dir: fuga.dir });
     }
   }

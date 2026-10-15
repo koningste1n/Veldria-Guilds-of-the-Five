@@ -1,5 +1,5 @@
 {
- "regras": 1,
+ "regras": 2,
  "ia": "duelo",
  "nivel": 10,
  "tam": 1,
@@ -62,8 +62,8 @@
   "bardo|piromante": 0.0425,
   "bardo|clerica": 0.01,
   "bardo|bardo": 0.4925,
-  "invocador|guardiao": 1,
-  "invocador|lanceira": 0.9575,
+  "invocador|guardiao": 0.9825,
+  "invocador|lanceira": 0.765,
   "invocador|piromante": 0.1425,
   "invocador|clerica": 1,
   "invocador|bardo": 1,
@@ -112,7 +112,7 @@
   "bardo|criomante": 0,
   "bardo|lamina": 0,
   "bardo|invocador": 0.6025,
-  "invocador|machadeiro": 0.72,
+  "invocador|machadeiro": 0.17,
   "invocador|arqueira": 0.695,
   "invocador|criomante": 0.3025,
   "invocador|lamina": 0,
@@ -164,8 +164,8 @@
   "bardo|piromante": 13.840333333333325,
   "bardo|clerica": 33.52183333333394,
   "bardo|bardo": 19.860333333333486,
-  "invocador|guardiao": 78.51649999999806,
-  "invocador|lanceira": 28.81200000000057,
+  "invocador|guardiao": 78.61899999999807,
+  "invocador|lanceira": 26.405333333333818,
   "invocador|piromante": 17.095083333333335,
   "invocador|clerica": 67.13824999999875,
   "invocador|bardo": 24.404916666667027,
@@ -214,11 +214,11 @@
   "bardo|criomante": 16.032249999999966,
   "bardo|lamina": 13.083666666666607,
   "bardo|invocador": 18.200416666666744,
-  "invocador|machadeiro": 33.05200000000062,
+  "invocador|machadeiro": 26.24150000000044,
   "invocador|arqueira": 19.593916666666793,
   "invocador|criomante": 19.118000000000098,
-  "invocador|lamina": 11.578666666666628,
-  "invocador|invocador": 23.816833333333694
+  "invocador|lamina": 11.608916666666628,
+  "invocador|invocador": 23.64475000000034
  },
  "tempoEsgotado": {
   "guardiao|guardiao": 0.4075,
@@ -332,8 +332,8 @@
   "clerica": 0.39425,
   "lamina": 0.56425,
   "bardo": 0.11499999999999999,
-  "invocador": 0.68175
+  "invocador": 0.60575
  },
- "desvio": 0.22294710695588763,
+ "desvio": 0.21799177163370181,
  "espelho": 0.5429999999999999
 }

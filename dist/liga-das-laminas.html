@@ -2168,7 +2168,7 @@ const E = 256 / 180;   // escala das distâncias (valores calibrados na arena an
 const DT = 1 / 30;
 // Versão das regras de combate: sobe a cada mudança que altere o resultado de uma luta.
 // Um registro só é reproduzível com a mesma versão (ver reproduzirPartida).
-const REGRAS_COMBATE = 1;
+const REGRAS_COMBATE = 2;   // v2 (15/10/2026): todas as lutas do jogo passam a usar o cérebro de utilidade (10b)
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const minPor = (arr, f) => { let best = null, bv = Infinity; for (const o of arr) { const v = f(o); if (v < bv) { bv = v; best = o; } } return best; };
 const PAPEIS_CONJURADORES = ['mago', 'curandeira', 'suporte', 'invocador'];
@@ -3012,6 +3012,9 @@ const mesmaAssinatura = (a, b) => JSON.stringify(a) === JSON.stringify(b);
      querUsarV2      → usar esta habilidade agora? (p = 1 normal, 2 SUPREMO)
    Toda aleatoriedade passa por b.rng(): a luta continua reproduzível. */
 
+// Cérebro usado em todas as lutas do jogo (ladoJogador / ladoDeGuilda). O simulador escolhe por lado.
+const IA_JOGO = 'v2';
+
 const IA2 = {
   tick: 0.25,            // segundos entre decisões
   fixarAlvo: 0.15,       // bônus para o alvo atual (hysterese: não troca de alvo à toa)
@@ -3117,7 +3120,9 @@ function escolherManobra(b, u) {
       const maisRapido = velocidade(u, b) * 1.1 >= velocidade(ameaca, b) ? 1 : 0.55;
       // quanto da minha vida a ameaça tira em 8 s: de um esqueleto não se foge
       const letal = clamp(danoEstimado(ameaca, u) / intervalo(ameaca, b) * 8 / Math.max(1, u.vida), 0, 1);
-      const s = pesoRec * Math.pow(exposto, 0.7) * fuga.espaco * maisRapido * Math.pow(letal, 0.75);
+      // invocador: as invocações são a minha linha de frente; se elas estão em cima da ameaça, fico atrás delas em vez de fugir
+      const escudoVivo = b.units.some((o) => o.vivo && o.dono === u && dist(o, ameaca) < 40) ? 0.15 : 1;
+      const s = pesoRec * Math.pow(exposto, 0.7) * fuga.espaco * maisRapido * Math.pow(letal, 0.75) * escudoVivo;
       if (s > 0) opcoes.push({ s, modo: 'fuga', dir: fuga.dir });
     }
   }
@@ -4392,7 +4397,7 @@ function fxPonta(c, x, y, cor) { for (let i = 0; i < 6; i++) { const a = (i / 6)
 
 /* ============================ ESTADO E SAVE ============================ */
 const SAVE_KEY = 'ligaDasLaminas.save.v1';   // mesma chave da Fase 1: a versão fica dentro do save
-const VERSAO = 7;
+const VERSAO = 8;   // v8 (E4): formato igual ao v7; só marca a nota de novidades do cérebro novo
 const consumiveisZerados = () => Object.fromEntries(Object.keys(CONSUMIVEIS).map((k) => [k, 0]));
 const criadorPadrao = () => ({ liberado: false, usado: false, sorteMult: 1, tempoMult: 1 });
 const statsPadrao = () => ({
@@ -4530,7 +4535,8 @@ function validarSave(s) {
   if (versaoAntiga < 5 && !nov.includes(5)) nov.push(5);
   if (versaoAntiga < 6 && !nov.includes(6) && (st.stats.lutas > 0 || st.tutorial >= 4)) nov.push(6);
   if (versaoAntiga < 7 && !nov.includes(7) && st.stats.lutas > 0) nov.push(7);
-  st.novidades = nov.filter((f) => f >= 2 && f <= 7).sort();
+  if (versaoAntiga < 8 && !nov.includes(8) && st.stats.lutas > 0) nov.push(8);
+  st.novidades = nov.filter((f) => f >= 2 && f <= 8).sort();
   if (versaoAntiga < 3 && st.tutorial >= 4) st.tutorial = 99;   // quem já viu o tutorial antigo não o repete
   // v6: tutorial progressivo. Quem já lutou (ou terminou o tutorial antigo) não repete nada.
   if (versaoAntiga < 6) { st.tutorial = (st.tutorial >= 4 || st.stats.lutas > 0) ? 99 : 0; st.tutorialVisto = -1; }
@@ -4959,11 +4965,11 @@ function ajustarRival(g, rodada) { g.mercs.forEach((m, i) => { m.nivel = nivelRi
 function ladoJogador(preparo = {}) {
   return {
     nome: STATE.guilda.nome, cor1: STATE.guilda.cor1, cor2: STATE.guilda.cor2, simbolo: STATE.guilda.simbolo,
-    mercs: timeMercs(), capitaoId: STATE.capitao, mult: 1, mods: modsDoTime(preparo),
+    mercs: timeMercs(), capitaoId: STATE.capitao, mult: 1, mods: modsDoTime(preparo), ia: IA_JOGO,
     bomba: preparo.bombaPolvora ? Math.round(20 * nivelMedioTime()) : 0,
   };
 }
-function ladoDeGuilda(g, mult) { return { nome: g.nome, cor1: g.cor1, cor2: g.cor2, simbolo: g.simbolo, mercs: g.mercs, capitaoId: g.capitaoId, mult, lider: g.lider || null }; }
+function ladoDeGuilda(g, mult) { return { nome: g.nome, cor1: g.cor1, cor2: g.cor2, simbolo: g.simbolo, mercs: g.mercs, capitaoId: g.capitaoId, mult, lider: g.lider || null, ia: IA_JOGO }; }
 const multDificuldade = () => DIFICULDADES[STATE.config.dif].mult;
 const multAdversario = () => multDificuldade() * MULT_RIVAL[STATE.divisao];
 function adversarioDaRodada() {
@@ -6465,6 +6471,10 @@ function mostrarTutorial() {
   el.innerHTML = `<div class="tut-balao"><small>${p === 0 ? 'Primeiros passos' : `Luta ${p} de ${TUT_FIM} · menu liberado`}</small><p>${T.txt}</p><button class="btn primario pequeno" data-act="tutorial-prox">${p === TUT_FIM ? 'Começar' : 'Entendi'}</button></div>`;
 }
 const NOVIDADES = {
+  8: [
+    ['expedicao', 'Lutadores que pensam', 'Cada mercenário agora pontua o que fazer a cada instante, de acordo com a sua função: arqueiras e magos recuam atirando (até a parede — aí lutam), ninguém mais perde tempo batendo em esqueleto em vez de no Invocador, a Chuva de Flechas espera o alvo parar e a Clériga cura na hora certa. A tática escolhida na ficha continua mandando.'],
+    ['pergaminho', 'Lutas antigas', 'As regras de combate mudaram de versão: o botão "Conferir" das lutas anteriores avisa que elas não podem mais ser reproduzidas. As novas, sim.'],
+  ],
   7: [
     ['estatisticas', 'Recordes e melhores da temporada', 'Em Estatísticas: sequência de vitórias, Líder mais derrotado, tempo de jogo e os melhores da temporada (MVP, abates, KDA, dano e cura), com filtro por função e os heróis das guildas rivais para comparar.'],
     ['pergaminho', 'Registro de lutas', 'Cada luta fica registrada com a semente e os times. Nas Estatísticas, "Conferir" roda a luta de novo e confere se o resultado é idêntico.'],
@@ -6506,7 +6516,7 @@ const NOVIDADES = {
     ['engrenagem', 'Save na sua conta', 'Jogando dentro do Claude com a sua conta, o progresso também fica salvo nela e você continua de outro aparelho. Veja em Configurações onde o seu progresso está salvo.'],
   ],
 };
-const ROTULO_FASE = { 5: '4.1', 6: '5 · Veldria', 7: '6 · Recordes' };
+const ROTULO_FASE = { 5: '4.1', 6: '5 · Veldria', 7: '6 · Recordes', 8: '7 · Cérebro' };
 function mostrarNovidades() {
   const fases = (STATE.novidades || []).slice().sort((a, b) => b - a);
   const bloco = (f) => `${fases.length > 1 ? `<span class="rot">Fase ${ROTULO_FASE[f] || f}</span>` : ''}<div class="lista novidades">${NOVIDADES[f].map(([ic, t, d]) => `<div class="card">${canvasIcone(ic, 28, ic === 'torre' ? { a: '#e9dfc9', b: '#a99bb8' } : null)}<div class="card-corpo"><b>${t}</b><small>${d}</small></div></div>`).join('')}</div>`;
@@ -6543,7 +6553,7 @@ function abrirConfig() {
     <button class="btn" data-act="estatisticas">${canvasIcone('estatisticas', 16)} Ver estatísticas completas</button>
     ${STATE.criador.liberado ? `<button class="btn criador-btn" data-act="criador">${canvasIcone('criador', 16)} Modo Criador</button>` : ''}
     <button class="btn perigo" data-act="reiniciar">Reiniciar jogo</button>
-    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.6</button>`, { dados: { config: true } });
+    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.7</button>`, { dados: { config: true } });
 }
 function mostrarResumoOffline(r) {
   if (!r || r.minutos < 1) return;

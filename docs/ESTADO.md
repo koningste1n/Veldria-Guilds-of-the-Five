@@ -4,9 +4,9 @@
 
 **Como trabalhar:** `docs/PROMPT-MAE.md` (papéis, regras, roteiro das etapas com critérios de pronto, handoff).
 
-_Atualizado em 15/10/2026 (E4, parte a)._
+_Atualizado em 15/10/2026 (E4, passos a e b)._
 
-## O que existe (v0.4, Fase 4.1)
+## O que existe (v0.7, E4 passo b)
 
 - 10 classes: guardião, machadeiro, lanceira, arqueira, piromante, criomante, clérica, lâmina, bardo e invocador.
 - 5 divisões (Bronze → Lenda) em temporadas, Copa dos 4 primeiros com Líderes, cerca de 25 pergaminhos, cerca de 15 relíquias, consumíveis, Forja, Ascensão (2 níveis; teto de nível hoje = 30), Campeões.
@@ -50,7 +50,7 @@ Os testes Playwright antigos (`luta.py`, `lideres.py`, `nuvem.py`, `perf.py`…)
 | E1 | Código recuperado, no GitHub e publicado | — | — | ✅ |
 | E2 | Nome Veldria no jogo, save v6 (tutorial progressivo feito e **desligado** — ver Pendências) | 1 | Opus 5.5 | ✅ 15/10 |
 | E3 | Registro de partidas, ficha de recordes + melhores da temporada, simulador de balanço em Node | 1 | Opus 5.5 | ✅ 15/10 (aguarda teste do Kevin no celular) |
-| E4 | Motor novo: IA de utilidade, 3×3 + posturas, câmera, 3v3 melhor de 3; decisão de orientação de tela | 3–4 | **Fable 5.1** | **em andamento** — (a) ✅ 15/10 |
+| E4 | Motor novo: IA de utilidade, 3×3 + posturas, câmera, 3v3 melhor de 3; decisão de orientação de tela | 3–4 | **Fable 5.1** | **em andamento** — (a) ✅ e (b) ✅ 15/10 (aguarda veredito do Kevin no celular) |
 | E5a | Curva 1→100, Ascensão como portão, maestrias 20/50, Rank S, A/B nv. 15, catálogo com raridades, pity | 2 | **Fable 5.1** | |
 | E5b | Personalidades visíveis, rivais, identidade de build, relíquias 24+, renome, contrato diário, eventos semanais | 2 | Opus 5.5 | |
 | E6 | Classes novas em lotes de 2–4 | 1–2 | Opus 5.5 | |
@@ -151,19 +151,19 @@ Hoje, quem começa do zero não tem tutorial nenhum (o tutorial antigo de 6 dica
 |---|---|---|
 | 1 | Cérebro novo vence o atual com as mesmas regras e os mesmos lutadores: **média ≥ 55 %** na matriz completa (IA nova com a classe da linha × IA atual com a classe da coluna, 100 pares) e, no espelho (mesma classe dos dois lados), **nenhuma classe abaixo de 42 %** — o cérebro novo não pode piorar classe nenhuma | `node sim/balanco.js --duelo` (linha = IA nova, coluna = IA atual) |
 | 2 | Formação 3×3 + posturas (avançar, segurar, flanquear) configuradas no Preparo e lidas pelo cérebro novo | teste Playwright da formação |
-| 3 | 3×3 roda a 30 passos/s no celular sem travar | `sim/` mede ms por passo; teste no celular do Kevin |
+| 3 | 3×3 roda a 30 passos/s no celular sem travar | `sim/` mede ms por passo (medido em Node: 6–16 µs por passo em 3v3 e 5v5, ~2.000× abaixo dos 33 ms); falta o teste no celular do Kevin |
 | 4 | Câmera: afastada mostrando a formação, aproxima no embate | teste no celular |
 | 5 | 3v3 melhor de 3 (D7) | simulador + teste no celular |
 | 6 | Kevin aprovou a orientação de tela (em pé × deitada) depois do 1º teste 3×3 | decisão registrada aqui |
-| 7 | Save abre sem perda; fumaça e `registro.py` passam; reproduções antigas continuam idênticas | testes |
+| 7 | Save abre sem perda; fumaça e `registro.py` passam; reproduções antigas continuam idênticas | testes — (b): save v7 → v8 sem perda ✅; lutas de regras v1 avisam "versão anterior" em vez de reproduzir (previsto) ✅ |
 
 ### Ordem interna
 
 | Passo | O quê | Status |
 |---|---|---|
 | (a) | Cérebro de utilidade em 1v1, isolado, medido no simulador contra a IA atual | ✅ 15/10 (critério 1 passou) |
-| (b) | Ligar na interface (todas as lutas passam a usar o cérebro novo; `REGRAS_COMBATE` sobe) | próxima |
-| (c) | Formação 3×3 + posturas em simulação | |
+| (b) | Ligar na interface (todas as lutas passam a usar o cérebro novo; `REGRAS_COMBATE` sobe) | ✅ 15/10 (v0.7, save v8, regras v2) |
+| (c) | Formação 3×3 + posturas em simulação | próxima |
 | (d) | Câmera afastada → aproxima | |
 | (e) | 3v3 melhor de 3 | |
 | (f) | Ponto de decisão do Kevin: orientação da tela (levar dois mockups) | |
@@ -208,9 +208,37 @@ Achados de balanceamento para a E5a (não mexi): os esqueletos são fracos demai
 
 Ganchos no `10_combate.js` (4 linhas): `u.cerebro` criado em `novaUnidade` quando `lado.ia === 'v2'`; `pensar` + `escolherAlvoV2` na escolha de alvo; `querUsarV2` antes de `usarSkill` (normal e SUPREMO; o toque manual do jogador no SUPREMO continua mandando); `destinoV2` no `mover`. `REGRAS_COMBATE` continua 1: nenhuma luta do jogo usa v2 ainda, então toda reprodução antiga segue válida.
 
-## Próxima conversa começa por… (E4 parte b, **Fable 5.1**)
+### (b) concluída em 15/10/2026 — cérebro v2 em todas as lutas (v0.7, save v8, regras v2)
 
-1. **Ligar o cérebro v2 na interface** (passo b): em `27_interface-batalha.js` (e onde mais um `lado` é montado: Liga/`21`, Torre/`22`, Modo Criador/`29`) colocar `ia: 'v2'` nos dois lados; subir `REGRAS_COMBATE` para 2 (as reproduções antigas passam a avisar "regras de outra versão", como previsto); conferir que `registro.py` e a fumaça passam e que o botão "Conferir" das últimas lutas continua funcionando para lutas novas.
-2. Rodar `node sim/balanco.js --ia v2 --salvar` (v2 dos dois lados) e registrar aqui a nova linha de base de balanceamento (a E5a parte dela).
-3. Publicar e pedir ao Kevin para assistir 3 lutas no celular: uma com Arqueira/Piromante no time (ver o recuo para trás), uma contra Invocador (ver que ninguém mais bate em esqueleto) e uma com Clériga (ver a cura no momento certo). A pergunta para ele: **os movimentos parecem decisões de lutador ou parecem bug?**
-4. Depois: passo (c) — formação 3×3 + posturas (avançar / segurar / flanquear) em simulação. As posturas entram como pesos na tabela `IA2` (recuo, proteger, flanco), não como código novo.
+| O que mudou | Onde |
+|---|---|
+| `IA_JOGO = 'v2'` e os dois construtores de lado do jogo (`ladoJogador`, `ladoDeGuilda`) marcam `ia: IA_JOGO` — Liga, amistoso, Copa, lutas simuladas entre rivais e Torre, todas | `10b`, `21_liga.js` |
+| `REGRAS_COMBATE = 2`: o registro de cada luta grava `regras: 2` e `ia: 'v2'` nos dois lados; "Conferir" numa luta antiga avisa que é de outra versão (como previsto na E3) | `10_combate.js`, `30_…` |
+| Save **v8** = mesmo formato do v7; só marca a nota de novidades "Fase 7 · Cérebro" para quem já lutou | `15_…`, `28_…` |
+| `testes/registro.py` ganhou 2 verificações: toda luta nova tem regras v2 + cérebro v2 nos dois lados; luta com regras v1 devolve `regras` em vez de reproduzir (22/22 OK) | `testes/` |
+| `sim/replay.js`: lado sem `ia` é v1 explícito (metade v1, metade v2): 300/300 idênticas | `sim/` |
+
+Critério 1 re-medido depois do último ajuste (`--duelo --n 400`): **58,8 %**, pior espelho Piromante 45 % → PASSOU.
+
+### Nova linha de base de balanceamento (v2 dos dois lados, nível 10) — é esta que a E5a corrige
+
+`sim/resultados/balanco-n10-t1-v2.*` e `balanco-n10-t3-v2.*`.
+
+| Formato | Ranking (taxa média de vitória) | Desvio |
+|---|---|---|
+| 1v1, 200 por par | Criomante 81 · Arqueira 73 · Machadeiro 73 · Lanceira 70 · Lâmina 57 · Piromante 51 · Guardião 44 · Clériga 39 · Bardo 7 · **Invocador 4** | 25,6 pontos (base v1: 22,3) |
+| 3v3 mesma classe, 100 por par | **Arqueira 96** · Lanceira 76 · Criomante 71 · Machadeiro 63 · Piromante 60 · Bardo 45 · Lâmina 41 · Clériga 25 · Guardião 22 · **Invocador 0** | 27,5 pontos (base v1: 25,6) |
+
+Leitura: o cérebro novo virou a mesa — de corpo a corpo dominante (Machadeiro 87/95) para distância dominante (Arqueira 96 no 3v3, Criomante 81 no 1v1), porque quem atira agora recua direito. Dois casos pedem decisão de desenho na E5a, não só número:
+
+| Achado | Por quê | Proposta para a E5a |
+|---|---|---|
+| **Invocador cai para 4 % / 0 %** | O cérebro novo bate no invocador e ignora os esqueletos (36 % dos atributos, 168 de vida: não ameaçam ninguém). A classe só funcionava porque a IA antiga batia no inimigo mais perto. Já testei o invocador ficar atrás dos esqueletos em vez de fugir (ficou no código): não basta, o atacante passa por eles | Esqueletos precisam **impor** presença: provocar quem está perto (como a Muralha) e/ou bloquear o caminho de verdade (separação maior) e/ou serem mais fortes. Decisão do Kevin |
+| Guardião 44 % / 22 % | Tanque sozinho não alcança quem recua; em 3 Guardiões × 3 Arqueiras ninguém chega perto | Esperado sem formação; reavaliar depois do passo (c) (posturas) antes de mexer em número |
+
+## Próxima conversa começa por… (E4 passo c, **Fable 5.1**)
+
+0. **Antes de tudo, ler o veredito do Kevin** sobre as 3 lutas no celular (recuo para trás, invocador, cura). Se ele achou que parece bug, ajustar `IA2` antes de seguir.
+1. Passo (c): formação 3×3 + posturas (avançar / segurar / flanquear) **em simulação primeiro**. Formação = posição inicial (coluna frente/meio/trás × linha cima/centro/baixo) configurada no Preparo; postura = pesos na tabela `IA2` (recuo, proteger, flanco, parada à distância) — não código novo. Critério: `node sim/balanco.js --tam 3` com 3 formações × 3 posturas mostra diferença de resultado (a escolha do jogador tem de mudar a luta: sensação-alvo).
+2. Formato do save: a formação entra no mercenário (`m.pos`, 0–8) com migração v8 → v9 (quem é `linha: 'frente'` vai para a coluna da frente).
+3. Depois: (d) câmera afastada → aproxima; (e) 3v3 melhor de 3; (f) mockups em pé × deitada para o Kevin decidir.

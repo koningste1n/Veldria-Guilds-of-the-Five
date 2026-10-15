@@ -8,7 +8,7 @@ const E = 256 / 180;   // escala das distâncias (valores calibrados na arena an
 const DT = 1 / 30;
 // Versão das regras de combate: sobe a cada mudança que altere o resultado de uma luta.
 // Um registro só é reproduzível com a mesma versão (ver reproduzirPartida).
-const REGRAS_COMBATE = 1;
+const REGRAS_COMBATE = 2;   // v2 (15/10/2026): todas as lutas do jogo passam a usar o cérebro de utilidade (10b)
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const minPor = (arr, f) => { let best = null, bv = Infinity; for (const o of arr) { const v = f(o); if (v < bv) { bv = v; best = o; } } return best; };
 const PAPEIS_CONJURADORES = ['mago', 'curandeira', 'suporte', 'invocador'];

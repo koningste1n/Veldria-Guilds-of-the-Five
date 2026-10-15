@@ -28,7 +28,7 @@ const ladoVariado = (cor) => {
   return { nome: 'G' + cor, cor1: cor, cor2: cor, simbolo: 0, mercs, capitaoId: pk(mercs).id, mult: r() < 0.3 ? 1 + r() : 1,
     mods: r() < 0.5 ? { flags: r() < 0.3 ? ['fenix'] : [], atqPct: r() * 0.2, defPct: 0, agiPct: 0, vidaPct: r() * 0.2, crit: 0.05, roubo: 0, recarga: 0.1 } : undefined,
     bomba: r() < 0.2 ? ri(10, 200) : 0,
-    ia: r() < 0.5 ? 'v2' : undefined };   // metade dos lados com o cérebro v2 (E4): também tem de reproduzir igual
+    ia: r() < 0.5 ? 'v2' : 'v1' };   // metade dos lados com cada cérebro: os dois têm de reproduzir igual
 };
 
 let iguais = 0, difAtrib = 0;

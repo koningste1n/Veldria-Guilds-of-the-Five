@@ -101,11 +101,11 @@ function ajustarRival(g, rodada) { g.mercs.forEach((m, i) => { m.nivel = nivelRi
 function ladoJogador(preparo = {}) {
   return {
     nome: STATE.guilda.nome, cor1: STATE.guilda.cor1, cor2: STATE.guilda.cor2, simbolo: STATE.guilda.simbolo,
-    mercs: timeMercs(), capitaoId: STATE.capitao, mult: 1, mods: modsDoTime(preparo),
+    mercs: timeMercs(), capitaoId: STATE.capitao, mult: 1, mods: modsDoTime(preparo), ia: IA_JOGO,
     bomba: preparo.bombaPolvora ? Math.round(20 * nivelMedioTime()) : 0,
   };
 }
-function ladoDeGuilda(g, mult) { return { nome: g.nome, cor1: g.cor1, cor2: g.cor2, simbolo: g.simbolo, mercs: g.mercs, capitaoId: g.capitaoId, mult, lider: g.lider || null }; }
+function ladoDeGuilda(g, mult) { return { nome: g.nome, cor1: g.cor1, cor2: g.cor2, simbolo: g.simbolo, mercs: g.mercs, capitaoId: g.capitaoId, mult, lider: g.lider || null, ia: IA_JOGO }; }
 const multDificuldade = () => DIFICULDADES[STATE.config.dif].mult;
 const multAdversario = () => multDificuldade() * MULT_RIVAL[STATE.divisao];
 function adversarioDaRodada() {

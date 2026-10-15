@@ -4,7 +4,7 @@
 
 Jogo de gestão de guilda de mercenários com batalhas automáticas em arena, pixel art desenhada por código e feito para celular em pé. HTML + CSS + JavaScript puro, sem bibliotecas e sem nada externo.
 
-**Versão atual:** v0.6 (etapa E3) · save versão 7.
+**Versão atual:** v0.7 (etapa E4, passo b) · save versão 8 · regras de combate v2.
 
 ## Como montar
 
@@ -42,7 +42,7 @@ node sim/replay.js             # 300 lutas variadas com toques do jogador (metad
 - `src/shell.html` — HTML e CSS do jogo. `/*__JS__*/` marca onde entra o código e `/*__FONT:x__*/` onde entram as fontes.
 - `src/fonts/` — fontes Silkscreen e Pixelify Sans (licença OFL).
 - `src/js/NN_nome.js` — o código, em módulos concatenados na ordem numérica. **A ordem importa.**
-- `src/js/10b_cerebro-v2.js` — cérebro de utilidade da E4 (alvo, manobra, hora da habilidade). Ligado por lado da luta (`lado.ia = 'v2'`); sem isso vale a IA do `10_combate.js`. Ainda não ligado na interface.
+- `src/js/10b_cerebro-v2.js` — cérebro de utilidade da E4 (alvo, manobra, hora da habilidade). Ligado por lado da luta (`lado.ia`); o jogo usa `IA_JOGO = 'v2'` em todos os lados; sem `ia` vale a IA antiga do `10_combate.js` (só o simulador usa isso, como linha de base).
 
 ### Módulos
 

@@ -1,6 +1,6 @@
 /* ============================ ESTADO E SAVE ============================ */
 const SAVE_KEY = 'ligaDasLaminas.save.v1';   // mesma chave da Fase 1: a versão fica dentro do save
-const VERSAO = 7;
+const VERSAO = 8;   // v8 (E4): formato igual ao v7; só marca a nota de novidades do cérebro novo
 const consumiveisZerados = () => Object.fromEntries(Object.keys(CONSUMIVEIS).map((k) => [k, 0]));
 const criadorPadrao = () => ({ liberado: false, usado: false, sorteMult: 1, tempoMult: 1 });
 const statsPadrao = () => ({
@@ -138,7 +138,8 @@ function validarSave(s) {
   if (versaoAntiga < 5 && !nov.includes(5)) nov.push(5);
   if (versaoAntiga < 6 && !nov.includes(6) && (st.stats.lutas > 0 || st.tutorial >= 4)) nov.push(6);
   if (versaoAntiga < 7 && !nov.includes(7) && st.stats.lutas > 0) nov.push(7);
-  st.novidades = nov.filter((f) => f >= 2 && f <= 7).sort();
+  if (versaoAntiga < 8 && !nov.includes(8) && st.stats.lutas > 0) nov.push(8);
+  st.novidades = nov.filter((f) => f >= 2 && f <= 8).sort();
   if (versaoAntiga < 3 && st.tutorial >= 4) st.tutorial = 99;   // quem já viu o tutorial antigo não o repete
   // v6: tutorial progressivo. Quem já lutou (ou terminou o tutorial antigo) não repete nada.
   if (versaoAntiga < 6) { st.tutorial = (st.tutorial >= 4 || st.stats.lutas > 0) ? 99 : 0; st.tutorialVisto = -1; }

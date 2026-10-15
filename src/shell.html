@@ -307,10 +307,20 @@ label { font-family: var(--f-display); font-size: 10px; color: var(--muted); tex
 .btn-supremo.pronto .sup-txt { color: #fff; }
 .btn-supremo:disabled { cursor: default; }
 @keyframes pronto { 50% { box-shadow: inset 0 0 0 4px #fff4c2; } }
+/* tela deitada (E4-d, provisório até a decisão de orientação): arena à esquerda, time e comandos à direita */
+@media (orientation: landscape) and (max-height: 520px) {
+  .luta-in { max-width: none; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(220px, 1fr); grid-template-areas: "topo hud" "arena hud" "arena ctrl"; gap: 6px 14px; padding-block: 6px; padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px)); align-content: start; }
+  .luta-topo { grid-area: topo; }
+  .arena-wrap { grid-area: arena; align-self: start; }
+  .hud-time { grid-area: hud; align-self: start; }
+  .luta-ctrl { grid-area: ctrl; }
+  .luta-ctrl .dica { display: none; }
+  .btn-supremo { min-height: 48px; }
+}
 .ctrl-linha { display: flex; gap: 6px; flex-wrap: wrap; }
-.ctrl-linha .btn { flex: 1 1 auto; }
+.ctrl-linha .btn { flex: 1 1 auto; min-height: 44px; }
 .seg { display: flex; gap: 2px; }
-.seg-btn { min-width: 42px; min-height: 36px; border: 0; background: var(--linha-esc); color: var(--muted); font-family: var(--f-display); font-size: 11px; cursor: pointer; clip-path: var(--entalhe); }
+.seg-btn { min-width: 44px; min-height: 44px; border: 0; background: var(--linha-esc); color: var(--muted); font-family: var(--f-display); font-size: 11px; cursor: pointer; clip-path: var(--entalhe); }
 .seg-btn.on { background: var(--ouro); color: var(--ouro-tx); }
 
 /* ---------- resultado ---------- */

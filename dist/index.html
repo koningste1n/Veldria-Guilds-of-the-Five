@@ -307,10 +307,20 @@ label { font-family: var(--f-display); font-size: 10px; color: var(--muted); tex
 .btn-supremo.pronto .sup-txt { color: #fff; }
 .btn-supremo:disabled { cursor: default; }
 @keyframes pronto { 50% { box-shadow: inset 0 0 0 4px #fff4c2; } }
+/* tela deitada (E4-d, provisório até a decisão de orientação): arena à esquerda, time e comandos à direita */
+@media (orientation: landscape) and (max-height: 520px) {
+  .luta-in { max-width: none; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(220px, 1fr); grid-template-areas: "topo hud" "arena hud" "arena ctrl"; gap: 6px 14px; padding-block: 6px; padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px)); align-content: start; }
+  .luta-topo { grid-area: topo; }
+  .arena-wrap { grid-area: arena; align-self: start; }
+  .hud-time { grid-area: hud; align-self: start; }
+  .luta-ctrl { grid-area: ctrl; }
+  .luta-ctrl .dica { display: none; }
+  .btn-supremo { min-height: 48px; }
+}
 .ctrl-linha { display: flex; gap: 6px; flex-wrap: wrap; }
-.ctrl-linha .btn { flex: 1 1 auto; }
+.ctrl-linha .btn { flex: 1 1 auto; min-height: 44px; }
 .seg { display: flex; gap: 2px; }
-.seg-btn { min-width: 42px; min-height: 36px; border: 0; background: var(--linha-esc); color: var(--muted); font-family: var(--f-display); font-size: 11px; cursor: pointer; clip-path: var(--entalhe); }
+.seg-btn { min-width: 44px; min-height: 44px; border: 0; background: var(--linha-esc); color: var(--muted); font-family: var(--f-display); font-size: 11px; cursor: pointer; clip-path: var(--entalhe); }
 .seg-btn.on { background: var(--ouro); color: var(--ouro-tx); }
 
 /* ---------- resultado ---------- */
@@ -3455,22 +3465,49 @@ const COR_SKILL = {
 };
 const nomeHabilidade = (id) => (SKILLS[id] || PERGAMINHOS[id] || { nome: id }).nome;
 
-/* ---- câmera: o mundo (384×216) é desenhado num buffer e a janela (256×180) enquadra a ação ---- */
+/* ---- câmera: o mundo (384×216) é desenhado num buffer e a janela enquadra a ação ----
+   A janela mede 256×180 na tela em pé e 384×216 (a arena inteira) na tela deitada.
+   Três momentos (E4-d): 'formacao' — afastada, as duas formações inteiras, do preparo até o primeiro embate;
+   'embate' — aproxima e segue o centro dos embates (lutadores ao alcance um do outro, golpeando ou apanhando);
+   e o foco pontual (camFoco) do SUPREMO e do golpe final, que continua como era. */
 const VISTA = { w: 256, h: 180 };
-const ZOOM_MIN = Math.max(VISTA.w / ARENA.w, VISTA.h / ARENA.h), ZOOM_MAX = 1.75;
-function alvoCamera(b) {
-  const vivos = b.units.filter((u) => u.vivo || u.reviver > 0);
-  const lista = vivos.length ? vivos : b.units;
+const ZOOM_MAX = 1.75;
+const CAM = { quente: 1.2, rapidez: 3, rapidezEntrada: 2, entrada: 1.6, margemX: 48, margemY: 22, minW: 132, minH: 100 };
+const zoomTotal = () => Math.min(VISTA.w / ARENA.w, VISTA.h / ARENA.h);   // a arena inteira cabe (com faixas pretas quando a proporção difere)
+function ajustarJanela(deitada) { if (deitada) { VISTA.w = ARENA.w; VISTA.h = ARENA.h; } else { VISTA.w = 256; VISTA.h = 180; } }
+// Um lutador está "no embate" se tem inimigo ao alcance (dele ou do inimigo), está golpeando, conjurando ou apanhando,
+// ou atira/é alvo de um projétil em voo. O calor dura CAM.quente segundos, para a câmera não pular entre grupos.
+function marcarEmbates(b, dt) {
+  const vivos = b.units.filter((u) => u.vivo);
+  for (const u of vivos) {
+    let quente = u.anim.atk > 0 || u.anim.cast > 0 || u.anim.hurt > 0;
+    if (!quente) for (const o of vivos) if (o.team !== u.team && dist(u, o) <= Math.max(u.alcance, o.alcance) + 8) { quente = true; break; }
+    u.camQuente = quente ? CAM.quente : Math.max(0, (u.camQuente || 0) - dt);
+  }
+  for (const p of b.projs) { if (p.src) p.src.camQuente = CAM.quente; if (p.alvo && p.alvo.vivo) p.alvo.camQuente = CAM.quente; }
+  return vivos.some((u) => u.camQuente > 0);
+}
+function enquadrar(lista, projs) {
   let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
   for (const u of lista) { x0 = Math.min(x0, u.x); x1 = Math.max(x1, u.x); y0 = Math.min(y0, u.y - 52); y1 = Math.max(y1, u.y + 6); }
-  for (const p of b.projs) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); }
-  const mw = Math.max(x1 - x0 + 48, 132), mh = Math.max(y1 - y0 + 22, 100);   // enquadramento justo: personagens em destaque
-  const zoom = clamp(Math.min(VISTA.w / mw, VISTA.h / mh), ZOOM_MIN, ZOOM_MAX);
+  for (const p of projs) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); }
+  const mw = Math.max(x1 - x0 + CAM.margemX, CAM.minW), mh = Math.max(y1 - y0 + CAM.margemY, CAM.minH);   // enquadramento justo: personagens em destaque
+  const zoom = clamp(Math.min(VISTA.w / mw, VISTA.h / mh), zoomTotal(), ZOOM_MAX);
   return { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 + 6, zoom };
+}
+function alvoCamera(b) {
+  if (Arena.camModo === 'formacao') return { cx: ARENA.w / 2, cy: ARENA.h / 2, zoom: zoomTotal() };
+  const vivos = b.units.filter((u) => u.vivo || u.reviver > 0);
+  const quentes = vivos.filter((u) => u.camQuente > 0);
+  const lista = quentes.length ? quentes : vivos.length ? vivos : b.units;
+  return enquadrar(lista, quentes.length ? b.projs : []);
 }
 function atualizarCamera(dt) {
   const b = Arena.b, cam = Arena.cam;
-  let alvo = alvoCamera(b), rapidez = 3;
+  if (Arena.camModo === 'formacao' && !b.fim && marcarEmbates(b, dt)) { Arena.camModo = 'embate'; Arena.camEntrada = CAM.entrada; }
+  else if (Arena.camModo === 'embate') marcarEmbates(b, dt);
+  let alvo = alvoCamera(b), rapidez = CAM.rapidez;
+  if (Arena.camEntrada > 0) { Arena.camEntrada -= dt; rapidez = CAM.rapidezEntrada; }   // a aproximação do primeiro embate é mais lenta, para ser vista
   if (Arena.camFoco) {
     const f = Arena.camFoco; f.t -= dt;
     if (f.t <= 0) Arena.camFoco = null;
@@ -3479,9 +3516,11 @@ function atualizarCamera(dt) {
   const k = Math.min(1, rapidez * dt);
   cam.zoom += (alvo.zoom - cam.zoom) * k;
   const vw = VISTA.w / cam.zoom, vh = VISTA.h / cam.zoom;
-  const tx = clamp(alvo.cx - vw / 2, 0, ARENA.w - vw), ty = clamp(alvo.cy - vh / 2, 0, ARENA.h - vh);
+  const tx = centrarJanela(alvo.cx, vw, ARENA.w), ty = centrarJanela(alvo.cy, vh, ARENA.h);
   if (cam.pronta) { cam.x += (tx - cam.x) * k; cam.y += (ty - cam.y) * k; } else { cam.x = tx; cam.y = ty; cam.pronta = true; }
 }
+// Canto da janela: dentro da arena quando a janela é menor que ela; centrado (com faixa) quando é maior
+const centrarJanela = (c, tam, total) => (tam >= total ? (total - tam) / 2 : clamp(c - tam / 2, 0, total - tam));
 // Converte um toque na janela para o mundo
 function telaParaMundo(sx, sy) { const j = Arena.janela || { x: Arena.cam.x, y: Arena.cam.y, z: Arena.cam.zoom }; return [j.x + sx / j.z, j.y + sy / j.z]; }
 function focarCamera(x, y, zoom, t) { Arena.camFoco = { x, y, zoom, t }; }
@@ -3493,7 +3532,8 @@ function prepararArena(cv, b, cenario = 'arena') {
   if (!Arena.buf) { Arena.buf = document.createElement('canvas'); Arena.buf.width = ARENA.w; Arena.buf.height = ARENA.h; }
   Arena.bctx = Arena.buf.getContext('2d'); Arena.bctx.imageSmoothingEnabled = false;
   Arena.lenta = 0; Arena.lentaTotal = 0; Arena.zoomFoco = null; Arena.ultimaMorte = null; Arena.camFoco = null; Arena.cutin = null; Arena.lua = null; Arena.soco = 0; Arena.janela = null; timersArena.length = 0;
-  Arena.cenario = cenario; Arena.cam = { x: 0, y: 0, zoom: 1, pronta: false };
+  Arena.cenario = cenario; Arena.cam = { x: 0, y: 0, zoom: 1, pronta: false }; Arena.camModo = 'formacao'; Arena.camEntrada = 0;
+  for (const u of b.units) u.camQuente = 0;
   Arena.b = b; Arena.t = 0; Arena.part = []; Arena.nums = []; Arena.fx = [];
   Arena.tremor = 0; Arena.flash = 0; Arena.pausa = 0; Arena.festa = 0;
   Arena.fundo = desenharFundo(b, cenario);
@@ -3810,10 +3850,11 @@ function desenharArena() {
   // janela da câmera
   const cam = Arena.cam, z = cam.zoom * (1 + (Arena.soco || 0)), vw = VISTA.w / z, vh = VISTA.h / z;
   const ccx = cam.x + VISTA.w / cam.zoom / 2, ccy = cam.y + VISTA.h / cam.zoom / 2;
-  const jx = clamp(ccx - vw / 2, 0, ARENA.w - vw), jy = clamp(ccy - vh / 2, 0, ARENA.h - vh);
+  const jx = centrarJanela(ccx, vw, ARENA.w), jy = centrarJanela(ccy, vh, ARENA.h);
   Arena.janela = { x: jx, y: jy, z };
-  v.clearRect(0, 0, VISTA.w, VISTA.h);
-  v.drawImage(Arena.buf, jx, jy, vw, vh, 0, 0, VISTA.w, VISTA.h);
+  v.fillStyle = '#05030a'; v.fillRect(0, 0, VISTA.w, VISTA.h);   // faixas quando a janela é maior que a arena (vista afastada)
+  const sx = Math.max(0, jx), sy = Math.max(0, jy), sw = Math.min(ARENA.w, jx + vw) - sx, sh = Math.min(ARENA.h, jy + vh) - sy;
+  v.drawImage(Arena.buf, sx, sy, sw, sh, Math.round((sx - jx) * z), Math.round((sy - jy) * z), Math.round(sw * z), Math.round(sh * z));
   if (b.eclipse > 0) { v.fillStyle = `rgba(14,6,26,${Math.min(0.65, b.eclipse)})`; v.fillRect(0, 0, VISTA.w, VISTA.h); }
   if (Arena.lua) desenharFx2(v, { tipo: 'lua', x: VISTA.w / 2, y: 26, t: Arena.lua.t }, Arena.lua.t / Arena.lua.dur);
   if (Arena.flash > 0) { v.fillStyle = `rgba(${Arena.flashCor},${(Arena.flash / 0.25) * 0.55})`; v.fillRect(0, 0, VISTA.w, VISTA.h); }
@@ -4493,7 +4534,7 @@ function fxPonta(c, x, y, cor) { for (let i = 0; i < 6; i++) { const a = (i / 6)
 
 /* ============================ ESTADO E SAVE ============================ */
 const SAVE_KEY = 'ligaDasLaminas.save.v1';   // mesma chave da Fase 1: a versão fica dentro do save
-const VERSAO = 10;   // v10 (E4 d): formato igual ao v9, só marca a nota da tela de formação; v9 (E4 c): pos (casa na formação 3×3) e postura; v8 só marcava a nota do cérebro novo
+const VERSAO = 11;   // v11 (E4 d): formato igual ao v10, só marca a nota da câmera nova; v10 (E4 d): formato igual ao v9, só marca a nota da tela de formação; v9 (E4 c): pos (casa na formação 3×3) e postura; v8 só marcava a nota do cérebro novo
 const consumiveisZerados = () => Object.fromEntries(Object.keys(CONSUMIVEIS).map((k) => [k, 0]));
 const criadorPadrao = () => ({ liberado: false, usado: false, sorteMult: 1, tempoMult: 1 });
 const statsPadrao = () => ({
@@ -4640,7 +4681,8 @@ function validarSave(s) {
   if (versaoAntiga < 7 && !nov.includes(7) && st.stats.lutas > 0) nov.push(7);
   if (versaoAntiga < 8 && !nov.includes(8) && st.stats.lutas > 0) nov.push(8);
   if (versaoAntiga < 10 && !nov.includes(10) && st.stats.lutas > 0) nov.push(10);   // v9 não tinha nota: a formação só ganhou tela no v10
-  st.novidades = nov.filter((f) => f >= 2 && f <= 10).sort();
+  if (versaoAntiga < 11 && !nov.includes(11) && st.stats.lutas > 0) nov.push(11);
+  st.novidades = nov.filter((f) => f >= 2 && f <= 11).sort();
   if (versaoAntiga < 3 && st.tutorial >= 4) st.tutorial = 99;   // quem já viu o tutorial antigo não o repete
   // v6: tutorial progressivo. Quem já lutou (ou terminou o tutorial antigo) não repete nada.
   if (versaoAntiga < 6) { st.tutorial = (st.tutorial >= 4 || st.stats.lutas > 0) ? 99 : 0; st.tutorialVisto = -1; }
@@ -6313,6 +6355,7 @@ function iniciarLuta(ctx) {
   const reg = prepararRegistro(A, B, optsLuta, seed);   // retrato dos lados antes da luta, para o registro
   const b = criarBatalha(A, B, { ...optsLuta, seed });
   Luta = { b, ctx, reg, vel: STATE.config.vel, pausado: false, rodando: false, acc: 0, ultimo: 0, fimT: 0, terminou: false, raf: 0, ativo: true };
+  ajustarJanela(telaDeitada());   // E4-d: na tela deitada a janela da câmera é a arena inteira (384×216)
   montarTelaLuta(b);
   $('#luta').hidden = false; $('#app').hidden = true; $('#abas').hidden = true; $('#tutorial').hidden = true;
   window.scrollTo(0, 0);
@@ -6358,7 +6401,7 @@ function montarTelaLuta(b) {
       <div class="lt-meio"><span id="relogio">0:00</span><small id="furia" hidden>FÚRIA</small><button class="btn-som" data-act="som-luta" aria-label="Música da luta" id="btn-som">${canvasIcone(STATE.config.musica ? 'som' : 'mudo', 14)}</button></div>
       <div class="lt-lado dir"><div><b>${esc(B.nome)}</b><div class="barra time1"><i id="vida-time1" style="width:100%"></i></div></div>${canvasBrasao(B, 26)}</div>
     </div>
-    <div class="arena-wrap"><canvas id="arena" width="${VISTA.w}" height="${VISTA.h}" aria-label="Arena da batalha"></canvas><div id="banner" hidden></div><div id="contagem"></div></div>
+    <div class="arena-wrap"><canvas id="arena" width="${VISTA.w}" height="${VISTA.h}" style="aspect-ratio:${VISTA.w}/${VISTA.h}" aria-label="Arena da batalha"></canvas><div id="banner" hidden></div><div id="contagem"></div></div>
     <div class="hud-time ${meus.length > 3 ? 'compacto' : ''}">${meus.map((u) => `<div class="hud-u ${u.capitao ? 'cap' : ''}" data-uid="${u.uid}">
       ${canvasLook(u.look, 32, 'data-parado="1" data-vista="lado"')}
       <div class="hud-info"><b>${esc(u.nome)} ${u.capitao ? canvasIcone('coroa', 12) : ''}</b>
@@ -6378,6 +6421,7 @@ function montarTelaLuta(b) {
   hidratar($('#luta'));
   Luta.hud = meus.map((u) => { const el = $(`.hud-u[data-uid="${u.uid}"]`); return { u, el, hp: $('[data-hp]', el), cd: $('[data-cd]', el) }; });
 }
+const telaDeitada = () => window.innerWidth > window.innerHeight;
 const dicaModo = (b) => (b.modoAuto ? 'Modo Auto: o capitão usa o SUPREMO sozinho. Mude para Manual para mirar e escolher a hora.' : 'Modo Manual: toque num inimigo para o capitão mirar nele e toque em SUPREMO quando a barra encher.');
 function tocarArena(e) {
   if (!Luta || !Luta.b) return;
@@ -6608,6 +6652,10 @@ function mostrarTutorial() {
   el.innerHTML = `<div class="tut-balao"><small>${p === 0 ? 'Primeiros passos' : `Luta ${p} de ${TUT_FIM} · menu liberado`}</small><p>${T.txt}</p><button class="btn primario pequeno" data-act="tutorial-prox">${p === TUT_FIM ? 'Começar' : 'Entendi'}</button></div>`;
 }
 const NOVIDADES = {
+  11: [
+    ['estrela', 'Câmera de treinador', 'A luta começa com a câmera afastada, mostrando as duas formações inteiras. No primeiro embate ela aproxima e passa a seguir o centro da ação; o SUPREMO e o golpe final continuam em close.'],
+    ['expedicao', 'Tela deitada (experiência)', 'Se virar o celular na hora da luta, a arena fica à esquerda e o time à direita, com os bonecos maiores. É um teste para decidir a orientação do jogo.'],
+  ],
   10: [
     ['estrela', 'Formação 3×3', 'No Elenco, o time agora fica numa grade de 3×3 casas: toque num mercenário e depois numa casa para mover (ou trocar de lugar). A luta começa com cada um na sua casa — quem está na frente segura o inimigo, quem atira fica atrás da própria linha de frente.'],
     ['expedicao', 'Posturas', 'Cada mercenário tem uma postura: Automática, Avançar (vai para cima), Segurar (espera o inimigo vir e protege os aliados) ou Flanquear (contorna pelas laterais até a retaguarda). A escolha muda o resultado: um trio corpo a corpo flanqueando vence uma muralha que parado não vence.'],
@@ -6657,7 +6705,7 @@ const NOVIDADES = {
     ['engrenagem', 'Save na sua conta', 'Jogando dentro do Claude com a sua conta, o progresso também fica salvo nela e você continua de outro aparelho. Veja em Configurações onde o seu progresso está salvo.'],
   ],
 };
-const ROTULO_FASE = { 5: '4.1', 6: '5 · Veldria', 7: '6 · Recordes', 8: '7 · Cérebro', 10: '8 · Formação' };
+const ROTULO_FASE = { 5: '4.1', 6: '5 · Veldria', 7: '6 · Recordes', 8: '7 · Cérebro', 10: '8 · Formação', 11: '9 · Câmera' };
 function mostrarNovidades() {
   const fases = (STATE.novidades || []).slice().sort((a, b) => b - a);
   const bloco = (f) => `${fases.length > 1 ? `<span class="rot">Fase ${ROTULO_FASE[f] || f}</span>` : ''}<div class="lista novidades">${NOVIDADES[f].map(([ic, t, d]) => `<div class="card">${canvasIcone(ic, 28, ic === 'torre' ? { a: '#e9dfc9', b: '#a99bb8' } : null)}<div class="card-corpo"><b>${t}</b><small>${d}</small></div></div>`).join('')}</div>`;
@@ -6694,7 +6742,7 @@ function abrirConfig() {
     <button class="btn" data-act="estatisticas">${canvasIcone('estatisticas', 16)} Ver estatísticas completas</button>
     ${STATE.criador.liberado ? `<button class="btn criador-btn" data-act="criador">${canvasIcone('criador', 16)} Modo Criador</button>` : ''}
     <button class="btn perigo" data-act="reiniciar">Reiniciar jogo</button>
-    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.8</button>`, { dados: { config: true } });
+    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.9</button>`, { dados: { config: true } });
 }
 function mostrarResumoOffline(r) {
   if (!r || r.minutos < 1) return;

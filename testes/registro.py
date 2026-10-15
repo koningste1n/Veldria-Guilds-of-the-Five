@@ -65,7 +65,7 @@ async def main():
             await pg.click('[data-act="luta-pular"]'); await pg.wait_for_timeout(500)
             await pg.click('[data-act="resultado-ok"]'); await pg.wait_for_timeout(400)
         st = await pg.evaluate("JSON.parse(localStorage.getItem('ligaDasLaminas.save.v1'))")
-        checa(st['versao'] == 10, f"save na versão 10 ({st['versao']})")
+        checa(st['versao'] == 11, f"save na versão 11 ({st['versao']})")
         # E4 (c): todo mercenário tem casa na formação 3×3 e postura; linha derivada da coluna
         checa(all(isinstance(m.get('pos'), int) and 0 <= m['pos'] <= 8 and m.get('postura') in ('auto', 'avancar', 'segurar', 'flanquear') and m['linha'] == ('frente' if m['pos'] < 3 else 'tras') for m in st['mercs']), 'mercenários com pos (0–8), postura e linha derivada da coluna')
         P = st['partidas']
@@ -125,7 +125,7 @@ async def main():
             "if (!sessionStorage.getItem('v6')) { sessionStorage.setItem('v6', '1'); localStorage.setItem('ligaDasLaminas.save.v1', " + json.dumps(json.dumps(v6)) + "); }")
         await pg.goto(ARQ.as_uri()); await pg.wait_for_timeout(1500)
         st2 = await pg.evaluate("JSON.parse(localStorage.getItem('ligaDasLaminas.save.v1'))")
-        checa(st2['versao'] == 10, 'save v6 abre como v10')
+        checa(st2['versao'] == 11, 'save v6 abre como v11')
         checa([m['id'] for m in st2['mercs']] == [m['id'] for m in v6['mercs']] and st2['ouro'] >= v6['ouro'] and st2['stats']['lutas'] == v6['stats']['lutas'], 'mercenários, ouro e lutas preservados')
         checa(st2['partidas'] == [] and st2['stats']['seqRecorde'] == 0, 'campos novos criados vazios')
         checa(all((m['pos'] // 3 == 0) == (v['linha'] == 'frente') and m['postura'] == 'auto' for m, v in zip(st2['mercs'], v6['mercs'])), 'migração: linha Frente → coluna da frente, Trás → coluna de trás, postura automática')

@@ -19,22 +19,49 @@ const COR_SKILL = {
 };
 const nomeHabilidade = (id) => (SKILLS[id] || PERGAMINHOS[id] || { nome: id }).nome;
 
-/* ---- câmera: o mundo (384×216) é desenhado num buffer e a janela (256×180) enquadra a ação ---- */
+/* ---- câmera: o mundo (384×216) é desenhado num buffer e a janela enquadra a ação ----
+   A janela mede 256×180 na tela em pé e 384×216 (a arena inteira) na tela deitada.
+   Três momentos (E4-d): 'formacao' — afastada, as duas formações inteiras, do preparo até o primeiro embate;
+   'embate' — aproxima e segue o centro dos embates (lutadores ao alcance um do outro, golpeando ou apanhando);
+   e o foco pontual (camFoco) do SUPREMO e do golpe final, que continua como era. */
 const VISTA = { w: 256, h: 180 };
-const ZOOM_MIN = Math.max(VISTA.w / ARENA.w, VISTA.h / ARENA.h), ZOOM_MAX = 1.75;
-function alvoCamera(b) {
-  const vivos = b.units.filter((u) => u.vivo || u.reviver > 0);
-  const lista = vivos.length ? vivos : b.units;
+const ZOOM_MAX = 1.75;
+const CAM = { quente: 1.2, rapidez: 3, rapidezEntrada: 2, entrada: 1.6, margemX: 48, margemY: 22, minW: 132, minH: 100 };
+const zoomTotal = () => Math.min(VISTA.w / ARENA.w, VISTA.h / ARENA.h);   // a arena inteira cabe (com faixas pretas quando a proporção difere)
+function ajustarJanela(deitada) { if (deitada) { VISTA.w = ARENA.w; VISTA.h = ARENA.h; } else { VISTA.w = 256; VISTA.h = 180; } }
+// Um lutador está "no embate" se tem inimigo ao alcance (dele ou do inimigo), está golpeando, conjurando ou apanhando,
+// ou atira/é alvo de um projétil em voo. O calor dura CAM.quente segundos, para a câmera não pular entre grupos.
+function marcarEmbates(b, dt) {
+  const vivos = b.units.filter((u) => u.vivo);
+  for (const u of vivos) {
+    let quente = u.anim.atk > 0 || u.anim.cast > 0 || u.anim.hurt > 0;
+    if (!quente) for (const o of vivos) if (o.team !== u.team && dist(u, o) <= Math.max(u.alcance, o.alcance) + 8) { quente = true; break; }
+    u.camQuente = quente ? CAM.quente : Math.max(0, (u.camQuente || 0) - dt);
+  }
+  for (const p of b.projs) { if (p.src) p.src.camQuente = CAM.quente; if (p.alvo && p.alvo.vivo) p.alvo.camQuente = CAM.quente; }
+  return vivos.some((u) => u.camQuente > 0);
+}
+function enquadrar(lista, projs) {
   let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
   for (const u of lista) { x0 = Math.min(x0, u.x); x1 = Math.max(x1, u.x); y0 = Math.min(y0, u.y - 52); y1 = Math.max(y1, u.y + 6); }
-  for (const p of b.projs) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); }
-  const mw = Math.max(x1 - x0 + 48, 132), mh = Math.max(y1 - y0 + 22, 100);   // enquadramento justo: personagens em destaque
-  const zoom = clamp(Math.min(VISTA.w / mw, VISTA.h / mh), ZOOM_MIN, ZOOM_MAX);
+  for (const p of projs) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); }
+  const mw = Math.max(x1 - x0 + CAM.margemX, CAM.minW), mh = Math.max(y1 - y0 + CAM.margemY, CAM.minH);   // enquadramento justo: personagens em destaque
+  const zoom = clamp(Math.min(VISTA.w / mw, VISTA.h / mh), zoomTotal(), ZOOM_MAX);
   return { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 + 6, zoom };
+}
+function alvoCamera(b) {
+  if (Arena.camModo === 'formacao') return { cx: ARENA.w / 2, cy: ARENA.h / 2, zoom: zoomTotal() };
+  const vivos = b.units.filter((u) => u.vivo || u.reviver > 0);
+  const quentes = vivos.filter((u) => u.camQuente > 0);
+  const lista = quentes.length ? quentes : vivos.length ? vivos : b.units;
+  return enquadrar(lista, quentes.length ? b.projs : []);
 }
 function atualizarCamera(dt) {
   const b = Arena.b, cam = Arena.cam;
-  let alvo = alvoCamera(b), rapidez = 3;
+  if (Arena.camModo === 'formacao' && !b.fim && marcarEmbates(b, dt)) { Arena.camModo = 'embate'; Arena.camEntrada = CAM.entrada; }
+  else if (Arena.camModo === 'embate') marcarEmbates(b, dt);
+  let alvo = alvoCamera(b), rapidez = CAM.rapidez;
+  if (Arena.camEntrada > 0) { Arena.camEntrada -= dt; rapidez = CAM.rapidezEntrada; }   // a aproximação do primeiro embate é mais lenta, para ser vista
   if (Arena.camFoco) {
     const f = Arena.camFoco; f.t -= dt;
     if (f.t <= 0) Arena.camFoco = null;
@@ -43,9 +70,11 @@ function atualizarCamera(dt) {
   const k = Math.min(1, rapidez * dt);
   cam.zoom += (alvo.zoom - cam.zoom) * k;
   const vw = VISTA.w / cam.zoom, vh = VISTA.h / cam.zoom;
-  const tx = clamp(alvo.cx - vw / 2, 0, ARENA.w - vw), ty = clamp(alvo.cy - vh / 2, 0, ARENA.h - vh);
+  const tx = centrarJanela(alvo.cx, vw, ARENA.w), ty = centrarJanela(alvo.cy, vh, ARENA.h);
   if (cam.pronta) { cam.x += (tx - cam.x) * k; cam.y += (ty - cam.y) * k; } else { cam.x = tx; cam.y = ty; cam.pronta = true; }
 }
+// Canto da janela: dentro da arena quando a janela é menor que ela; centrado (com faixa) quando é maior
+const centrarJanela = (c, tam, total) => (tam >= total ? (total - tam) / 2 : clamp(c - tam / 2, 0, total - tam));
 // Converte um toque na janela para o mundo
 function telaParaMundo(sx, sy) { const j = Arena.janela || { x: Arena.cam.x, y: Arena.cam.y, z: Arena.cam.zoom }; return [j.x + sx / j.z, j.y + sy / j.z]; }
 function focarCamera(x, y, zoom, t) { Arena.camFoco = { x, y, zoom, t }; }
@@ -57,7 +86,8 @@ function prepararArena(cv, b, cenario = 'arena') {
   if (!Arena.buf) { Arena.buf = document.createElement('canvas'); Arena.buf.width = ARENA.w; Arena.buf.height = ARENA.h; }
   Arena.bctx = Arena.buf.getContext('2d'); Arena.bctx.imageSmoothingEnabled = false;
   Arena.lenta = 0; Arena.lentaTotal = 0; Arena.zoomFoco = null; Arena.ultimaMorte = null; Arena.camFoco = null; Arena.cutin = null; Arena.lua = null; Arena.soco = 0; Arena.janela = null; timersArena.length = 0;
-  Arena.cenario = cenario; Arena.cam = { x: 0, y: 0, zoom: 1, pronta: false };
+  Arena.cenario = cenario; Arena.cam = { x: 0, y: 0, zoom: 1, pronta: false }; Arena.camModo = 'formacao'; Arena.camEntrada = 0;
+  for (const u of b.units) u.camQuente = 0;
   Arena.b = b; Arena.t = 0; Arena.part = []; Arena.nums = []; Arena.fx = [];
   Arena.tremor = 0; Arena.flash = 0; Arena.pausa = 0; Arena.festa = 0;
   Arena.fundo = desenharFundo(b, cenario);
@@ -374,10 +404,11 @@ function desenharArena() {
   // janela da câmera
   const cam = Arena.cam, z = cam.zoom * (1 + (Arena.soco || 0)), vw = VISTA.w / z, vh = VISTA.h / z;
   const ccx = cam.x + VISTA.w / cam.zoom / 2, ccy = cam.y + VISTA.h / cam.zoom / 2;
-  const jx = clamp(ccx - vw / 2, 0, ARENA.w - vw), jy = clamp(ccy - vh / 2, 0, ARENA.h - vh);
+  const jx = centrarJanela(ccx, vw, ARENA.w), jy = centrarJanela(ccy, vh, ARENA.h);
   Arena.janela = { x: jx, y: jy, z };
-  v.clearRect(0, 0, VISTA.w, VISTA.h);
-  v.drawImage(Arena.buf, jx, jy, vw, vh, 0, 0, VISTA.w, VISTA.h);
+  v.fillStyle = '#05030a'; v.fillRect(0, 0, VISTA.w, VISTA.h);   // faixas quando a janela é maior que a arena (vista afastada)
+  const sx = Math.max(0, jx), sy = Math.max(0, jy), sw = Math.min(ARENA.w, jx + vw) - sx, sh = Math.min(ARENA.h, jy + vh) - sy;
+  v.drawImage(Arena.buf, sx, sy, sw, sh, Math.round((sx - jx) * z), Math.round((sy - jy) * z), Math.round(sw * z), Math.round(sh * z));
   if (b.eclipse > 0) { v.fillStyle = `rgba(14,6,26,${Math.min(0.65, b.eclipse)})`; v.fillRect(0, 0, VISTA.w, VISTA.h); }
   if (Arena.lua) desenharFx2(v, { tipo: 'lua', x: VISTA.w / 2, y: 26, t: Arena.lua.t }, Arena.lua.t / Arena.lua.dur);
   if (Arena.flash > 0) { v.fillStyle = `rgba(${Arena.flashCor},${(Arena.flash / 0.25) * 0.55})`; v.fillRect(0, 0, VISTA.w, VISTA.h); }

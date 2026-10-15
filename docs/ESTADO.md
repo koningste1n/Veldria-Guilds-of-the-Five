@@ -4,9 +4,9 @@
 
 **Como trabalhar:** `docs/PROMPT-MAE.md` (papéis, regras, roteiro das etapas com critérios de pronto, handoff).
 
-_Atualizado em 15/10/2026 (E4, passos a–c e tela da formação)._
+_Atualizado em 15/10/2026 (E4, passo d: câmera e mockups de orientação)._
 
-## O que existe (v0.8, E4: cérebro v2, formação 3×3 com tela)
+## O que existe (v0.9, E4: cérebro v2, formação 3×3 com tela, câmera de treinador)
 
 - 10 classes: guardião, machadeiro, lanceira, arqueira, piromante, criomante, clérica, lâmina, bardo e invocador.
 - 5 divisões (Bronze → Lenda) em temporadas, Copa dos 4 primeiros com Líderes, cerca de 25 pergaminhos, cerca de 15 relíquias, consumíveis, Forja, Ascensão (2 níveis; teto de nível hoje = 30), Campeões.
@@ -50,7 +50,7 @@ Os testes Playwright antigos (`luta.py`, `lideres.py`, `nuvem.py`, `perf.py`…)
 | E1 | Código recuperado, no GitHub e publicado | — | — | ✅ |
 | E2 | Nome Veldria no jogo, save v6 (tutorial progressivo feito e **desligado** — ver Pendências) | 1 | Opus 5.5 | ✅ 15/10 |
 | E3 | Registro de partidas, ficha de recordes + melhores da temporada, simulador de balanço em Node | 1 | Opus 5.5 | ✅ 15/10 (aguarda teste do Kevin no celular) |
-| E4 | Motor novo: IA de utilidade, 3×3 + posturas, câmera, 3v3 melhor de 3; decisão de orientação de tela | 3–4 | **Fable 5.1** | **em andamento** — (a) ✅, (b) ✅, (c) ✅ em simulação 15/10; falta a tela do Preparo (vai com a câmera, d) |
+| E4 | Motor novo: IA de utilidade, 3×3 + posturas, câmera, 3v3 melhor de 3; decisão de orientação de tela | 3–4 | **Fable 5.1** | **em andamento** — (a) ✅, (b) ✅, (c) ✅, tela da formação ✅, (d) câmera ✅ 15/10; faltam (e) 3v3 melhor de 3 e (f) a decisão de orientação do Kevin |
 | E5a | Curva 1→100, Ascensão como portão, maestrias 20/50, Rank S, A/B nv. 15, catálogo com raridades, pity | 2 | **Fable 5.1** | |
 | E5b | Personalidades visíveis, rivais, identidade de build, relíquias 24+, renome, contrato diário, eventos semanais | 2 | Opus 5.5 | |
 | E6 | Classes novas em lotes de 2–4 | 1–2 | Opus 5.5 | |
@@ -150,9 +150,9 @@ Hoje, quem começa do zero não tem tutorial nenhum (o tutorial antigo de 6 dica
 | # | Critério | Como medir |
 |---|---|---|
 | 1 | Cérebro novo vence o atual com as mesmas regras e os mesmos lutadores: **média ≥ 55 %** na matriz completa (IA nova com a classe da linha × IA atual com a classe da coluna, 100 pares) e, no espelho (mesma classe dos dois lados), **nenhuma classe abaixo de 42 %** — o cérebro novo não pode piorar classe nenhuma | `node sim/balanco.js --duelo` (linha = IA nova, coluna = IA atual) |
-| 2 | Formação 3×3 + posturas (avançar, segurar, flanquear) configuradas no Preparo e lidas pelo cérebro novo | **metade feita**: modelo, save v9, cérebro e `sim/formacao.js` ✅ (a escolha muda o resultado em até 74 pontos); a tela do Preparo fica para o passo (d) |
+| 2 | Formação 3×3 + posturas (avançar, segurar, flanquear) configuradas no Preparo e lidas pelo cérebro novo | ✅ modelo, save v9, cérebro, `sim/formacao.js` (a escolha muda o resultado em até 74 pontos) e a grade 3×3 no Elenco (v0.8) |
 | 3 | 3×3 roda a 30 passos/s no celular sem travar | `sim/` mede ms por passo (medido em Node: 6–16 µs por passo em 3v3 e 5v5, ~2.000× abaixo dos 33 ms); falta o teste no celular do Kevin |
-| 4 | Câmera: afastada mostrando a formação, aproxima no embate | teste no celular |
+| 4 | Câmera: afastada mostrando a formação, aproxima no embate | ✅ em código e no `testes/camera.py` (15/10); falta o olhar do Kevin no celular |
 | 5 | 3v3 melhor de 3 (D7) | simulador + teste no celular |
 | 6 | Kevin aprovou a orientação de tela (em pé × deitada) depois do 1º teste 3×3 | decisão registrada aqui |
 | 7 | Save abre sem perda; fumaça e `registro.py` passam; reproduções antigas continuam idênticas | testes — (b): save v7 → v8 sem perda ✅; lutas de regras v1 avisam "versão anterior" em vez de reproduzir (previsto) ✅ |
@@ -164,9 +164,9 @@ Hoje, quem começa do zero não tem tutorial nenhum (o tutorial antigo de 6 dica
 | (a) | Cérebro de utilidade em 1v1, isolado, medido no simulador contra a IA atual | ✅ 15/10 (critério 1 passou) |
 | (b) | Ligar na interface (todas as lutas passam a usar o cérebro novo; `REGRAS_COMBATE` sobe) | ✅ 15/10 (v0.7, save v8, regras v2) |
 | (c) | Formação 3×3 + posturas em simulação | ✅ 15/10 (regras v3, save v9) |
-| (d) | Tela do Preparo (grade 3×3 + postura por mercenário) e câmera afastada → aproxima | próxima |
+| (d) | Tela do Preparo (grade 3×3 + postura por mercenário) e câmera afastada → aproxima | ✅ 15/10 (tela: v0.8; câmera: v0.9, save v11) |
 | (e) | 3v3 melhor de 3 | |
-| (f) | Ponto de decisão do Kevin: orientação da tela (levar dois mockups) | |
+| (f) | Ponto de decisão do Kevin: orientação da tela (levar dois mockups) | mockups prontos (`testes/e4-cam-*.png`); aguarda o Kevin |
 
 ### Decisões técnicas da E4
 
@@ -290,9 +290,42 @@ Linha de base v2×v2 refeita (`sim/resultados/*-v2.*`): 1v1 Crio 80 · Mach 75 �
 
 Capturas: `testes/e4-formacao.png` e `testes/e4-formacao-sel.png`.
 
-## Próxima conversa começa por… (E4 passo d, **Fable 5.1**)
+### (d) câmera — concluída em 15/10/2026 (v0.9, save v11)
 
-0. Ler o veredito do Kevin: (1) as 3 lutas do cérebro novo (recuo, invocador, cura) e (2) **a grade de formação no celular** — dá para mover com o dedão? a orientação (inimigo à direita) ficou clara? Ajustar antes de seguir.
-1. **Câmera** (`11_arena.js`, a câmera já existe): afastada no início mostrando as duas formações, aproxima no primeiro embate (quando uma unidade entra no alcance de outra) e segue o centro de massa dos embates. Decidir o enquadramento para 384×216 numa tela em pé — e é aqui que se vê se a formação cabe em pé.
-2. Preparar os **dois mockups** (em pé × deitada) para o ponto de decisão do Kevin (f): podem ser capturas reais da arena com a câmera nova, uma em cada orientação.
-3. Depois: (e) 3v3 melhor de 3.
+A câmera já existia (`11_arena.js`: o mundo 384×216 é desenhado num buffer e uma janela o enquadra). O que mudou foi **o que ela olha**:
+
+| Momento | O que a câmera faz | Como decide |
+|---|---|---|
+| **Formação** (do preparo, pela contagem 3-2-1, até o primeiro embate) | Afastada ao máximo: a arena inteira, as duas formações 3×3 visíveis | `Arena.camModo = 'formacao'`, zoom = `zoomTotal()` (a arena cabe na janela; na tela em pé sobram faixas pretas em cima e embaixo, no estilo das faixas de cinema do golpe final) |
+| **Primeiro embate** | Aproxima em ~1,6 s (mais devagar que o acompanhamento normal, para a aproximação ser vista) | Um lutador está "no embate" quando tem inimigo ao alcance (dele ou do inimigo), está golpeando, conjurando ou apanhando, ou atira / é alvo de um projétil em voo (`marcarEmbates`) |
+| **Durante a luta** | Enquadra só quem está no embate e segue o centro desse grupo; quem ficou parado longe (Segurar, por exemplo) sai do quadro | Cada lutador guarda um "calor" de 1,2 s depois do último contato, para a câmera não pular entre grupos a cada golpe |
+| **SUPREMO e golpe final** | Close, como antes | `camFoco`, inalterado |
+
+| Decisão | Por quê |
+|---|---|
+| A janela depende da orientação da tela: **256×180 em pé** (como era) e **384×216 deitada** (a arena inteira, sem faixas) | A arena é 16:9; na tela deitada ela cabe inteira na janela sem faixa nenhuma. É isso que torna o mockup deitado honesto: é o jogo de verdade, não um desenho |
+| Tela deitada = CSS provisório em `@media (orientation: landscape)`: arena à esquerda, time e comandos à direita, dica escondida | Só vale dentro de `#luta`; se o Kevin escolher "em pé", o CSS sai ou fica como bônus para quem virar o celular. A orientação é lida no início da luta (virar no meio não redimensiona a janela até a próxima luta) |
+| `zoomTotal()` substitui o antigo `ZOOM_MIN` (que não deixava ver a arena inteira: 0,83 mostrava 307 dos 384 px) | O novo mínimo é "a arena inteira cabe"; a janela centra e desenha faixas quando é maior que a arena (`centrarJanela`) |
+| Botões Auto · Pausar · Pular e 1× 2× 3× subiram de 36 para 44 px | Regra 5 do prompt-mãe; o `testes/camera.py` agora confere todos os botões da luta |
+| Save **v11** = formato do v10; só marca a nota "Fase 9 · Câmera" para quem já lutou | Mesmo padrão dos v8 e v10 |
+
+`testes/camera.py dist/index.html` (18 verificações, as duas orientações): começa afastada com os 6 lutadores inteiros na janela; passa a 'embate' aos ~2,8 s de luta; zoom sobe de 0,67 → 1,66 (em pé) e 1,00 → 1,73 (deitada); quem está no embate aparece; sem rolagem lateral; a tela de luta cabe sem rolar nas duas orientações; botões ≥ 44 px; a luta registrada reproduz igual. `fumaca`, `registro` (v6 → v11) e `formacao` continuam passando; `sim/replay.js` 300/300.
+
+### Mockups para a decisão de orientação (f) — prontos
+
+Capturas reais do jogo (não desenhos), geradas pelo `testes/camera.py`:
+
+| Arquivo | O quê |
+|---|---|
+| `testes/e4-cam-pe-formacao.png` | Em pé (390×844), vista afastada: as duas formações, com faixas pretas; bonecos a ~0,93 px de tela por px de arena |
+| `testes/e4-cam-pe-embate.png` | Em pé, câmera aproximada no embate |
+| `testes/e4-cam-deitada-formacao.png` | Deitada (844×390), vista afastada: a arena inteira preenche a janela, sem faixas; bonecos ~30 % maiores (1,21 px por px) |
+| `testes/e4-cam-deitada-embate.png` | Deitada, câmera aproximada; time e comandos à direita |
+
+Leitura do Claude (para o Kevin bater com o celular na mão): **em pé** a formação 3×3 é legível na vista afastada, mas pequena (coluna 28 px de arena = 26 px de tela entre casas) e as faixas pretas comem 25 px em cima e embaixo; **deitada** a formação lê de longe e a arena ganha 30 %, ao custo de o jogador virar o celular só para a luta (o resto do jogo é em pé). Alternativa intermediária, se o Kevin quiser: janela 16:9 na tela em pé (256×144), sem faixas, arena mais baixa.
+
+## Próxima conversa começa por… (E4 passos e–f, **Fable 5.1**)
+
+0. Ler o veredito do Kevin (ele ficou em branco na conversa de 15/10): (1) as 3 lutas do cérebro novo (recuo, invocador, cura); (2) a grade de formação no celular — dá para mover com o dedão? a orientação (inimigo à direita) ficou clara?; (3) **a câmera nova** — a aproximação no primeiro embate dá a sensação de "o meu time entrou em campo"?; (4) **a decisão (f): em pé ou deitada**, com os 4 mockups em `testes/e4-cam-*.png` e virando o celular numa luta de verdade. Registrar a decisão aqui.
+1. Se "em pé": decidir se a janela vira 16:9 (256×144, sem faixas) ou fica 256×180 com faixas na vista afastada. Se "deitada": a tela de luta deitada deixa de ser provisória (rever HUD, SUPREMO e toque no inimigo em Manual) e avisar o jogador para virar o celular na hora da luta.
+2. Depois: **(e) 3v3 melhor de 3** (D7) — o formato da partida muda (rodadas), então o registro de partidas e os recordes precisam saber o que é "uma luta" e o que é "uma partida"; decidir e anotar antes de codar.

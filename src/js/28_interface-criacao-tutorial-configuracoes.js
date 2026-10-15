@@ -1,0 +1,161 @@
+/* ============================ INTERFACE: CRIAÇÃO, TUTORIAL, CONFIGURAÇÕES ============================ */
+function mostrarCriacao() {
+  $('#app').hidden = true; $('#abas').hidden = true; $('#criacao').hidden = false;
+  UI.criacao = UI.criacao || { nome: nomeGuildaAleatorio(), ...brasaoAleatorio() };
+  renderCriacao();
+}
+function renderCriacao() {
+  const c = UI.criacao;
+  const cores = (campo) => CORES_BRASAO.map((cor) => `<button class="cor ${c[campo] === cor ? 'on' : ''}" style="--c:${cor}" data-act="cor" data-campo="${campo}" data-v="${cor}" aria-label="Cor ${cor}"></button>`).join('');
+  const vitrine = ['guardiao', 'piromante', 'lamina', 'arqueira'].map((cls) => canvasLook(`${cls}|${cls === 'lamina' ? 2 : 0}|${CABELO_PADRAO[cls] ?? 1}|${c.cor1}|${c.cor2}`, 72)).join('');
+  $('#criacao').innerHTML = `<div class="criacao">
+    <p class="eyebrow">Cidades Livres de Vellmora</p>
+    <h1 class="titulo-jogo">Liga das<br>Lâminas</h1>
+    <div class="vitrine">${vitrine}</div>
+    <p class="muted">Funde sua guilda de mercenários e dispute o Torneio das Lâminas.</p>
+    <div class="painel">
+      <div class="brasao-preview">${canvasBrasao(c, 104)}</div>
+      <label for="nome-guilda">Nome da guilda</label>
+      <div class="linha-input"><input id="nome-guilda" type="text" maxlength="24" value="${esc(c.nome)}" autocomplete="off"><button class="btn pequeno" data-act="nome-aleatorio">Sortear</button></div>
+      <span class="rot">Cor principal</span><div class="cores">${cores('cor1')}</div>
+      <span class="rot">Cor secundária</span><div class="cores">${cores('cor2')}</div>
+      <span class="rot">Símbolo</span><div class="simbolos">${SIMBOLOS.map((s) => `<button class="simb ${c.simbolo === s ? 'on' : ''}" data-act="simbolo" data-v="${s}" aria-label="Símbolo ${s}">${canvasBrasao({ ...c, simbolo: s }, 40)}</button>`).join('')}</div>
+      <button class="btn primario enorme" data-act="criar-guilda">Fundar guilda</button>
+      <p class="dica">Você começa com 3 mercenários, 300 de ouro e uma Poção de Fúria.</p>
+    </div></div>`;
+  hidratar($('#criacao'));
+  $('#nome-guilda').addEventListener('input', (e) => { c.nome = e.target.value; });
+}
+function abrirApp() {
+  $('#criacao').hidden = true; $('#app').hidden = false; $('#abas').hidden = false;
+  render();
+  if (STATE.tutorial < TUTORIAL.length) mostrarTutorial();
+  else if (temNovidades()) mostrarNovidades();
+}
+
+/* ---- tutorial ---- */
+const TUTORIAL = [
+  { aba: 'guilda', txt: 'Esta é a sede da sua guilda. O cofre da Bilheteria enche sozinho, até com o jogo fechado. Colete o ouro, melhore as construções e mande reservas em expedições.' },
+  { aba: 'elenco', txt: 'Este é o seu time. Toque num mercenário para ver os números, equipar itens e pergaminhos, escolher Frente ou Trás e definir o capitão.' },
+  { aba: 'liga', txt: 'Na Liga, toque em LUTAR. Os 4 primeiros jogam a Copa contra o Líder da divisão, e os 2 primeiros sobem de divisão. No modo Manual, você mira e solta o SUPREMO.' },
+  { aba: 'torre', txt: 'A Torre Infinita sobe sem fim: cada andar vencido rende ouro e, a cada 5, um baú. Os Guardiões esperam a cada 10 andares.' },
+  { aba: 'inventario', txt: 'Em Itens ficam as relíquias da guilda, a bolsa de consumíveis, o inventário e a Forja, que aprimora equipamentos.' },
+  { aba: 'mercado', txt: 'Na Taverna você recruta reforços e no Boticário compra consumíveis. O Potencial (F a S) diz quanto cada atributo cresce por nível. Boa sorte, mestre!' },
+];
+function mostrarTutorial() {
+  const p = STATE.tutorial, el = $('#tutorial');
+  if (p >= TUTORIAL.length) { el.hidden = true; renderAbas(); return; }
+  const T = TUTORIAL[p];
+  if (UI.aba !== T.aba) { UI.aba = T.aba; render(); }
+  el.hidden = false;
+  el.innerHTML = `<div class="tut-balao"><small>Dica ${p + 1} de ${TUTORIAL.length}</small><p>${T.txt}</p><button class="btn primario pequeno" data-act="tutorial-prox">${p === TUTORIAL.length - 1 ? 'Começar' : 'Próximo'}</button></div>`;
+}
+const NOVIDADES = {
+  2: [
+    ['estrela', 'Personagens em 32×32', 'Todos redesenhados, com animações de respirar, andar, atacar, conjurar, levar dano e comemorar.'],
+    ['pergaminho', 'Pergaminhos de habilidade', '25 habilidades extras (ativas e passivas). 1º espaço no nível 5, mais 1 por Ascensão.'],
+    ['reliquia', 'Relíquias da guilda', '15 relíquias que valem para o time inteiro. De 3 a 5 espaços, conforme a divisão.'],
+    ['pocaoV', 'Consumíveis', 'Poções, bomba, tônico de XP e mapa do tesouro. Compre no Boticário ou ache em baús.'],
+    ['forja', 'Forja e Relógio', 'Aprimore equipamentos até +10 e aumente o limite offline até 16 h.'],
+    ['expedicao', 'Expedições', 'Reservas exploram por 15 min a 8 h e voltam com ouro, XP, baús e Emblemas.'],
+    ['emblema', 'Ascensão', 'Nos níveis 10 e 20: +10 níveis máximos, +10% atributos. Custa ouro e Emblemas.'],
+    ['liga', 'Divisões, Copa e Líderes', 'Bronze até Lenda. Os 4 primeiros jogam a Copa; a final é contra um Líder com mecânica própria.'],
+    ['coroa', 'Campeões Lendários', '5 heróis únicos com habilidades exclusivas. Vencer a Copa pode trazer um para a guilda.'],
+  ],
+  3: [
+    ['torre', 'Torre Infinita', 'Uma nova aba: andares sem fim, regras especiais por andar e Guardiões a cada 10 andares. Rende ouro, baús, Emblemas e um tributo diário.'],
+    ['som', 'Sons e música', 'Golpes, magias, curas, moedas e fanfarras sintetizados na hora. Música chiptune opcional nas lutas.'],
+    ['estrela', 'Câmera lenta', 'O golpe final de cada luta ganha zoom e câmera lenta.'],
+    ['engrenagem', 'Vibração', 'Críticos, SUPREMO, quedas e vitórias vibram o celular (Android).'],
+    ['estatisticas', 'Estatísticas', 'Totais da guilda, dano e MVPs de cada mercenário e o histórico de temporadas.'],
+  ],
+  4: [
+    ['estrela', 'Personagens 32×40 em 3 vistas', 'Corpos refeitos com joelhos, cotovelos, mãos e botas. Cada herói agora tem vista de lado, de frente e de costas: anda para cima, para baixo e para os lados, sempre virado para quem enfrenta.'],
+    ['liga', 'Arena 50% mais larga', 'Campo de 384×216 com câmera cinematográfica que enquadra a ação, aproxima nos golpes pesados e foca o capitão no SUPREMO.'],
+    ['torre', '5 cenários', 'Arena, Ruínas, Floresta, Vulcão e Torre, cada um com clima próprio (folhas, brasas, poeira).'],
+    ['expedicao', 'Movimento tático', 'Lutadores cercam o alvo, assassinos flanqueiam, atiradores e magos recuam, curandeiras ficam atrás da linha de frente. Golpes fortes empurram.'],
+    ['pergaminho', 'Habilidades mais vistosas', 'Cortes em meia-lua na direção do golpe, explosões, colunas de fogo, cristais de gelo, pilares de luz, raios, rastros de investida e marcações no chão antes dos ataques em área.'],
+    ['coroa', 'SUPREMO com retrato', 'O capitão entra em cena com retrato, nome e habilidade antes do golpe.'],
+    ['estrela', 'Heróis de frente na guilda', 'Guilda, Elenco, Mercado e fichas mostram os mercenários de frente.'],
+  ],
+  5: [
+    ['expedicao', 'Acampamento', 'Nova construção: cada nível dá +1 vaga de expedição e +1 vaga no elenco (de 3 até 10 expedições, elenco de 8 até 15). O nível máximo sobe a cada divisão.'],
+    ['expedicao', 'Vários heróis de uma vez', 'Escolha quantos heróis quiser (até as vagas livres) e mande todos para o mesmo destino. Quando dois ou mais voltam, use Coletar todas. A Masmorra aceita até 3 heróis ao mesmo tempo.'],
+    ['engrenagem', 'Save na sua conta', 'Jogando dentro do Claude com a sua conta, o progresso também fica salvo nela e você continua de outro aparelho. Veja em Configurações onde o seu progresso está salvo.'],
+  ],
+};
+const ROTULO_FASE = { 5: '4.1' };
+function mostrarNovidades() {
+  const fases = (STATE.novidades || []).slice().sort((a, b) => b - a);
+  const bloco = (f) => `${fases.length > 1 ? `<span class="rot">Fase ${ROTULO_FASE[f] || f}</span>` : ''}<div class="lista novidades">${NOVIDADES[f].map(([ic, t, d]) => `<div class="card">${canvasIcone(ic, 28, ic === 'torre' ? { a: '#e9dfc9', b: '#a99bb8' } : null)}<div class="card-corpo"><b>${t}</b><small>${d}</small></div></div>`).join('')}</div>`;
+  abrirModal(`<h2>Novidades${fases.length === 1 ? ` da Fase ${ROTULO_FASE[fases[0]] || fases[0]}` : ''}</h2>
+    ${fases.map(bloco).join('')}
+    <p class="dica">Seu progresso foi mantido. Você continua na Divisão ${divAtual().nome}.</p>
+    <button class="btn primario enorme" data-act="fechar-novidades">Vamos lá</button>`, { dados: { novidades: true } });
+}
+
+/* ---- configurações e save ---- */
+function abrirConfig() {
+  const C = STATE.config, S = STATE.stats;
+  abrirModal(`
+    <h2>Configurações</h2>
+    <div class="chips-grupo"><span class="rot">Velocidade padrão da luta</span>${[1, 2, 3].map((v) => `<button class="chip-btn ${C.vel === v ? 'on' : ''}" data-act="cfg" data-k="vel" data-v="${v}">${v}×</button>`).join('')}</div>
+    <div class="chips-grupo"><span class="rot">Modo de luta</span>${[['auto', 'Auto'], ['manual', 'Manual']].map(([v, n]) => `<button class="chip-btn ${(C.auto ? 'auto' : 'manual') === v ? 'on' : ''}" data-act="cfg" data-k="auto" data-v="${v}">${n}</button>`).join('')}</div>
+    <div class="chips-grupo"><span class="rot">Dificuldade</span>${Object.entries(DIFICULDADES).map(([k, d]) => `<button class="chip-btn ${C.dif === k ? 'on' : ''}" data-act="cfg" data-k="dif" data-v="${k}">${d.nome}</button>`).join('')}</div>
+    <p class="dica">A dificuldade multiplica os atributos dos rivais: Fácil ×0,85 · Normal ×1 · Difícil ×1,2 · Pesadelo ×1,45 (com +50% de ouro).</p>
+    <div class="chips-grupo"><span class="rot">Volume dos efeitos</span>${[[0, 'Mudo'], [0.35, 'Baixo'], [0.7, 'Médio'], [1, 'Alto']].map(([v, n]) => `<button class="chip-btn ${Math.abs((C.som ?? 0.7) - v) < 0.01 ? 'on' : ''}" data-act="cfg" data-k="som" data-v="${v}">${n}</button>`).join('')}</div>
+    <div class="chips-grupo"><span class="rot">Música nas lutas</span>${[['sim', 'Ligada'], ['nao', 'Desligada']].map(([v, n]) => `<button class="chip-btn ${(C.musica ? 'sim' : 'nao') === v ? 'on' : ''}" data-act="cfg" data-k="musica" data-v="${v}">${n}</button>`).join('')}</div>
+    <div class="chips-grupo"><span class="rot">Vibração</span>${[['sim', 'Ligada'], ['nao', 'Desligada']].map(([v, n]) => `<button class="chip-btn ${(C.vibrar !== false ? 'sim' : 'nao') === v ? 'on' : ''}" data-act="cfg" data-k="vibrar" data-v="${v}">${n}</button>`).join('')}</div>
+    <div class="chips-grupo"><span class="rot">Câmera lenta no golpe final</span>${[['sim', 'Ligada'], ['nao', 'Desligada']].map(([v, n]) => `<button class="chip-btn ${(C.lenta !== false ? 'sim' : 'nao') === v ? 'on' : ''}" data-act="cfg" data-k="lenta" data-v="${v}">${n}</button>`).join('')}</div>
+    <p class="dica">A vibração funciona em celulares Android; o iPhone não permite vibrar pelo navegador. O som começa depois do primeiro toque na tela.</p>
+    <span class="rot">Progresso</span>
+    <p class="dica" id="status-nuvem">${textoStatusNuvem()}</p>
+    <div class="acoes"><button class="btn" data-act="exportar">Exportar save</button><button class="btn" data-act="importar">Importar save</button></div>
+    <button class="btn" id="btn-nuvem" data-act="nuvem-salvar" ${Nuvem.estado === 'ativa' ? '' : 'hidden'}>Salvar na conta agora</button>
+    <div class="derivados">
+      <span>Lutas <b>${fmt(S.lutas)}</b></span><span>Vitórias <b>${fmt(S.vitorias)}</b></span>
+      <span>Temporadas <b>${fmt(S.temporadas)}</b></span><span>Copas <b>${fmt(S.copas)}</b></span>
+      <span>Promoções <b>${fmt(S.promocoes)}</b></span><span>Expedições <b>${fmt(S.expedicoes)}</b></span>
+      <span>Lendários <b>${fmt(S.lendarios)}</b></span><span>Maior golpe <b>${fmt(S.maiorGolpe)}</b></span>
+    </div>
+    <button class="btn" data-act="estatisticas">${canvasIcone('estatisticas', 16)} Ver estatísticas completas</button>
+    ${STATE.criador.liberado ? `<button class="btn criador-btn" data-act="criador">${canvasIcone('criador', 16)} Modo Criador</button>` : ''}
+    <button class="btn perigo" data-act="reiniciar">Reiniciar jogo</button>
+    <button class="versao" data-act="versao">Liga das Lâminas · Fase 4.1 · v0.4.1</button>`, { dados: { config: true } });
+}
+function mostrarResumoOffline(r) {
+  if (!r || r.minutos < 1) return;
+  const prontas = expedicoesProntas().length;
+  abrirModal(`<h2>Enquanto você esteve fora</h2>
+    <p class="muted">Você ficou fora por ${fmtDuracao(r.minutos)}${r.minutos >= capOfflineMin() ? ` (limite de ${fmt1(capOfflineMin() / 60)} h)` : ''}.</p>
+    <div class="lista">
+      <div class="card">${canvasIcone('moeda', 32)}<div class="card-corpo"><b>+${fmt(r.ouro)} ouro no cofre</b><small>Bilheteria · ${fmt1(taxaBilheteria())} ouro/min${STATE.cofre >= capCofre() ? ' · cofre cheio' : ''}</small></div></div>
+      <div class="card">${canvasIcone('campo', 32)}<div class="card-corpo"><b>+${fmt(r.xp)} XP para cada mercenário</b><small>Campo de Treino · ${fmt1(xpCampoMin())} XP/min${r.sabedoria ? ' · com Tônico de Sabedoria' : ''}</small></div></div>
+      ${prontas ? `<div class="card">${canvasIcone('expedicao', 32)}<div class="card-corpo"><b>${prontas} ${prontas === 1 ? 'expedição voltou' : 'expedições voltaram'}</b><small>Colete as recompensas na Guilda.</small></div></div>` : ''}
+    </div>
+    ${r.subidas.length ? `<div class="subidas">${r.subidas.map((s) => `<div class="subida"><b>${esc(s.m.nome)}: nível ${s.de} → ${s.para}</b><small>${txtGanhos(s.ganhos)}</small></div>`).join('')}</div>` : ''}
+    <button class="btn primario enorme" data-act="fechar-modal">Ótimo!</button>`);
+}
+function mostrarExpedicao(r) {
+  const X = EXPEDICOES[r.tipo];
+  UI.ultimoDrop = r.drop;
+  abrirModal(`<h2>${canvasIcone('expedicao', 20)} ${esc(r.m.nome)} voltou ${X.da}</h2>
+    <div class="mvp">${canvasLook(lookMeu(r.m), 54)}<div><b>${esc(r.m.nome)}</b><small>${CLASSES[r.m.classe].nome} · nv. ${r.m.nivel}</small></div></div>
+    <div class="recompensas"><span>${canvasIcone('moeda', 18)} +${fmt(r.ouro)} ouro</span><span>+${fmt(r.xp)} XP</span>${r.emblemas ? `<span>${canvasIcone('emblema', 18)} +${r.emblemas}</span>` : ''}</div>
+    ${r.sub ? `<div class="subida"><b><span class="tag ouro nivel-up">Nível!</span>${esc(r.m.nome)}: ${r.sub.de} → ${r.sub.para}</b><small>${txtGanhos(r.sub.ganhos)}</small></div>` : ''}
+    ${r.drop ? blocoBau(r.mapa ? 'O mapa levou a um tesouro! Toque para abrir' : 'Achou um baú! Toque para abrir') : '<p class="dica centro">Desta vez, nenhum baú pelo caminho.</p>'}
+    <button class="btn primario enorme" data-act="fechar-modal">Ótimo!</button>`);
+}
+
+// Várias expedições coletadas de uma vez: um resumo só, com os baús já abertos
+function mostrarColetaTodas(rs) {
+  const ouro = rs.reduce((a, r) => a + r.ouro, 0), emb = rs.reduce((a, r) => a + r.emblemas, 0), drops = rs.filter((r) => r.drop);
+  abrirModal(`<h2>${canvasIcone('expedicao', 20)} ${rs.length} expedições voltaram</h2>
+    <div class="recompensas"><span>${canvasIcone('moeda', 18)} +${fmt(ouro)} ouro</span>${emb ? `<span>${canvasIcone('emblema', 18)} +${emb}</span>` : ''}<span>${canvasIcone('bau', 18)} ${drops.length} ${drops.length === 1 ? 'baú' : 'baús'}</span></div>
+    <div class="lista">${rs.map((r) => `<div class="card">${canvasLook(lookMeu(r.m), 32)}<div class="card-corpo"><b>${esc(r.m.nome)} · ${EXPEDICOES[r.tipo].nome}</b>
+      <small>+${fmt(r.ouro)} ouro · +${fmt(r.xp)} XP${r.emblemas ? ` · +${r.emblemas} Emblema` : ''}</small>
+      ${r.sub ? `<small class="ok">Nível ${r.sub.de} → ${r.sub.para}</small>` : ''}</div></div>`).join('')}</div>
+    ${drops.length ? `<span class="rot">Baús abertos</span><div class="lista">${drops.map((r) => cardItem(r.drop) + (r.drop.vendido ? `<p class="dica">Inventário cheio: vendido por ${fmt(r.drop.vendido)} ouro.</p>` : '')).join('')}</div>` : ''}
+    <button class="btn primario enorme" data-act="fechar-modal">Ótimo!</button>`);
+}
+

@@ -1,4 +1,6 @@
-# Estado do projeto — Liga das Lâminas
+# Estado do projeto — Veldria: Guilds of the Five (antes Liga das Lâminas)
+
+**Repositório:** github.com/koningste1n/Veldria-Guilds-of-the-Five · **Jogar:** https://koningste1n.github.io/Veldria-Guilds-of-the-Five/ (publica sozinho a cada envio para `main`).
 
 _Atualizado em 14/10/2026._
 
@@ -33,13 +35,15 @@ Estimativa: 8 a 12 conversas de trabalho.
 
 ## Ordem combinada
 
-1. ✅ Código-fonte recuperado e versionado.
+1. ✅ Código-fonte recuperado, versionado no GitHub e publicado no GitHub Pages.
 2. Save com número de versão e migração, mais exportar/importar como texto.
 3. Registro de partidas.
 4. Motor novo de batalha, primeiro 1v1 e depois 3v3, ligado na interface só quando vencer a IA atual nas simulações.
 5. Personalidades, relíquias com padrões de efeito, evoluções A/B.
 
 ## Pendências de ideia
+
+- Trocar o nome dentro do jogo para Veldria sem mudar a chave do save (`ligaDasLaminas.save.v1`).
 
 - Uma frase de sensação-alvo: o que deve prender o jogador.
 - Os primeiros 3 minutos de um jogador novo (hoje ele vê 7 menus).

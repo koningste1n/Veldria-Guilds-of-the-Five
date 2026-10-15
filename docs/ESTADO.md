@@ -48,7 +48,7 @@ Os testes Playwright antigos (`luta.py`, `lideres.py`, `nuvem.py`, `perf.py`…)
 | # | Etapa | Conversas | Modelo | Status |
 |---|---|---|---|---|
 | E1 | Código recuperado, no GitHub e publicado | — | — | ✅ |
-| E2 | Nome Veldria no jogo, tutorial progressivo nas 5 primeiras lutas, save v6 | 1 | Opus 5.5 | ✅ 15/10 |
+| E2 | Nome Veldria no jogo, save v6 (tutorial progressivo feito e **desligado** — ver Pendências) | 1 | Opus 5.5 | ✅ 15/10 |
 | E3 | Registro de partidas, ficha de recordes + melhores da temporada, simulador de balanço em Node | 1–2 | Opus 5.5 | **próxima** |
 | E4 | Motor novo: IA de utilidade, 3×3 + posturas, câmera, 3v3 melhor de 3; decisão de orientação de tela | 3–4 | **Fable 5.1** | |
 | E5a | Curva 1→100, Ascensão como portão, maestrias 20/50, Rank S, A/B nv. 15, catálogo com raridades, pity | 2 | **Fable 5.1** | |
@@ -74,6 +74,22 @@ O que mudou no código:
 - `27_…`: cada luta do tutorial avança `STATE.tutorial`.
 - `30_…`: `resultado-ok` chama `encerrarLuta()` por último, para o tutorial levar à aba recém-liberada.
 - `src/shell.html`: título novo. Chave do save inalterada.
+
+## Pendências (adiadas pelo Kevin)
+
+### Tutorial do jogador novo — desligado em 15/10/2026
+
+O tutorial progressivo foi publicado e o Kevin testou no celular. Veredito: **adiar** até o jogo ter mais sistemas (motor novo, personalidades, rivais), quando o tutorial passar a ser relevante.
+
+| Retorno do Kevin | O que fazer quando voltar ao assunto |
+|---|---|
+| "Parece engessado" | Ensinar fazendo, não com balão de texto: o jogador aprende a luta lutando |
+| "Não direciona onde o iniciante deve clicar" | Destacar o botão exato (anel pulsante ou seta sobre LUTAR, sobre o mercenário etc.), não só a aba |
+| "Os avisos não sumiram com o botão Entendi" | **Bug não reproduzido no teste automático** (no Playwright o balão some). Investigar no celular real antes de religar |
+
+Como está agora: `TUTORIAL_LIGADO = false` em `28_…`. Todo jogador (novo ou antigo) vê os 6 menus e a engrenagem desde o início e nenhum balão. O código do tutorial (`TUTORIAL`, `liberado()`, `mostrarTutorial()`) e o `testes/tutorial.py` ficaram guardados; o teste se pula sozinho enquanto o tutorial estiver desligado. Saves com `tutorial` entre 0 e 5 são normalizados para 99 ao abrir. **Antes de religar:** decidir o que fazer com quem já passou da fase inicial (não pode travar menus de quem já jogou).
+
+Hoje, quem começa do zero não tem tutorial nenhum (o tutorial antigo de 6 dicas foi substituído). Aceito pelo Kevin enquanto os testers são amigos próximos.
 
 ## Próxima conversa começa por… (E3, Opus 5.5)
 

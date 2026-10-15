@@ -43,7 +43,9 @@ const TUTORIAL = [
   { libera: ['torre', 'config'], aba: 'torre', txt: 'Novo menu: Torre Infinita, com Guardiões a cada 10 andares. As configurações estão na engrenagem lá em cima. A guilda agora é toda sua!' },
 ];
 const TUT_FIM = TUTORIAL.length - 1;   // 5: depois da 5ª luta
-const tutorialAtivo = () => !!STATE && STATE.tutorial < 99;
+// Desligado em 15/10/2026 a pedido do Kevin: volta quando o jogo estiver mais completo (ver docs/ESTADO.md, Pendências).
+const TUTORIAL_LIGADO = false;
+const tutorialAtivo = () => TUTORIAL_LIGADO && !!STATE && STATE.tutorial < 99;
 function liberado(id) {
   if (!tutorialAtivo()) return true;
   for (let i = 0; i <= STATE.tutorial; i++) if (TUTORIAL[i].libera.includes(id)) return true;
@@ -63,7 +65,6 @@ function mostrarTutorial() {
 const NOVIDADES = {
   6: [
     ['coroa', 'Agora é Veldria: Guilds of the Five', 'O jogo ganhou nome novo. Seu save, seus mercenários e sua divisão continuam iguais.'],
-    ['liga', 'Começo mais simples para novos jogadores', 'Quem começa agora vê só a Liga e ganha um menu novo a cada uma das 5 primeiras lutas. Para você, nada muda: tudo continua liberado.'],
     ['engrenagem', 'Exportar e importar save', 'Em Configurações: copie o código do save para guardar ou continuar em outro aparelho.'],
   ],
   2: [

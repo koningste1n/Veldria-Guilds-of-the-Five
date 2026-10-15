@@ -65,6 +65,8 @@ async def save_antigo(b, base):
     await ctx.close()
 
 async def main():
+    if 'const TUTORIAL_LIGADO = false' in ARQ.read_text():
+        print('Tutorial desligado (TUTORIAL_LIGADO = false): teste pulado.'); return
     async with async_playwright() as p:
         b = await p.chromium.launch()
         st = await novo_jogador(b)

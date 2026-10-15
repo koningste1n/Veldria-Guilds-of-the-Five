@@ -22,7 +22,7 @@ function estadoNovo(guilda) {
     liga: null, amistoso: null,
     config: configPadrao(),
     stats: statsPadrao(), torre: torrePadrao(), historico: [],
-    pity: { semEpico: 0, semLendario: 0 }, tutorial: 0, tutorialVisto: -1,
+    pity: { semEpico: 0, semLendario: 0 }, tutorial: TUTORIAL_LIGADO ? 0 : 99, tutorialVisto: -1,
     criador: criadorPadrao(), novidades: [],
   };
 }
@@ -132,6 +132,7 @@ function validarSave(s) {
   if (versaoAntiga < 6) { st.tutorial = (st.tutorial >= 4 || st.stats.lutas > 0) ? 99 : 0; st.tutorialVisto = -1; }
   st.tutorial = st.tutorial >= TUT_FIM + 1 ? 99 : clamp(st.tutorial | 0, 0, TUT_FIM);
   if (typeof st.tutorialVisto !== 'number') st.tutorialVisto = -1;
+  if (!TUTORIAL_LIGADO) st.tutorial = 99;   // tutorial desligado: ninguém fica com menu travado
   return st;
 }
 function normalizarLiga(st) {

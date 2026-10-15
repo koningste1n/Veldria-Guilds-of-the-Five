@@ -3998,7 +3998,7 @@ function estadoNovo(guilda) {
     liga: null, amistoso: null,
     config: configPadrao(),
     stats: statsPadrao(), torre: torrePadrao(), historico: [],
-    pity: { semEpico: 0, semLendario: 0 }, tutorial: 0, tutorialVisto: -1,
+    pity: { semEpico: 0, semLendario: 0 }, tutorial: TUTORIAL_LIGADO ? 0 : 99, tutorialVisto: -1,
     criador: criadorPadrao(), novidades: [],
   };
 }
@@ -4108,6 +4108,7 @@ function validarSave(s) {
   if (versaoAntiga < 6) { st.tutorial = (st.tutorial >= 4 || st.stats.lutas > 0) ? 99 : 0; st.tutorialVisto = -1; }
   st.tutorial = st.tutorial >= TUT_FIM + 1 ? 99 : clamp(st.tutorial | 0, 0, TUT_FIM);
   if (typeof st.tutorialVisto !== 'number') st.tutorialVisto = -1;
+  if (!TUTORIAL_LIGADO) st.tutorial = 99;   // tutorial desligado: ninguém fica com menu travado
   return st;
 }
 function normalizarLiga(st) {
@@ -5917,7 +5918,9 @@ const TUTORIAL = [
   { libera: ['torre', 'config'], aba: 'torre', txt: 'Novo menu: Torre Infinita, com Guardiões a cada 10 andares. As configurações estão na engrenagem lá em cima. A guilda agora é toda sua!' },
 ];
 const TUT_FIM = TUTORIAL.length - 1;   // 5: depois da 5ª luta
-const tutorialAtivo = () => !!STATE && STATE.tutorial < 99;
+// Desligado em 15/10/2026 a pedido do Kevin: volta quando o jogo estiver mais completo (ver docs/ESTADO.md, Pendências).
+const TUTORIAL_LIGADO = false;
+const tutorialAtivo = () => TUTORIAL_LIGADO && !!STATE && STATE.tutorial < 99;
 function liberado(id) {
   if (!tutorialAtivo()) return true;
   for (let i = 0; i <= STATE.tutorial; i++) if (TUTORIAL[i].libera.includes(id)) return true;
@@ -5937,7 +5940,6 @@ function mostrarTutorial() {
 const NOVIDADES = {
   6: [
     ['coroa', 'Agora é Veldria: Guilds of the Five', 'O jogo ganhou nome novo. Seu save, seus mercenários e sua divisão continuam iguais.'],
-    ['liga', 'Começo mais simples para novos jogadores', 'Quem começa agora vê só a Liga e ganha um menu novo a cada uma das 5 primeiras lutas. Para você, nada muda: tudo continua liberado.'],
     ['engrenagem', 'Exportar e importar save', 'Em Configurações: copie o código do save para guardar ou continuar em outro aparelho.'],
   ],
   2: [

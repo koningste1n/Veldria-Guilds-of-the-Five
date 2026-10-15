@@ -25,7 +25,7 @@ function rolarCresc(cls, pot) {
 function gerarMerc(cls, nivel, pot, evitar = []) {
   return {
     id: novoId(), nome: nomeLivre(evitar), classe: cls, nivel, xp: 0, pot, cresc: rolarCresc(cls, pot), tracos: rolarTracos(pot),
-    equip: { arma: null, armadura: null, amuleto: null }, pergaminhos: [], ascensoes: 0,
+    equip: { arma: null, armadura: null, amuleto: null }, pergaminhos: [], ascensoes: 0, evolucao: null,
     linha: CLASSES_FRENTE.includes(cls) ? 'frente' : 'tras', pos: CLASSES_FRENTE.includes(cls) ? 1 : 7, postura: 'auto', tatica: 'auto',
     pele: rint(0, 3), cabelo: CABELO_PADRAO[cls] != null && Math.random() < 0.5 ? CABELO_PADRAO[cls] : rint(0, 5),
   };
@@ -115,6 +115,11 @@ function poderLista(lista, mult = 1) { return lista.reduce((t, m) => t + poderMe
 const xpProx = (n) => Math.round(50 * Math.pow(n, 1.5));
 const nivelMax = (m) => TETO_POR_ASCENSAO[Math.min(2, (m && m.ascensoes) || 0)];
 const podeAscender = (m) => (m.ascensoes || 0) < 2 && m.nivel >= ASCENSOES[m.ascensoes || 0].nivel;
+// Evolução A/B (E5a): escolha única no nível 15; Campeões não evoluem
+const evoDe = (m) => (m && !m.campeao && (m.evolucao === 'a' || m.evolucao === 'b') ? m.evolucao : null);
+const podeEvoluir = (m) => !m.campeao && !evoDe(m) && m.nivel >= NIVEL_EVOLUCAO && !!EVOLUCOES[m.classe];
+function evoluir(m, caminho) { if (!podeEvoluir(m) || !EVOLUCOES[m.classe][caminho]) return false; m.evolucao = caminho; return true; }
+const nomeEvo = (m) => (evoDe(m) ? EVOLUCOES[m.classe][evoDe(m)].nome : null);
 const slotsPergaminho = (m) => (m.nivel >= 5 ? 1 : 0) + (m.ascensoes || 0);
 const skillDe = (m) => m.skillFixa || (m.campeao ? CAMPEOES[m.campeao].skill : CLASSES[m.classe].skill);
 function xpMultGlobal() {

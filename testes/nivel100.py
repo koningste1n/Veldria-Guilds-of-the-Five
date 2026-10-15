@@ -80,7 +80,7 @@ async def main():
             "if (!sessionStorage.getItem('v12')) { sessionStorage.setItem('v12', '1'); localStorage.setItem('ligaDasLaminas.save.v1', " + json.dumps(json.dumps(v12)) + "); }")
         await pg.goto(ARQ.as_uri()); await pg.wait_for_timeout(1500)
         st = await pg.evaluate(SAVE)
-        checa(st['versao'] == 13, f'save v12 abre como v13 ({st["versao"]})')
+        checa(st['versao'] == 14, f'save v12 abre como v14 ({st["versao"]})')
         lidos = [(m['nivel'], m['ascensoes'], int(m['xp'])) for m in st['mercs'][:3]]   # + migalhas do Campo de Treino ocioso
         checa(lidos == antigos, f'nível, Ascensões e XP preservados: {lidos}')
         tetos = await pg.evaluate("STATE.mercs.slice(0, 3).map((m) => nivelMax(m))")

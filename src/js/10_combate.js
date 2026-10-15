@@ -8,7 +8,9 @@ const E = 256 / 180;   // escala das distâncias (valores calibrados na arena an
 const DT = 1 / 30;
 // Versão das regras de combate: sobe a cada mudança que altere o resultado de uma luta.
 // Um registro só é reproduzível com a mesma versão (ver reproduzirPartida).
-const REGRAS_COMBATE = 3;   // v2 (15/10/2026): cérebro de utilidade (10b) · v3: posição inicial pela formação 3×3 e posturas
+const REGRAS_COMBATE = 4;   // v2 (15/10/2026): cérebro de utilidade (10b) · v3: posição inicial pela formação 3×3 e posturas · v4: evoluções A/B (E5a)
+// Registros de regras v3 reproduzem iguais no v4: sem evolução, nenhuma conta mudou (o teste de reprodução confere)
+const REGRAS_COMPATIVEIS = [3, 4];
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const minPor = (arr, f) => { let best = null, bv = Infinity; for (const o of arr) { const v = f(o); if (v < bv) { bv = v; best = o; } } return best; };
 const PAPEIS_CONJURADORES = ['mago', 'curandeira', 'suporte', 'invocador'];
@@ -20,7 +22,7 @@ function unidadeBase(b, team, props) {
     uid: b.uidN++, team, face: team === 0 ? 1 : -1, x: 0, y: 0,
     invocacao: false, dono: null, vidaT: Infinity, flags: new Set(), skills: [], skill: null, passiva: null, proj: null,
     crit: 0.05, critDmg: 1.5, esquiva: 0, roubo: 0, alcance: ALCANCE.corpo, papel: 'lutador', linha: 'frente', tatica: 'auto',
-    st: { stun: 0, freeze: 0, slow: 0, taunt: null, dots: [], shield: null, buffs: [], debuffs: [] },
+    st: { stun: 0, freeze: 0, slow: 0, slowLeve: 0, taunt: null, dots: [], shield: null, buffs: [], debuffs: [] },
     energia: 0, capitao: false, vivo: true, reviver: 0, alvo: null, retarget: 0, atkT: 0.3 + b.rng() * 0.5, atkN: 0, primeiro: true,
     folegoUsado: false, renasceu: false, regenT: 0, curaAcc: 0, curaEmit: 0, dotAcc: {}, dotEmit: 0,
     anim: { atk: 0, cast: 0, hurt: 0, flash: 0, dash: 0, empurrao: 0, moveu: false, morteT: 0, fase: b.rng() * 10 },
@@ -39,8 +41,9 @@ function novaUnidade(b, m, team, lado) {
     def: s.def * mult * (1 + (T.defPct || 0)), agi: s.agi * mult * (1 + (T.agiPct || 0)),
     crit: Math.min(0.8, s.crit + (T.crit || 0)), critDmg: s.critDmg, esquiva: Math.min(0.6, s.esquiva + (T.esquiva || 0)), roubo: s.roubo + (T.roubo || 0),
     alcance: s.alcance, flags, passiva: c.passiva, proj: m.campeao === 'okon' ? null : c.proj, papel: c.papelId, linha: m.linha, tatica: m.tatica, postura: m.postura || 'auto',
-    capitao: m.id === lado.capitaoId, chefe: m.chefe || null, campeao: m.campeao || null,
+    capitao: m.id === lado.capitaoId, chefe: m.chefe || null, campeao: m.campeao || null, evo: evoDe(m),
   });
+  if (u.evo === 'a' && u.cls === 'machadeiro') u.def *= 0.9;   // Berserker
   const sk0 = skillDe(m);
   u.skills.push({ id: sk0, cd: SKILLS[sk0].cd * (1 - recarga), t: SKILLS[sk0].cd * (0.35 + b.rng() * 0.2), principal: true });
   for (const it of m.pergaminhos || []) {
@@ -48,6 +51,7 @@ function novaUnidade(b, m, team, lado) {
     if (P && P.tipo === 'ativa') u.skills.push({ id: it.pid, cd: P.cd * (1 - recarga), t: P.cd * (0.4 + b.rng() * 0.3) });
   }
   u.skill = u.skills[0];
+  if (u.evo === 'a' && u.cls === 'lanceira') { u.skill.cd *= 0.6; u.skill.t *= 0.6; }   // Cavaleira
   u.vida = u.vidaMax;
   // Cérebro novo (E4, 10b_cerebro-v2.js): ligado por lado da luta. Sem ele, vale a IA atual deste arquivo.
   u.cerebro = lado.ia === 'v2' ? criarCerebro(b, u) : null;
@@ -117,18 +121,20 @@ function atqEf(u) {
   let m = 1;
   for (const bf of u.st.buffs) m += bf.atq || 0;
   for (const df of u.st.debuffs) m += df.atq || 0;
-  if (u.passiva === 'furia') m += Math.min(0.30, (1 - u.vida / u.vidaMax) / 3);
+  if (u.passiva === 'furia') m += Math.min(u.evo === 'a' ? 0.50 : 0.30, (1 - u.vida / u.vidaMax) / (u.evo === 'a' ? 1.8 : 3));   // Berserker: até +50%
   return u.atq * Math.max(0.2, m);
 }
+function esquivaEf(u) { let e = u.esquiva; for (const bf of u.st.buffs) e += bf.esquiva || 0; return Math.min(0.85, e); }
 function agiEf(u, b) {
   let m = 1;
   for (const bf of u.st.buffs) m += bf.agi || 0;
+  for (const df of u.st.debuffs) m += df.agi || 0;
   if (b && u.flags.has('pressa') && b.t < 6) m += 0.3;
   if (u.flags.has('luaSangue') && u.vida < u.vidaMax * 0.5) m += 0.15;
   return u.agi * m;
 }
 const intervalo = (u, b) => 1.8 * 50 / (50 + agiEf(u, b)) * (u.st.slow > 0 ? 1.25 : 1);
-const velocidade = (u, b) => (19.5 + agiEf(u, b) * 0.26) * E * (u.st.slow > 0 ? 0.6 : 1);
+const velocidade = (u, b) => (19.5 + agiEf(u, b) * 0.26) * E * (u.st.slow > 0 ? 0.6 : u.st.slowLeve > 0 ? 0.8 : 1);
 const inimigosDe = (b, u) => b.units.filter((o) => o.vivo && o.team !== u.team);
 const aliadosDe = (b, u) => b.units.filter((o) => o.vivo && o.team === u.team);
 const daRetaguarda = (o) => !o.invocacao && (o.linha === 'tras' || o.alcance >= 43);
@@ -174,7 +180,14 @@ function atualizarUnidade(b, u) {
   const st = u.st, a = u.anim;
   a.atk = Math.max(0, a.atk - DT); a.cast = Math.max(0, a.cast - DT); a.hurt = Math.max(0, a.hurt - DT); a.flash = Math.max(0, a.flash - DT);
   a.dash = Math.max(0, a.dash - DT); a.empurrao = Math.max(0, a.empurrao - DT);
-  if (u.invocacao) { u.vidaT -= DT; if (u.vidaT <= 0) { morrer(b, u, null, true); return; } }
+  if (u.invocacao) {
+    u.vidaT -= DT; if (u.vidaT <= 0) { morrer(b, u, null, true); return; }
+    if (u.provoca) {   // Legião: os esqueletos provocam quem estiver perto, a cada 2 s
+      u.provocaT = (u.provocaT || 0) - DT;
+      if (u.provocaT <= 0) { u.provocaT = 2; for (const o of b.units) if (o.vivo && o.team !== u.team && !o.st.taunt && dist(u, o) < 26 * E) { o.st.taunt = { src: u, t: 1.5 }; o.alvo = u; } }
+    }
+  }
+  st.slowLeve = Math.max(0, st.slowLeve - DT);
   if (st.shield) { st.shield.t -= DT; if (st.shield.t <= 0 || st.shield.v <= 0.5) st.shield = null; }
   if (st.taunt) { st.taunt.t -= DT; if (st.taunt.t <= 0 || !st.taunt.src.vivo) st.taunt = null; }
   st.slow = Math.max(0, st.slow - DT); st.stun = Math.max(0, st.stun - DT); st.freeze = Math.max(0, st.freeze - DT);
@@ -216,7 +229,7 @@ function atualizarUnidade(b, u) {
     if (!u.vivo || u.st.stun > 0) break;
     if (sk.t > 0) { sk.t -= DT; continue; }
     if (u.cerebro && !querUsarV2(b, u, sk, 1)) continue;
-    if (usarSkill(b, u, sk, 1)) { sk.t = sk.cd; break; }
+    if (usarSkill(b, u, sk, 1)) { sk.t = sk.resetar ? 0.3 : sk.cd; sk.resetar = false; break; }   // Assassina: recarga zerada
   }
   if (!u.vivo) return;
   mover(b, u);
@@ -308,7 +321,7 @@ function distSegmento(p, a, b2) {
 }
 function mover(b, u) {
   const dest = u.cerebro ? destinoV2(b, u) : destinoDe(b, u);
-  const vel = velocidade(u, b) * (dest && dest.modo === 'ronda' ? 0.35 : dest && dest.modo === 'fuga' ? 1.1 : 1);
+  const vel = velocidade(u, b) * (dest && dest.modo === 'ronda' ? 0.35 : dest && dest.modo === 'fuga' ? (u.evo === 'b' && u.cls === 'arqueira' ? 1.32 : 1.1) : 1);   // Batedora recua 20% mais rápido
   let mx = 0, my = 0;
   if (dest) {
     const [tx, ty] = dest.p;
@@ -407,7 +420,7 @@ function acertoBasico(b, u, alvo) {
 /* ---- dano, cura, morte e ressurreição ---- */
 function causarDano(b, src, alvo, mult, opt = {}) {
   if (!alvo.vivo) return 0;
-  if (opt.esquivavel && b.rng() < alvo.esquiva) { emit(b, { tipo: 'esquiva', alvo }); return 0; }
+  if (opt.esquivavel && b.rng() < esquivaEf(alvo)) { emit(b, { tipo: 'esquiva', alvo }); return 0; }
   let d = atqEf(src) * mult * 100 / (100 + alvo.def) * (0.9 + b.rng() * 0.2);
   let crit = false;
   if (opt.critForcado || b.rng() < src.crit) { crit = true; d *= src.critDmg; }
@@ -502,13 +515,13 @@ function reviver(b, u, pct) {
 }
 
 /* ---- invocações ---- */
-function criarInvocacao(b, dono, i, n, tipo, frac, vidaT) {
+function criarInvocacao(b, dono, i, n, tipo, frac, vidaT, extra = {}) {
   const lado = b.lados[dono.team];
   const u = unidadeBase(b, dono.team, {
-    nome: tipo === 'golem' ? 'Golem' : 'Esqueleto', cls: tipo, look: `${tipo}|0|0|${lado.cor1}|${lado.cor2}`, invocacao: true, dono, vidaT,
+    nome: extra.nome || (tipo === 'golem' ? 'Golem' : 'Esqueleto'), cls: tipo, look: `${tipo}|0|0|${lado.cor1}|${lado.cor2}`, invocacao: true, dono, vidaT,
     x: clamp(dono.x + dono.face * (14 + i * 4) * (tipo === 'golem' ? -1 : 1), LIMITES.x0, LIMITES.x1()), y: clamp(dono.y + (i - (n - 1) / 2) * 18, ARENA.chao, ARENA.fundo),
-    face: dono.face, vidaMax: Math.max(1, Math.round(dono.vidaMax * frac)), atq: dono.atq * frac, def: dono.def * frac, agi: dono.agi * (tipo === 'golem' ? 0.3 : frac),
-    tatica: 'perto',
+    face: dono.face, vidaMax: Math.max(1, Math.round(dono.vidaMax * frac)), atq: dono.atq * (extra.atqFrac ?? frac), def: dono.def * frac, agi: dono.agi * (tipo === 'golem' ? 0.3 : Math.min(1, frac)),
+    tatica: 'perto', provoca: !!extra.provoca, cavaleiro: !!extra.cavaleiro,
   });
   u.vida = u.vidaMax;
   b.units.push(u);
@@ -533,11 +546,18 @@ function usarSkill(b, u, sk, p) {
   switch (id) {
     /* --- habilidades de classe --- */
     case 'muralha': {
+      const bast = u.evo === 'a', egide = u.evo === 'b';   // Bastião / Égide
+      const raioProv = (bast ? 40 : sup ? 42 : 30) * E;
       const perto = ini.filter((o) => dist(u, o) < 35 * E);
       if (!sup && !perto.length && u.vida > u.vidaMax * 0.7) return false;
       u.st.shield = { v: u.vidaMax * 0.2 * p, t: 5 };
+      if (egide) {
+        const fer = minPor(aliados().filter((o) => o !== u && !o.invocacao), (o) => o.vida / o.vidaMax);
+        if (fer) fer.st.shield = { v: (fer.st.shield ? fer.st.shield.v : 0) + fer.vidaMax * 0.15 * p, t: 5 };
+      }
       ev({});
-      for (const o of ini) if (dist(u, o) < (sup ? 42 : 30) * E) { o.st.taunt = { src: u, t: sup ? 4 : 2 }; o.alvo = u; }
+      const tt = bast ? (sup ? 6 : 4) : egide ? 1 : sup ? 4 : 2;
+      for (const o of ini) if (dist(u, o) < raioProv) { o.st.taunt = { src: u, t: tt }; o.alvo = u; }
       return true;
     }
     case 'redemoinho': {
@@ -545,52 +565,76 @@ function usarSkill(b, u, sk, p) {
       const perto = ini.filter((o) => dist(u, o) <= raio);
       if (!perto.length) return false;
       ev({ raio });
-      b.atrasos.push({ t: 0.16, fn: () => { if (!u.vivo) return; for (const o of ini) if (o.vivo && dist(u, o) <= raio + 4) { causarDano(b, u, o, 1.4 * p); empurrar(o, u, sup ? 40 : 16); } } });
+      const ceif = u.evo === 'b';   // Ceifador: puxa e cura 20% do dano
+      b.atrasos.push({ t: 0.16, fn: () => { if (!u.vivo) return; for (const o of ini) if (o.vivo && dist(u, o) <= raio + 4) { const d = causarDano(b, u, o, 1.4 * p); if (ceif && d > 0) curar(b, u, u, d * 0.2, true); empurrar(o, u, ceif ? -14 : sup ? 40 : 16); } } });
       return true;
     }
     case 'investida': {
       if (!alvo) return false;
       const d = dist(u, alvo);
+      if (u.evo === 'b') {   // Sentinela: não avança; quem chega perto leva o golpe, empurrão forte e 1,5 s de atordoamento
+        if (d > 30 * E) return false;
+        const dir = alvo.x >= u.x ? 1 : -1;
+        ev({ x0: u.x, y0: u.y });
+        emit(b, { tipo: 'corte', u, alvo, forte: true });
+        causarDano(b, u, alvo, 1.3 * p);
+        if (alvo.vivo) { alvo.vx += dir * 120 * p; alvo.anim.empurrao = 0.45; alvo.st.stun = Math.max(alvo.st.stun, 1.2 * p); emit(b, { tipo: 'atordoar', alvo }); }
+        return true;
+      }
       if (d > 82 * E || (!sup && d < 14 * E)) return false;
       const x0 = u.x, y0 = u.y, dir = alvo.x >= u.x ? 1 : -1;
       [u.x, u.y] = dentroArena(alvo.x - dir * 14, alvo.y); u.face = dir; u.vista = 'lado'; u.anim.dash = 0.3;
       ev({ x0, y0 });
       emit(b, { tipo: 'corte', u, alvo, forte: true });
       causarDano(b, u, alvo, 1.5 * p);
-      if (alvo.vivo) { alvo.vx += dir * 110 * p; alvo.anim.empurrao = 0.45; alvo.st.stun = Math.max(alvo.st.stun, p); emit(b, { tipo: 'atordoar', alvo }); }
+      if (alvo.vivo) { alvo.vx += dir * 110 * p; alvo.anim.empurrao = 0.45; alvo.st.stun = Math.max(alvo.st.stun, (u.evo === 'a' ? 0.5 : 1) * p); emit(b, { tipo: 'atordoar', alvo }); }   // Cavaleira: 0,5 s
       return true;
     }
     case 'chuva': {
       if (!alvo || dist(u, alvo) > u.alcance + 21) return false;
+      if (u.evo === 'a') {   // Atiradora de Elite: Tiro Certeiro, 250% num alvo, crítico garantido
+        const alvoT = alvo;
+        ev({ tx: alvoT.x, ty: alvoT.y, raio: 6 * E, dur: 0.3, tiro: true });
+        lancarProjetil(b, u, alvoT, 'flecha', () => causarDano(b, u, alvoT, 1.5 * p, { critForcado: true }), 200);
+        return true;
+      }
+      const bate = u.evo === 'b';   // Batedora: cada onda deixa Lentidão leve
       const tx = alvo.x, ty = alvo.y, raio = (sup ? 21 : 17) * E, ondas = 3 * p;
       ev({ tx, ty, raio, dur: 0.3 + ondas * 0.3 });
       for (let i = 0; i < ondas; i++) b.atrasos.push({ t: 0.3 + i * 0.3, fn: () => {
         emit(b, { tipo: 'flechada', tx, ty, raio });
-        for (const o of b.units) if (o.vivo && o.team !== u.team && Math.hypot(o.x - tx, o.y - ty) <= raio) causarDano(b, u, o, 0.6);
+        for (const o of b.units) if (o.vivo && o.team !== u.team && Math.hypot(o.x - tx, o.y - ty) <= raio) { causarDano(b, u, o, 0.6); if (bate && o.vivo) o.st.slowLeve = Math.max(o.st.slowLeve, 2); }
       } });
       return true;
     }
     case 'bolaFogo': {
       if (!aoAlcance(14)) return false;
       ev({});
-      const raio = (sup ? 18 : 12) * E, alvoF = alvo;
+      const inc = u.evo === 'a', pira = u.evo === 'b';   // Incendiária: área e queimadura dobradas / Pira: um alvo só
+      const raio = pira ? 0 : (sup ? 18 : 12) * E * (inc ? 2 : 1), alvoF = alvo;
       lancarProjetil(b, u, alvoF, sup ? 'bolaFogoG' : 'bolaFogo', () => {
-        emit(b, { tipo: 'explosao', x: alvoF.x, y: alvoF.y - 12, raio, cor: 'fogo' });
-        causarDano(b, u, alvoF, 1.8 * p);
-        aplicarDot(b, u, alvoF, 'queimar', 0.10 * p, 4);
-        for (const o of b.units) if (o.vivo && o !== alvoF && o.team !== u.team && Math.hypot(o.x - alvoF.x, o.y - alvoF.y) <= raio) { causarDano(b, u, o, 0.9 * p); empurrar(o, alvoF, 50); if (sup) aplicarDot(b, u, o, 'queimar', 0.10, 4); }
+        if (!pira) emit(b, { tipo: 'explosao', x: alvoF.x, y: alvoF.y - 12, raio, cor: 'fogo' });
+        causarDano(b, u, alvoF, (pira ? 2.4 : inc ? 1.2 : 1.8) * p);
+        aplicarDot(b, u, alvoF, 'queimar', (inc ? 0.20 : 0.10) * p, 4);
+        if (!pira) for (const o of b.units) if (o.vivo && o !== alvoF && o.team !== u.team && Math.hypot(o.x - alvoF.x, o.y - alvoF.y) <= raio) { causarDano(b, u, o, 0.9 * p); empurrar(o, alvoF, 50); if (sup || inc) aplicarDot(b, u, o, 'queimar', (inc ? 0.20 : 0.10), 4); }
       }, 128);
       return true;
     }
     case 'lancaGelo': {
       if (!aoAlcance(14)) return false;
       ev({});
-      const alvoG = alvo;
+      const alvoG = alvo, gel = u.evo === 'a', nev = u.evo === 'b';   // Geleira: congela sempre / Nevasca: atravessa a linha
+      const x0 = u.x, y0 = u.y;
       lancarProjetil(b, u, alvoG, sup ? 'geloG' : 'gelo', () => {
         emit(b, { tipo: 'estilhaco', x: alvoG.x, y: alvoG.y - 12, sup });
-        causarDano(b, u, alvoG, 2.0 * p);
-        if (alvoG.vivo) { alvoG.st.slow = Math.max(alvoG.st.slow, 3); if (sup) { alvoG.st.freeze = 1.5; emit(b, { tipo: 'congelar', alvo: alvoG }); } }
+        causarDano(b, u, alvoG, (gel ? 1.6 : 2.0) * p);
+        if (alvoG.vivo) { alvoG.st.slow = Math.max(alvoG.st.slow, 3); if (sup || gel) { alvoG.st.freeze = Math.max(alvoG.st.freeze, 1.5); emit(b, { tipo: 'congelar', alvo: alvoG }); } }
         if (sup) for (const o of b.units) if (o.vivo && o !== alvoG && o.team !== u.team && Math.hypot(o.x - alvoG.x, o.y - alvoG.y) <= 17 * E) { o.st.slow = Math.max(o.st.slow, 3); causarDano(b, u, o, 0.7); }
+        if (nev) {   // todos na linha de tiro (até 70 px além do alvo), Lentidão leve por 3 s
+          const dx = alvoG.x - x0, dy = alvoG.y - y0, L = Math.hypot(dx, dy) || 1, fim = { x: alvoG.x + (dx / L) * 70 * E, y: alvoG.y + (dy / L) * 70 * E };
+          alvoG.st.slowLeve = Math.max(alvoG.st.slowLeve, 3);
+          for (const o of b.units) if (o.vivo && o !== alvoG && o.team !== u.team && distSegmento(o, { x: x0, y: y0 }, fim) <= 14 * E) { causarDano(b, u, o, 1.4 * p); if (o.vivo) o.st.slowLeve = Math.max(o.st.slowLeve, 3); }
+        }
       }, 160);
       return true;
     }
@@ -598,7 +642,12 @@ function usarSkill(b, u, sk, p) {
       const al = aliados(), ferido = minPor(al, (o) => o.vida / o.vidaMax);
       if (!ferido || (!sup && ferido.vida / ferido.vidaMax > 0.7)) return false;
       ev({ alvo: ferido });
-      curar(b, u, ferido, atqEf(u) * 2.8 * p);
+      if (u.evo === 'a') { for (const o of al) curar(b, u, o, atqEf(u) * (o === ferido ? 2.8 : 1.0) * p); return true; }   // Sacerdotisa: cura todos (o mais ferido como sempre, 280%; os outros, 100%)
+      curar(b, u, ferido, atqEf(u) * (u.evo === 'b' ? 2.0 : 2.8) * p);
+      if (u.evo === 'b') {   // Inquisidora: fere quem está mais perto do curado
+        const ini2 = minPor(ini.filter((o) => dist(o, ferido) < 70 * E), (o) => dist(o, ferido));
+        if (ini2) { emit(b, { tipo: 'raio', de: ferido, para: ini2 }); causarDano(b, u, ini2, 1.5 * p); }
+      }
       if (sup) for (const o of al) if (o !== ferido) curar(b, u, o, atqEf(u) * 0.8);
       return true;
     }
@@ -611,22 +660,39 @@ function usarSkill(b, u, sk, p) {
       ev({ x0, y0, alvo: t2 });
       emit(b, { tipo: 'corte', u, alvo: t2, forte: true });
       causarDano(b, u, t2, 2.0 * p);
+      if (u.evo === 'a' && !t2.vivo) sk.resetar = true;   // Assassina: matou, recarga zera
+      if (u.evo === 'b') u.st.buffs.push({ esquiva: 0.4, t: 2 });   // Sombra: 2 s quase impossível de acertar
       return true;
     }
     case 'hino': {
       if (!sup && b.t < 2) return false;
+      if (u.evo === 'b') {   // Dissonante: maldição nos inimigos próximos
+        const perto = ini.filter((o) => !o.invocacao);   // a canção alcança a arena inteira
+        if (!perto.length) return false;
+        for (const o of perto) o.st.debuffs.push({ atq: -0.30 * p, agi: -0.30 * p, t: 8 });
+        ev({ aliados: perto, maldicao: true });
+        return true;
+      }
       const al = aliados();
-      for (const o of al) o.st.buffs.push({ atq: 0.30 * p, agi: 0.30 * p, t: 8 });
+      for (const o of al) o.st.buffs.push({ atq: 0.30 * p, agi: 0.30 * p, t: u.evo === 'a' ? 10 : 8 });   // Maestro: 10 s
       ev({ aliados: al });
       return true;
     }
     case 'esqueletos': {
+      if (u.evo === 'b') {   // Necromante: um Cavaleiro de Ossos permanente
+        const cav = b.units.find((o) => o.vivo && o.dono === u && o.cavaleiro);
+        if (cav) { if (!sup) return false; ev({}); curar(b, u, cav, cav.vidaMax); cav.st.buffs.push({ atq: 0.3, t: 8 }); return true; }
+        ev({});
+        criarInvocacao(b, u, 0, 1, 'esqueleto', 0.9, Infinity, { nome: 'Cavaleiro de Ossos', atqFrac: 0.7, cavaleiro: true });
+        return true;
+      }
       const meus = b.units.filter((o) => o.vivo && o.dono === u).length;
-      const max = sup ? 6 : 4;
+      const leg = u.evo === 'a';   // Legião: 3 por vez, até 6, provocam
+      const max = leg ? (sup ? 8 : 6) : sup ? 6 : 4;
       if (meus >= max) return false;
-      const n = Math.min(2 * p, max - meus);
+      const n = Math.min((leg ? 3 : 2) * p, max - meus);
       ev({});
-      for (let i = 0; i < n; i++) criarInvocacao(b, u, i, n, 'esqueleto', 0.36, 12);
+      for (let i = 0; i < n; i++) criarInvocacao(b, u, i, n, 'esqueleto', leg ? 0.25 : 0.36, 12, { provoca: leg });
       return true;
     }
     /* --- Campeões --- */
@@ -818,7 +884,7 @@ function aplicarEntrada(b, e) {
 }
 function entradaJogador(b, e) { e.n = b.n; b.entradas.push(e); aplicarEntrada(b, e); }
 // Campos do mercenário que afetam o combate (atributos, habilidades, posição, tática) + aparência para exibir
-const CAMPOS_MERC_REG = ['id', 'nome', 'classe', 'nivel', 'pot', 'cresc', 'tracos', 'ascensoes', 'campeao', 'chefe', 'skillFixa', 'bonusCriador', 'linha', 'pos', 'postura', 'tatica', 'visual', 'pele', 'cabelo'];
+const CAMPOS_MERC_REG = ['id', 'nome', 'classe', 'nivel', 'pot', 'cresc', 'tracos', 'ascensoes', 'evolucao', 'campeao', 'chefe', 'skillFixa', 'bonusCriador', 'linha', 'pos', 'postura', 'tatica', 'visual', 'pele', 'cabelo'];
 function mercParaRegistro(m) {
   const o = {};
   for (const k of CAMPOS_MERC_REG) if (m[k] != null) o[k] = m[k];
@@ -843,7 +909,7 @@ function assinaturaLuta(b, res) {
 function reproduzirPartida(reg) {
   const R = reg.replay;
   if (!R) return { erro: 'sem-dados' };
-  if (reg.regras !== REGRAS_COMBATE) return { erro: 'regras' };
+  if (!REGRAS_COMPATIVEIS.includes(reg.regras)) return { erro: 'regras' };
   const b = criarBatalha(R.A, R.B, { ...R.opts, seed: reg.seed, silencioso: true });
   b.roteiro = (R.entradas || []).map((e) => ({ ...e }));
   simularAteFim(b);

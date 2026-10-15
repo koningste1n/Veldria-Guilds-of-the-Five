@@ -393,6 +393,15 @@ label { font-family: var(--f-display); font-size: 10px; color: var(--muted); tex
 .asc.max { box-shadow: inset 0 0 0 2px var(--ouro-esc); }
 .asc-cab { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .asc small { color: var(--muted); }
+.evo { display: flex; flex-direction: column; gap: 6px; background: var(--painel2); padding: 10px; clip-path: var(--entalhe); box-shadow: inset 0 0 0 2px var(--linha); }
+.evo.pronta { box-shadow: inset 0 0 0 2px var(--ouro); }
+.evo.feita { box-shadow: inset 0 0 0 2px var(--ouro-esc); }
+.evo small { color: var(--muted); }
+.evo-opcoes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.evo-card { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-height: 44px; padding: 10px; border: 0; background: var(--linha-esc); color: var(--tinta); text-align: left; clip-path: var(--entalhe); cursor: pointer; font-family: inherit; }
+.evo-card b { font-size: 14px; } .evo-card i { font-size: 12px; color: var(--ouro); font-style: normal; } .evo-card small { font-size: 11px; line-height: 1.3; }
+.evo-card:disabled { opacity: .6; cursor: default; }
+.chip.evo { background: #3a2d1a; color: var(--ouro); }
 .rel-grade { display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: 6px; }
 .rel-tile { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 3px 6px; border: 0; background: var(--linha-esc); clip-path: var(--entalhe); box-shadow: inset 0 0 0 2px var(--rc, var(--linha)); cursor: pointer; color: var(--tinta); min-width: 0; }
 .rel-tile small { font-size: 10px; line-height: 1.15; text-align: center; overflow-wrap: anywhere; color: var(--muted); }
@@ -709,6 +718,33 @@ const PASSIVAS = {
   golpeFatal: { nome: 'Golpe Fatal', desc: '+10% de crítico e +40% de dano crítico.' },
   ritmo: { nome: 'Ritmo', desc: 'A cada 4º ataque, reduz em 0,75 s a recarga dos aliados.' },
   colheita: { nome: 'Colheita', desc: 'Cada inimigo abatido cura 5% da VIDA máx. de todos os aliados.' },
+};
+
+// Evoluções A/B (E5a, aprovadas pelo Kevin em 15/10/2026): no nível 15 cada classe escolhe um caminho, para sempre.
+// Só nome e texto ficam aqui; os efeitos estão no 10_combate.js e no 10b (busca por `u.evo`). Campeões não evoluem
+// (a habilidade deles já é própria). Rivais a partir do nível 15 vêm com um caminho sorteado.
+const NIVEL_EVOLUCAO = 15;
+const EVOLUCOES = {
+  guardiao: { a: { nome: 'Bastião', mote: 'A muralha que segura', desc: 'A Muralha Viva provoca por 4 s (6 s no SUPREMO) numa área maior.' },
+              b: { nome: 'Égide', mote: 'Escudo de todos', desc: 'A Muralha também dá um escudo de 15% da VIDA ao aliado mais ferido; provoca só por 1 s.' } },
+  machadeiro: { a: { nome: 'Berserker', mote: 'Quanto pior, melhor', desc: 'A Fúria vai até +50% ATQ (antes +30%), mas a DEF cai 10%.' },
+                b: { nome: 'Ceifador', mote: 'Puxa e devora', desc: 'O Redemoinho puxa os inimigos em vez de afastar e cura 20% do dano que causa.' } },
+  lanceira: { a: { nome: 'Cavaleira', mote: 'Carga atrás de carga', desc: 'A Investida recarrega 40% mais rápido e atordoa por 0,5 s.' },
+              b: { nome: 'Sentinela', mote: 'Ninguém passa', desc: 'Não avança: quem chegar perto leva a Investida no lugar (130% ATQ), com empurrão forte e 1,2 s de atordoamento.' } },
+  arqueira: { a: { nome: 'Atiradora de Elite', mote: 'Um tiro, um alvo', desc: 'A Chuva de Flechas vira Tiro Certeiro: 150% ATQ num alvo só, crítico garantido.' },
+              b: { nome: 'Batedora', mote: 'Sempre fora de alcance', desc: 'Recua 20% mais rápido; cada onda da Chuva de Flechas deixa Lentidão leve (20%) por 2 s.' } },
+  piromante: { a: { nome: 'Incendiária', mote: 'Tudo em chamas', desc: 'A explosão da Bola de Fogo tem o dobro da área e a Queimadura dobra; o dano direto cai para 120% ATQ.' },
+               b: { nome: 'Pira', mote: 'Um alvo, cinzas', desc: 'Bola de Fogo de 240% ATQ num alvo só, sem explosão.' } },
+  criomante: { a: { nome: 'Geleira', mote: 'Parado no gelo', desc: 'A Lança de Gelo congela por 1,5 s sempre; o dano cai para 160% ATQ.' },
+               b: { nome: 'Nevasca', mote: 'Atravessa a linha', desc: 'A Lança atravessa o alvo e atinge todos na linha (140% ATQ), deixando Lentidão leve (20%) por 3 s.' } },
+  clerica: { a: { nome: 'Sacerdotisa', mote: 'Luz para todos', desc: 'A Luz Restauradora cura todos os aliados: 280% ATQ no mais ferido (como sempre) e 100% nos outros.' },
+             b: { nome: 'Inquisidora', mote: 'Cura que fere', desc: 'Cura 200% ATQ e causa 150% ATQ ao inimigo mais perto de quem foi curado.' } },
+  lamina: { a: { nome: 'Assassina', mote: 'Mata e segue', desc: 'Se o alvo do Passo Sombrio morrer no golpe, a recarga zera.' },
+            b: { nome: 'Sombra', mote: 'Some depois do golpe', desc: 'Depois do Passo Sombrio, fica 2 s quase impossível de acertar (+40% de esquiva).' } },
+  bardo: { a: { nome: 'Maestro', mote: 'A música não para', desc: 'O Hino de Batalha dura 10 s em vez de 8: o time fica menos tempo sem a música.' },
+           b: { nome: 'Dissonante', mote: 'Canção maldita', desc: 'O Hino vira maldição: todos os inimigos perdem 30% de ATQ e AGI por 8 s.' } },
+  invocador: { a: { nome: 'Legião', mote: 'Ossos por todo lado', desc: 'Ergue 3 esqueletos (25% dos seus atributos), até 6, e eles provocam quem estiver perto.' },
+               b: { nome: 'Necromante', mote: 'Um cavaleiro leal', desc: 'Ergue 1 Cavaleiro de Ossos (VIDA 90%, ATQ 70%) que fica até morrer; o SUPREMO o cura por inteiro e o enfurece.' } },
 };
 
 // Traços: multiplicadores e bônus
@@ -2022,7 +2058,7 @@ function rolarCresc(cls, pot) {
 function gerarMerc(cls, nivel, pot, evitar = []) {
   return {
     id: novoId(), nome: nomeLivre(evitar), classe: cls, nivel, xp: 0, pot, cresc: rolarCresc(cls, pot), tracos: rolarTracos(pot),
-    equip: { arma: null, armadura: null, amuleto: null }, pergaminhos: [], ascensoes: 0,
+    equip: { arma: null, armadura: null, amuleto: null }, pergaminhos: [], ascensoes: 0, evolucao: null,
     linha: CLASSES_FRENTE.includes(cls) ? 'frente' : 'tras', pos: CLASSES_FRENTE.includes(cls) ? 1 : 7, postura: 'auto', tatica: 'auto',
     pele: rint(0, 3), cabelo: CABELO_PADRAO[cls] != null && Math.random() < 0.5 ? CABELO_PADRAO[cls] : rint(0, 5),
   };
@@ -2112,6 +2148,11 @@ function poderLista(lista, mult = 1) { return lista.reduce((t, m) => t + poderMe
 const xpProx = (n) => Math.round(50 * Math.pow(n, 1.5));
 const nivelMax = (m) => TETO_POR_ASCENSAO[Math.min(2, (m && m.ascensoes) || 0)];
 const podeAscender = (m) => (m.ascensoes || 0) < 2 && m.nivel >= ASCENSOES[m.ascensoes || 0].nivel;
+// Evolução A/B (E5a): escolha única no nível 15; Campeões não evoluem
+const evoDe = (m) => (m && !m.campeao && (m.evolucao === 'a' || m.evolucao === 'b') ? m.evolucao : null);
+const podeEvoluir = (m) => !m.campeao && !evoDe(m) && m.nivel >= NIVEL_EVOLUCAO && !!EVOLUCOES[m.classe];
+function evoluir(m, caminho) { if (!podeEvoluir(m) || !EVOLUCOES[m.classe][caminho]) return false; m.evolucao = caminho; return true; }
+const nomeEvo = (m) => (evoDe(m) ? EVOLUCOES[m.classe][evoDe(m)].nome : null);
 const slotsPergaminho = (m) => (m.nivel >= 5 ? 1 : 0) + (m.ascensoes || 0);
 const skillDe = (m) => m.skillFixa || (m.campeao ? CAMPEOES[m.campeao].skill : CLASSES[m.classe].skill);
 function xpMultGlobal() {
@@ -2232,7 +2273,9 @@ const E = 256 / 180;   // escala das distâncias (valores calibrados na arena an
 const DT = 1 / 30;
 // Versão das regras de combate: sobe a cada mudança que altere o resultado de uma luta.
 // Um registro só é reproduzível com a mesma versão (ver reproduzirPartida).
-const REGRAS_COMBATE = 3;   // v2 (15/10/2026): cérebro de utilidade (10b) · v3: posição inicial pela formação 3×3 e posturas
+const REGRAS_COMBATE = 4;   // v2 (15/10/2026): cérebro de utilidade (10b) · v3: posição inicial pela formação 3×3 e posturas · v4: evoluções A/B (E5a)
+// Registros de regras v3 reproduzem iguais no v4: sem evolução, nenhuma conta mudou (o teste de reprodução confere)
+const REGRAS_COMPATIVEIS = [3, 4];
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const minPor = (arr, f) => { let best = null, bv = Infinity; for (const o of arr) { const v = f(o); if (v < bv) { bv = v; best = o; } } return best; };
 const PAPEIS_CONJURADORES = ['mago', 'curandeira', 'suporte', 'invocador'];
@@ -2244,7 +2287,7 @@ function unidadeBase(b, team, props) {
     uid: b.uidN++, team, face: team === 0 ? 1 : -1, x: 0, y: 0,
     invocacao: false, dono: null, vidaT: Infinity, flags: new Set(), skills: [], skill: null, passiva: null, proj: null,
     crit: 0.05, critDmg: 1.5, esquiva: 0, roubo: 0, alcance: ALCANCE.corpo, papel: 'lutador', linha: 'frente', tatica: 'auto',
-    st: { stun: 0, freeze: 0, slow: 0, taunt: null, dots: [], shield: null, buffs: [], debuffs: [] },
+    st: { stun: 0, freeze: 0, slow: 0, slowLeve: 0, taunt: null, dots: [], shield: null, buffs: [], debuffs: [] },
     energia: 0, capitao: false, vivo: true, reviver: 0, alvo: null, retarget: 0, atkT: 0.3 + b.rng() * 0.5, atkN: 0, primeiro: true,
     folegoUsado: false, renasceu: false, regenT: 0, curaAcc: 0, curaEmit: 0, dotAcc: {}, dotEmit: 0,
     anim: { atk: 0, cast: 0, hurt: 0, flash: 0, dash: 0, empurrao: 0, moveu: false, morteT: 0, fase: b.rng() * 10 },
@@ -2263,8 +2306,9 @@ function novaUnidade(b, m, team, lado) {
     def: s.def * mult * (1 + (T.defPct || 0)), agi: s.agi * mult * (1 + (T.agiPct || 0)),
     crit: Math.min(0.8, s.crit + (T.crit || 0)), critDmg: s.critDmg, esquiva: Math.min(0.6, s.esquiva + (T.esquiva || 0)), roubo: s.roubo + (T.roubo || 0),
     alcance: s.alcance, flags, passiva: c.passiva, proj: m.campeao === 'okon' ? null : c.proj, papel: c.papelId, linha: m.linha, tatica: m.tatica, postura: m.postura || 'auto',
-    capitao: m.id === lado.capitaoId, chefe: m.chefe || null, campeao: m.campeao || null,
+    capitao: m.id === lado.capitaoId, chefe: m.chefe || null, campeao: m.campeao || null, evo: evoDe(m),
   });
+  if (u.evo === 'a' && u.cls === 'machadeiro') u.def *= 0.9;   // Berserker
   const sk0 = skillDe(m);
   u.skills.push({ id: sk0, cd: SKILLS[sk0].cd * (1 - recarga), t: SKILLS[sk0].cd * (0.35 + b.rng() * 0.2), principal: true });
   for (const it of m.pergaminhos || []) {
@@ -2272,6 +2316,7 @@ function novaUnidade(b, m, team, lado) {
     if (P && P.tipo === 'ativa') u.skills.push({ id: it.pid, cd: P.cd * (1 - recarga), t: P.cd * (0.4 + b.rng() * 0.3) });
   }
   u.skill = u.skills[0];
+  if (u.evo === 'a' && u.cls === 'lanceira') { u.skill.cd *= 0.6; u.skill.t *= 0.6; }   // Cavaleira
   u.vida = u.vidaMax;
   // Cérebro novo (E4, 10b_cerebro-v2.js): ligado por lado da luta. Sem ele, vale a IA atual deste arquivo.
   u.cerebro = lado.ia === 'v2' ? criarCerebro(b, u) : null;
@@ -2341,18 +2386,20 @@ function atqEf(u) {
   let m = 1;
   for (const bf of u.st.buffs) m += bf.atq || 0;
   for (const df of u.st.debuffs) m += df.atq || 0;
-  if (u.passiva === 'furia') m += Math.min(0.30, (1 - u.vida / u.vidaMax) / 3);
+  if (u.passiva === 'furia') m += Math.min(u.evo === 'a' ? 0.50 : 0.30, (1 - u.vida / u.vidaMax) / (u.evo === 'a' ? 1.8 : 3));   // Berserker: até +50%
   return u.atq * Math.max(0.2, m);
 }
+function esquivaEf(u) { let e = u.esquiva; for (const bf of u.st.buffs) e += bf.esquiva || 0; return Math.min(0.85, e); }
 function agiEf(u, b) {
   let m = 1;
   for (const bf of u.st.buffs) m += bf.agi || 0;
+  for (const df of u.st.debuffs) m += df.agi || 0;
   if (b && u.flags.has('pressa') && b.t < 6) m += 0.3;
   if (u.flags.has('luaSangue') && u.vida < u.vidaMax * 0.5) m += 0.15;
   return u.agi * m;
 }
 const intervalo = (u, b) => 1.8 * 50 / (50 + agiEf(u, b)) * (u.st.slow > 0 ? 1.25 : 1);
-const velocidade = (u, b) => (19.5 + agiEf(u, b) * 0.26) * E * (u.st.slow > 0 ? 0.6 : 1);
+const velocidade = (u, b) => (19.5 + agiEf(u, b) * 0.26) * E * (u.st.slow > 0 ? 0.6 : u.st.slowLeve > 0 ? 0.8 : 1);
 const inimigosDe = (b, u) => b.units.filter((o) => o.vivo && o.team !== u.team);
 const aliadosDe = (b, u) => b.units.filter((o) => o.vivo && o.team === u.team);
 const daRetaguarda = (o) => !o.invocacao && (o.linha === 'tras' || o.alcance >= 43);
@@ -2398,7 +2445,14 @@ function atualizarUnidade(b, u) {
   const st = u.st, a = u.anim;
   a.atk = Math.max(0, a.atk - DT); a.cast = Math.max(0, a.cast - DT); a.hurt = Math.max(0, a.hurt - DT); a.flash = Math.max(0, a.flash - DT);
   a.dash = Math.max(0, a.dash - DT); a.empurrao = Math.max(0, a.empurrao - DT);
-  if (u.invocacao) { u.vidaT -= DT; if (u.vidaT <= 0) { morrer(b, u, null, true); return; } }
+  if (u.invocacao) {
+    u.vidaT -= DT; if (u.vidaT <= 0) { morrer(b, u, null, true); return; }
+    if (u.provoca) {   // Legião: os esqueletos provocam quem estiver perto, a cada 2 s
+      u.provocaT = (u.provocaT || 0) - DT;
+      if (u.provocaT <= 0) { u.provocaT = 2; for (const o of b.units) if (o.vivo && o.team !== u.team && !o.st.taunt && dist(u, o) < 26 * E) { o.st.taunt = { src: u, t: 1.5 }; o.alvo = u; } }
+    }
+  }
+  st.slowLeve = Math.max(0, st.slowLeve - DT);
   if (st.shield) { st.shield.t -= DT; if (st.shield.t <= 0 || st.shield.v <= 0.5) st.shield = null; }
   if (st.taunt) { st.taunt.t -= DT; if (st.taunt.t <= 0 || !st.taunt.src.vivo) st.taunt = null; }
   st.slow = Math.max(0, st.slow - DT); st.stun = Math.max(0, st.stun - DT); st.freeze = Math.max(0, st.freeze - DT);
@@ -2440,7 +2494,7 @@ function atualizarUnidade(b, u) {
     if (!u.vivo || u.st.stun > 0) break;
     if (sk.t > 0) { sk.t -= DT; continue; }
     if (u.cerebro && !querUsarV2(b, u, sk, 1)) continue;
-    if (usarSkill(b, u, sk, 1)) { sk.t = sk.cd; break; }
+    if (usarSkill(b, u, sk, 1)) { sk.t = sk.resetar ? 0.3 : sk.cd; sk.resetar = false; break; }   // Assassina: recarga zerada
   }
   if (!u.vivo) return;
   mover(b, u);
@@ -2532,7 +2586,7 @@ function distSegmento(p, a, b2) {
 }
 function mover(b, u) {
   const dest = u.cerebro ? destinoV2(b, u) : destinoDe(b, u);
-  const vel = velocidade(u, b) * (dest && dest.modo === 'ronda' ? 0.35 : dest && dest.modo === 'fuga' ? 1.1 : 1);
+  const vel = velocidade(u, b) * (dest && dest.modo === 'ronda' ? 0.35 : dest && dest.modo === 'fuga' ? (u.evo === 'b' && u.cls === 'arqueira' ? 1.32 : 1.1) : 1);   // Batedora recua 20% mais rápido
   let mx = 0, my = 0;
   if (dest) {
     const [tx, ty] = dest.p;
@@ -2631,7 +2685,7 @@ function acertoBasico(b, u, alvo) {
 /* ---- dano, cura, morte e ressurreição ---- */
 function causarDano(b, src, alvo, mult, opt = {}) {
   if (!alvo.vivo) return 0;
-  if (opt.esquivavel && b.rng() < alvo.esquiva) { emit(b, { tipo: 'esquiva', alvo }); return 0; }
+  if (opt.esquivavel && b.rng() < esquivaEf(alvo)) { emit(b, { tipo: 'esquiva', alvo }); return 0; }
   let d = atqEf(src) * mult * 100 / (100 + alvo.def) * (0.9 + b.rng() * 0.2);
   let crit = false;
   if (opt.critForcado || b.rng() < src.crit) { crit = true; d *= src.critDmg; }
@@ -2726,13 +2780,13 @@ function reviver(b, u, pct) {
 }
 
 /* ---- invocações ---- */
-function criarInvocacao(b, dono, i, n, tipo, frac, vidaT) {
+function criarInvocacao(b, dono, i, n, tipo, frac, vidaT, extra = {}) {
   const lado = b.lados[dono.team];
   const u = unidadeBase(b, dono.team, {
-    nome: tipo === 'golem' ? 'Golem' : 'Esqueleto', cls: tipo, look: `${tipo}|0|0|${lado.cor1}|${lado.cor2}`, invocacao: true, dono, vidaT,
+    nome: extra.nome || (tipo === 'golem' ? 'Golem' : 'Esqueleto'), cls: tipo, look: `${tipo}|0|0|${lado.cor1}|${lado.cor2}`, invocacao: true, dono, vidaT,
     x: clamp(dono.x + dono.face * (14 + i * 4) * (tipo === 'golem' ? -1 : 1), LIMITES.x0, LIMITES.x1()), y: clamp(dono.y + (i - (n - 1) / 2) * 18, ARENA.chao, ARENA.fundo),
-    face: dono.face, vidaMax: Math.max(1, Math.round(dono.vidaMax * frac)), atq: dono.atq * frac, def: dono.def * frac, agi: dono.agi * (tipo === 'golem' ? 0.3 : frac),
-    tatica: 'perto',
+    face: dono.face, vidaMax: Math.max(1, Math.round(dono.vidaMax * frac)), atq: dono.atq * (extra.atqFrac ?? frac), def: dono.def * frac, agi: dono.agi * (tipo === 'golem' ? 0.3 : Math.min(1, frac)),
+    tatica: 'perto', provoca: !!extra.provoca, cavaleiro: !!extra.cavaleiro,
   });
   u.vida = u.vidaMax;
   b.units.push(u);
@@ -2757,11 +2811,18 @@ function usarSkill(b, u, sk, p) {
   switch (id) {
     /* --- habilidades de classe --- */
     case 'muralha': {
+      const bast = u.evo === 'a', egide = u.evo === 'b';   // Bastião / Égide
+      const raioProv = (bast ? 40 : sup ? 42 : 30) * E;
       const perto = ini.filter((o) => dist(u, o) < 35 * E);
       if (!sup && !perto.length && u.vida > u.vidaMax * 0.7) return false;
       u.st.shield = { v: u.vidaMax * 0.2 * p, t: 5 };
+      if (egide) {
+        const fer = minPor(aliados().filter((o) => o !== u && !o.invocacao), (o) => o.vida / o.vidaMax);
+        if (fer) fer.st.shield = { v: (fer.st.shield ? fer.st.shield.v : 0) + fer.vidaMax * 0.15 * p, t: 5 };
+      }
       ev({});
-      for (const o of ini) if (dist(u, o) < (sup ? 42 : 30) * E) { o.st.taunt = { src: u, t: sup ? 4 : 2 }; o.alvo = u; }
+      const tt = bast ? (sup ? 6 : 4) : egide ? 1 : sup ? 4 : 2;
+      for (const o of ini) if (dist(u, o) < raioProv) { o.st.taunt = { src: u, t: tt }; o.alvo = u; }
       return true;
     }
     case 'redemoinho': {
@@ -2769,52 +2830,76 @@ function usarSkill(b, u, sk, p) {
       const perto = ini.filter((o) => dist(u, o) <= raio);
       if (!perto.length) return false;
       ev({ raio });
-      b.atrasos.push({ t: 0.16, fn: () => { if (!u.vivo) return; for (const o of ini) if (o.vivo && dist(u, o) <= raio + 4) { causarDano(b, u, o, 1.4 * p); empurrar(o, u, sup ? 40 : 16); } } });
+      const ceif = u.evo === 'b';   // Ceifador: puxa e cura 20% do dano
+      b.atrasos.push({ t: 0.16, fn: () => { if (!u.vivo) return; for (const o of ini) if (o.vivo && dist(u, o) <= raio + 4) { const d = causarDano(b, u, o, 1.4 * p); if (ceif && d > 0) curar(b, u, u, d * 0.2, true); empurrar(o, u, ceif ? -14 : sup ? 40 : 16); } } });
       return true;
     }
     case 'investida': {
       if (!alvo) return false;
       const d = dist(u, alvo);
+      if (u.evo === 'b') {   // Sentinela: não avança; quem chega perto leva o golpe, empurrão forte e 1,5 s de atordoamento
+        if (d > 30 * E) return false;
+        const dir = alvo.x >= u.x ? 1 : -1;
+        ev({ x0: u.x, y0: u.y });
+        emit(b, { tipo: 'corte', u, alvo, forte: true });
+        causarDano(b, u, alvo, 1.3 * p);
+        if (alvo.vivo) { alvo.vx += dir * 120 * p; alvo.anim.empurrao = 0.45; alvo.st.stun = Math.max(alvo.st.stun, 1.2 * p); emit(b, { tipo: 'atordoar', alvo }); }
+        return true;
+      }
       if (d > 82 * E || (!sup && d < 14 * E)) return false;
       const x0 = u.x, y0 = u.y, dir = alvo.x >= u.x ? 1 : -1;
       [u.x, u.y] = dentroArena(alvo.x - dir * 14, alvo.y); u.face = dir; u.vista = 'lado'; u.anim.dash = 0.3;
       ev({ x0, y0 });
       emit(b, { tipo: 'corte', u, alvo, forte: true });
       causarDano(b, u, alvo, 1.5 * p);
-      if (alvo.vivo) { alvo.vx += dir * 110 * p; alvo.anim.empurrao = 0.45; alvo.st.stun = Math.max(alvo.st.stun, p); emit(b, { tipo: 'atordoar', alvo }); }
+      if (alvo.vivo) { alvo.vx += dir * 110 * p; alvo.anim.empurrao = 0.45; alvo.st.stun = Math.max(alvo.st.stun, (u.evo === 'a' ? 0.5 : 1) * p); emit(b, { tipo: 'atordoar', alvo }); }   // Cavaleira: 0,5 s
       return true;
     }
     case 'chuva': {
       if (!alvo || dist(u, alvo) > u.alcance + 21) return false;
+      if (u.evo === 'a') {   // Atiradora de Elite: Tiro Certeiro, 250% num alvo, crítico garantido
+        const alvoT = alvo;
+        ev({ tx: alvoT.x, ty: alvoT.y, raio: 6 * E, dur: 0.3, tiro: true });
+        lancarProjetil(b, u, alvoT, 'flecha', () => causarDano(b, u, alvoT, 1.5 * p, { critForcado: true }), 200);
+        return true;
+      }
+      const bate = u.evo === 'b';   // Batedora: cada onda deixa Lentidão leve
       const tx = alvo.x, ty = alvo.y, raio = (sup ? 21 : 17) * E, ondas = 3 * p;
       ev({ tx, ty, raio, dur: 0.3 + ondas * 0.3 });
       for (let i = 0; i < ondas; i++) b.atrasos.push({ t: 0.3 + i * 0.3, fn: () => {
         emit(b, { tipo: 'flechada', tx, ty, raio });
-        for (const o of b.units) if (o.vivo && o.team !== u.team && Math.hypot(o.x - tx, o.y - ty) <= raio) causarDano(b, u, o, 0.6);
+        for (const o of b.units) if (o.vivo && o.team !== u.team && Math.hypot(o.x - tx, o.y - ty) <= raio) { causarDano(b, u, o, 0.6); if (bate && o.vivo) o.st.slowLeve = Math.max(o.st.slowLeve, 2); }
       } });
       return true;
     }
     case 'bolaFogo': {
       if (!aoAlcance(14)) return false;
       ev({});
-      const raio = (sup ? 18 : 12) * E, alvoF = alvo;
+      const inc = u.evo === 'a', pira = u.evo === 'b';   // Incendiária: área e queimadura dobradas / Pira: um alvo só
+      const raio = pira ? 0 : (sup ? 18 : 12) * E * (inc ? 2 : 1), alvoF = alvo;
       lancarProjetil(b, u, alvoF, sup ? 'bolaFogoG' : 'bolaFogo', () => {
-        emit(b, { tipo: 'explosao', x: alvoF.x, y: alvoF.y - 12, raio, cor: 'fogo' });
-        causarDano(b, u, alvoF, 1.8 * p);
-        aplicarDot(b, u, alvoF, 'queimar', 0.10 * p, 4);
-        for (const o of b.units) if (o.vivo && o !== alvoF && o.team !== u.team && Math.hypot(o.x - alvoF.x, o.y - alvoF.y) <= raio) { causarDano(b, u, o, 0.9 * p); empurrar(o, alvoF, 50); if (sup) aplicarDot(b, u, o, 'queimar', 0.10, 4); }
+        if (!pira) emit(b, { tipo: 'explosao', x: alvoF.x, y: alvoF.y - 12, raio, cor: 'fogo' });
+        causarDano(b, u, alvoF, (pira ? 2.4 : inc ? 1.2 : 1.8) * p);
+        aplicarDot(b, u, alvoF, 'queimar', (inc ? 0.20 : 0.10) * p, 4);
+        if (!pira) for (const o of b.units) if (o.vivo && o !== alvoF && o.team !== u.team && Math.hypot(o.x - alvoF.x, o.y - alvoF.y) <= raio) { causarDano(b, u, o, 0.9 * p); empurrar(o, alvoF, 50); if (sup || inc) aplicarDot(b, u, o, 'queimar', (inc ? 0.20 : 0.10), 4); }
       }, 128);
       return true;
     }
     case 'lancaGelo': {
       if (!aoAlcance(14)) return false;
       ev({});
-      const alvoG = alvo;
+      const alvoG = alvo, gel = u.evo === 'a', nev = u.evo === 'b';   // Geleira: congela sempre / Nevasca: atravessa a linha
+      const x0 = u.x, y0 = u.y;
       lancarProjetil(b, u, alvoG, sup ? 'geloG' : 'gelo', () => {
         emit(b, { tipo: 'estilhaco', x: alvoG.x, y: alvoG.y - 12, sup });
-        causarDano(b, u, alvoG, 2.0 * p);
-        if (alvoG.vivo) { alvoG.st.slow = Math.max(alvoG.st.slow, 3); if (sup) { alvoG.st.freeze = 1.5; emit(b, { tipo: 'congelar', alvo: alvoG }); } }
+        causarDano(b, u, alvoG, (gel ? 1.6 : 2.0) * p);
+        if (alvoG.vivo) { alvoG.st.slow = Math.max(alvoG.st.slow, 3); if (sup || gel) { alvoG.st.freeze = Math.max(alvoG.st.freeze, 1.5); emit(b, { tipo: 'congelar', alvo: alvoG }); } }
         if (sup) for (const o of b.units) if (o.vivo && o !== alvoG && o.team !== u.team && Math.hypot(o.x - alvoG.x, o.y - alvoG.y) <= 17 * E) { o.st.slow = Math.max(o.st.slow, 3); causarDano(b, u, o, 0.7); }
+        if (nev) {   // todos na linha de tiro (até 70 px além do alvo), Lentidão leve por 3 s
+          const dx = alvoG.x - x0, dy = alvoG.y - y0, L = Math.hypot(dx, dy) || 1, fim = { x: alvoG.x + (dx / L) * 70 * E, y: alvoG.y + (dy / L) * 70 * E };
+          alvoG.st.slowLeve = Math.max(alvoG.st.slowLeve, 3);
+          for (const o of b.units) if (o.vivo && o !== alvoG && o.team !== u.team && distSegmento(o, { x: x0, y: y0 }, fim) <= 14 * E) { causarDano(b, u, o, 1.4 * p); if (o.vivo) o.st.slowLeve = Math.max(o.st.slowLeve, 3); }
+        }
       }, 160);
       return true;
     }
@@ -2822,7 +2907,12 @@ function usarSkill(b, u, sk, p) {
       const al = aliados(), ferido = minPor(al, (o) => o.vida / o.vidaMax);
       if (!ferido || (!sup && ferido.vida / ferido.vidaMax > 0.7)) return false;
       ev({ alvo: ferido });
-      curar(b, u, ferido, atqEf(u) * 2.8 * p);
+      if (u.evo === 'a') { for (const o of al) curar(b, u, o, atqEf(u) * (o === ferido ? 2.8 : 1.0) * p); return true; }   // Sacerdotisa: cura todos (o mais ferido como sempre, 280%; os outros, 100%)
+      curar(b, u, ferido, atqEf(u) * (u.evo === 'b' ? 2.0 : 2.8) * p);
+      if (u.evo === 'b') {   // Inquisidora: fere quem está mais perto do curado
+        const ini2 = minPor(ini.filter((o) => dist(o, ferido) < 70 * E), (o) => dist(o, ferido));
+        if (ini2) { emit(b, { tipo: 'raio', de: ferido, para: ini2 }); causarDano(b, u, ini2, 1.5 * p); }
+      }
       if (sup) for (const o of al) if (o !== ferido) curar(b, u, o, atqEf(u) * 0.8);
       return true;
     }
@@ -2835,22 +2925,39 @@ function usarSkill(b, u, sk, p) {
       ev({ x0, y0, alvo: t2 });
       emit(b, { tipo: 'corte', u, alvo: t2, forte: true });
       causarDano(b, u, t2, 2.0 * p);
+      if (u.evo === 'a' && !t2.vivo) sk.resetar = true;   // Assassina: matou, recarga zera
+      if (u.evo === 'b') u.st.buffs.push({ esquiva: 0.4, t: 2 });   // Sombra: 2 s quase impossível de acertar
       return true;
     }
     case 'hino': {
       if (!sup && b.t < 2) return false;
+      if (u.evo === 'b') {   // Dissonante: maldição nos inimigos próximos
+        const perto = ini.filter((o) => !o.invocacao);   // a canção alcança a arena inteira
+        if (!perto.length) return false;
+        for (const o of perto) o.st.debuffs.push({ atq: -0.30 * p, agi: -0.30 * p, t: 8 });
+        ev({ aliados: perto, maldicao: true });
+        return true;
+      }
       const al = aliados();
-      for (const o of al) o.st.buffs.push({ atq: 0.30 * p, agi: 0.30 * p, t: 8 });
+      for (const o of al) o.st.buffs.push({ atq: 0.30 * p, agi: 0.30 * p, t: u.evo === 'a' ? 10 : 8 });   // Maestro: 10 s
       ev({ aliados: al });
       return true;
     }
     case 'esqueletos': {
+      if (u.evo === 'b') {   // Necromante: um Cavaleiro de Ossos permanente
+        const cav = b.units.find((o) => o.vivo && o.dono === u && o.cavaleiro);
+        if (cav) { if (!sup) return false; ev({}); curar(b, u, cav, cav.vidaMax); cav.st.buffs.push({ atq: 0.3, t: 8 }); return true; }
+        ev({});
+        criarInvocacao(b, u, 0, 1, 'esqueleto', 0.9, Infinity, { nome: 'Cavaleiro de Ossos', atqFrac: 0.7, cavaleiro: true });
+        return true;
+      }
       const meus = b.units.filter((o) => o.vivo && o.dono === u).length;
-      const max = sup ? 6 : 4;
+      const leg = u.evo === 'a';   // Legião: 3 por vez, até 6, provocam
+      const max = leg ? (sup ? 8 : 6) : sup ? 6 : 4;
       if (meus >= max) return false;
-      const n = Math.min(2 * p, max - meus);
+      const n = Math.min((leg ? 3 : 2) * p, max - meus);
       ev({});
-      for (let i = 0; i < n; i++) criarInvocacao(b, u, i, n, 'esqueleto', 0.36, 12);
+      for (let i = 0; i < n; i++) criarInvocacao(b, u, i, n, 'esqueleto', leg ? 0.25 : 0.36, 12, { provoca: leg });
       return true;
     }
     /* --- Campeões --- */
@@ -3042,7 +3149,7 @@ function aplicarEntrada(b, e) {
 }
 function entradaJogador(b, e) { e.n = b.n; b.entradas.push(e); aplicarEntrada(b, e); }
 // Campos do mercenário que afetam o combate (atributos, habilidades, posição, tática) + aparência para exibir
-const CAMPOS_MERC_REG = ['id', 'nome', 'classe', 'nivel', 'pot', 'cresc', 'tracos', 'ascensoes', 'campeao', 'chefe', 'skillFixa', 'bonusCriador', 'linha', 'pos', 'postura', 'tatica', 'visual', 'pele', 'cabelo'];
+const CAMPOS_MERC_REG = ['id', 'nome', 'classe', 'nivel', 'pot', 'cresc', 'tracos', 'ascensoes', 'evolucao', 'campeao', 'chefe', 'skillFixa', 'bonusCriador', 'linha', 'pos', 'postura', 'tatica', 'visual', 'pele', 'cabelo'];
 function mercParaRegistro(m) {
   const o = {};
   for (const k of CAMPOS_MERC_REG) if (m[k] != null) o[k] = m[k];
@@ -3067,7 +3174,7 @@ function assinaturaLuta(b, res) {
 function reproduzirPartida(reg) {
   const R = reg.replay;
   if (!R) return { erro: 'sem-dados' };
-  if (reg.regras !== REGRAS_COMBATE) return { erro: 'regras' };
+  if (!REGRAS_COMPATIVEIS.includes(reg.regras)) return { erro: 'regras' };
   const b = criarBatalha(R.A, R.B, { ...R.opts, seed: reg.seed, silencioso: true });
   b.roteiro = (R.entradas || []).map((e) => ({ ...e }));
   simularAteFim(b);
@@ -3391,6 +3498,7 @@ const VALOR_SKILL = {
   investida(b, u, sup, ini) {
     const o = u.alvo; if (!o || !o.vivo) return 0;
     const d = dist(u, o);
+    if (u.evo === 'b') return d <= 30 * E ? (imobilizado(o) ? 0.2 : 0.9) : 0;   // Sentinela: só quem chegou perto
     if (d > 82 * E || (!sup && d < 14 * E)) return 0;
     if (imobilizado(o)) return 0.1;         // já está parado: atordoar de novo é desperdício
     let s = 0.5;
@@ -3403,6 +3511,7 @@ const VALOR_SKILL = {
     const o = u.alvo; if (!o || !o.vivo) return 0;
     const d = dist(u, o);
     if (d > u.alcance + 21) return 0;
+    if (u.evo === 'a') return 0.6 + (golpesParaMatar(u, o) <= 2.5 * (sup ? 2 : 1) ? 0.35 : 0);   // Tiro Certeiro: um alvo, melhor se mata
     const raio = (sup ? 21 : 17) * E;
     const naArea = ini.filter((x) => Math.hypot(x.x - o.x, x.y - o.y) <= raio).length;
     if (naArea >= 2) return 1;
@@ -3451,12 +3560,14 @@ const VALOR_SKILL = {
   hino(b, u, sup) {
     if (!sup && b.t < 2) return 0;
     const al = aliadosDe(b, u), ini = inimigosDe(b, u);
+    if (u.evo === 'b') { const eng = ini.filter((o) => al.some((a) => dist(a, o) <= Math.max(a.alcance, o.alcance) + 8)).length; return eng ? 0.5 + 0.5 * Math.min(1, eng / 3) : 0.15; }   // Dissonante: vale quando a luta já começou
     const engajados = al.filter((a) => ini.some((o) => dist(a, o) <= Math.max(a.alcance, o.alcance) + 8)).length;
     if (!engajados) return 0.15;
     return 0.5 + 0.5 * Math.min(1, engajados / 3);
   },
   esqueletos(b, u, sup) {
-    const meus = b.units.filter((o) => o.vivo && o.dono === u).length, max = sup ? 6 : 4;
+    const meus = b.units.filter((o) => o.vivo && o.dono === u).length, max = u.evo === 'a' ? (sup ? 8 : 6) : u.evo === 'b' ? 1 : sup ? 6 : 4;
+    if (u.evo === 'b' && meus >= 1) return sup ? 0.6 : 0;   // Necromante: SUPREMO cura o cavaleiro
     if (meus >= max) return 0;
     return 0.5 + 0.5 * (max - meus) / max;
   },
@@ -4557,7 +4668,7 @@ function fxPonta(c, x, y, cor) { for (let i = 0; i < 6; i++) { const a = (i / 6)
 
 /* ============================ ESTADO E SAVE ============================ */
 const SAVE_KEY = 'ligaDasLaminas.save.v1';   // mesma chave da Fase 1: a versão fica dentro do save
-const VERSAO = 13;   // v13 (E5a): mesmo formato; teto 30 → 60 → 100 vem das Ascensões que o mercenário já tem (nada a migrar) e marca a nota; v12 (E4 e): v12 (E4 e): stats.rodadas (lutas = partidas; rodadas = lutas dentro delas) e a nota da partida melhor de 3; v11 (E4 d): só marcava a nota da câmera nova; v10 (E4 d): formato igual ao v9, só marca a nota da tela de formação; v9 (E4 c): pos (casa na formação 3×3) e postura; v8 só marcava a nota do cérebro novo
+const VERSAO = 14;   // v14 (E5a): m.evolucao (null | 'a' | 'b'), nota das evoluções; v13 (E5a): v13 (E5a): mesmo formato; teto 30 → 60 → 100 vem das Ascensões que o mercenário já tem (nada a migrar) e marca a nota; v12 (E4 e): v12 (E4 e): stats.rodadas (lutas = partidas; rodadas = lutas dentro delas) e a nota da partida melhor de 3; v11 (E4 d): só marcava a nota da câmera nova; v10 (E4 d): formato igual ao v9, só marca a nota da tela de formação; v9 (E4 c): pos (casa na formação 3×3) e postura; v8 só marcava a nota do cérebro novo
 const consumiveisZerados = () => Object.fromEntries(Object.keys(CONSUMIVEIS).map((k) => [k, 0]));
 const criadorPadrao = () => ({ liberado: false, usado: false, sorteMult: 1, tempoMult: 1 });
 const statsPadrao = () => ({
@@ -4649,6 +4760,7 @@ function normalizarMerc(m) {
   if (!POSTURAS[m.postura]) m.postura = 'auto';
   if (!m.tatica) m.tatica = 'auto';
   m.nivel = clamp(m.nivel | 0 || 1, 1, NIVEL_TETO);
+  if (m.evolucao !== 'a' && m.evolucao !== 'b') m.evolucao = null;
   m.xp = Math.max(0, +m.xp || 0);
   m.stats = Object.assign(statsMercPadrao(), m.stats || {});
   return m;
@@ -4709,6 +4821,7 @@ function validarSave(s) {
   if (versaoAntiga < 11 && !nov.includes(11) && st.stats.lutas > 0) nov.push(11);
   if (versaoAntiga < 12 && !nov.includes(12) && st.stats.lutas > 0) nov.push(12);
   if (versaoAntiga < 13 && !nov.includes(13) && st.stats.lutas > 0) nov.push(13);
+  if (versaoAntiga < 14 && !nov.includes(14) && st.stats.lutas > 0) nov.push(14);
   st.novidades = nov.filter((f) => f >= 2 && NOVIDADES[f]).sort((a, b) => a - b);   // só fases com nota (antes: teto fixo que esquecia a nota nova)
   if (versaoAntiga < 12) st.stats.rodadas = st.stats.lutas;   // até o v11 toda partida tinha uma luta só
   if (versaoAntiga < 3 && st.tutorial >= 4) st.tutorial = 99;   // quem já viu o tutorial antigo não o repete
@@ -5075,7 +5188,7 @@ function gerarElencoRival(nivel, q, n = tamanhoTime(), evitar = []) {
   const mercs = [];
   for (const cls of classes) mercs.push(gerarMerc(cls, nivel, POTS[weighted(q.pesos)], [...evitar, ...mercs.map((m) => m.nome)]));
   for (const m of mercs) {
-    ajustarAscPorNivel(m);
+    ajustarAscPorNivel(m); if (m.nivel >= NIVEL_EVOLUCAO) m.evolucao = pick(['a', 'b']);
     for (const tipo of Object.keys(TIPOS_ITEM)) if (Math.random() < q.item) m.equip[tipo] = gerarItem(weighted(q.rar), nivel, tipo);
     if (q.perg && Math.random() < q.perg) darPergaminhoRival(m, q);
     if (q.perg && m.nivel > 10 && Math.random() < q.perg) darPergaminhoRival(m, q);
@@ -5140,7 +5253,7 @@ function novaTemporada(temporada) {
 function nivelRival(g, i, rodada) {
   return clamp(Math.round(STATE.liga.nivelBase + 0.45 * rodada + (g.offsets ? g.offsets[i] || 0 : 0)), 1, tetoDivisao(divAtual()));
 }
-function ajustarRival(g, rodada) { g.mercs.forEach((m, i) => { m.nivel = nivelRival(g, i, rodada); m.ascensoes = ascPorNivel(m.nivel); }); }
+function ajustarRival(g, rodada) { g.mercs.forEach((m, i) => { m.nivel = nivelRival(g, i, rodada); m.ascensoes = ascPorNivel(m.nivel); if (m.nivel >= NIVEL_EVOLUCAO && !m.evolucao && !m.campeao) m.evolucao = pick(['a', 'b']); }); }
 function ladoJogador(preparo = {}) {
   return {
     nome: STATE.guilda.nome, cor1: STATE.guilda.cor1, cor2: STATE.guilda.cor2, simbolo: STATE.guilda.simbolo,
@@ -5297,7 +5410,7 @@ function gerarAmistoso() {
 
 /* ============================ TORRE INFINITA ============================ */
 const proximoAndar = () => STATE.torre.recorde + 1;
-const nivelarRival = (m, L) => { m.nivel = clamp(L, 1, NIVEL_TETO); m.ascensoes = ascPorNivel(m.nivel); return m; };
+const nivelarRival = (m, L) => { m.nivel = clamp(L, 1, NIVEL_TETO); m.ascensoes = ascPorNivel(m.nivel); if (m.nivel >= NIVEL_EVOLUCAO && !m.evolucao && !m.campeao) m.evolucao = pick(['a', 'b']); return m; };
 function gerarAndar(n) {
   const nv = TORRE.nivel(n), q = qualidadeRival(TORRE.tier(n)), tam = tamanhoTime();
   if (TORRE.guardiao(n)) {
@@ -6018,7 +6131,7 @@ function cardMerc(m, opts = {}) {
       <div class="linha1"><b>${nomeMerc(m)}</b>${badgePot(m.pot)}${estrelas(m.ascensoes)}${meu && noTime ? '<span class="tag no-time">No time</span>' : ''}${exp ? '<span class="tag exp">Expedição</span>' : ''}${meu && STATE.capitao === m.id ? canvasIcone('coroa', 14) : ''}</div>
       <small>${m.campeao ? `<span class="ouro-tx">Campeão Lendário</span> · ` : ''}${CLASSES[m.classe].nome} · nv. ${m.nivel}</small>
       <small class="stats">VIDA ${fmt(s.vida)} · ATQ ${fmt(s.atq)} · DEF ${fmt(s.def)} · AGI ${fmt(s.agi)}</small>
-      ${m.tracos.length || m.pergaminhos.length ? `<div class="tracos">${m.tracos.map((t) => `<span class="chip ${TRACOS[t].pos ? '' : 'neg'}">${TRACOS[t].nome}</span>`).join('')}${m.pergaminhos.map((p) => `<span class="chip perg" style="--rc:${RARIDADES[p.raridade].cor}">${esc(p.nome)}</span>`).join('')}</div>` : ''}
+      ${m.tracos.length || m.pergaminhos.length || evoDe(m) ? `<div class="tracos">${evoDe(m) ? `<span class="chip evo">${nomeEvo(m)}</span>` : ''}${m.tracos.map((t) => `<span class="chip ${TRACOS[t].pos ? '' : 'neg'}">${TRACOS[t].nome}</span>`).join('')}${m.pergaminhos.map((p) => `<span class="chip perg" style="--rc:${RARIDADES[p.raridade].cor}">${esc(p.nome)}</span>`).join('')}</div>` : ''}
     </div>
     ${lado}
   </div>`;
@@ -6090,6 +6203,7 @@ function htmlFicha(m, modo) {
   ${m.tracos.length ? `<div class="tracos">${m.tracos.map(chipTraco).join('')}</div>` : ''}
   <div class="hab ${m.campeao ? 'lendaria' : ''}"><div class="hab-cab"><b>${sk.nome}</b><span class="tag">Ativa · recarga ${fmt1(sk.cd * (1 - s.recarga))} s</span></div><p>${sk.desc(s)}</p><small class="muted">${sk.fx}. Como capitão vira SUPREMO, com o dobro do efeito.</small></div>
   <div class="hab"><div class="hab-cab"><b>${pa.nome}</b><span class="tag">Passiva</span></div><p>${pa.desc}</p></div>
+  ${htmlEvolucao(m, deFora)}
   ${s.unicos.map((u) => `<div class="hab"><div class="hab-cab"><b style="color:var(--ouro)">★ ${UNICOS[u].nome}</b><span class="tag ouro">Lendário</span></div><p>${UNICOS[u].desc}</p></div>`).join('')}
   ${rodape}`;
 }
@@ -6103,6 +6217,18 @@ function htmlPergaminhosFicha(m, s) {
   for (let i = m.pergaminhos.length; i < n; i++) partes.push(`<button class="slot-perg" data-act="perg-slot" data-id="${m.id}">+ Equipar pergaminho</button>`);
   const prox = m.nivel < 5 ? 'O 1º espaço abre no nível 5.' : m.ascensoes < 2 ? 'Cada Ascensão abre mais 1 espaço.' : '';
   return `<div class="secao"><span class="rot">Pergaminhos de habilidade${n ? ` (${m.pergaminhos.length}/${n})` : ''}</span>${partes.join('')}${prox ? `<p class="dica">${prox} Pergaminhos ativos viram habilidades extras; passivos dão bônus fixos.</p>` : ''}</div>`;
+}
+// Evolução A/B (E5a): no nível 15 a ficha mostra os dois caminhos; a escolha é para sempre
+function htmlEvolucao(m, deFora) {
+  const EV = EVOLUCOES[m.classe];
+  if (!EV || m.campeao) return '';
+  const e = evoDe(m);
+  if (e) return `<div class="evo feita"><div class="asc-cab">${canvasIcone('estrela', 18)}<b>${EV[e].nome}</b><span class="tag">Evolução ${e.toUpperCase()}</span></div><small>${EV[e].desc}</small></div>`;
+  if (m.nivel < NIVEL_EVOLUCAO) return `<div class="evo"><div class="asc-cab">${canvasIcone('estrela', 18)}<b>Evolução</b><span class="tag">no nível ${NIVEL_EVOLUCAO}</span></div><small>Escolha entre <b>${EV.a.nome}</b> (${EV.a.mote.toLowerCase()}) e <b>${EV.b.nome}</b> (${EV.b.mote.toLowerCase()}). A escolha é para sempre.</small></div>`;
+  const card = (k) => `<button class="evo-card" data-act="evoluir" data-id="${m.id}" data-v="${k}" ${deFora ? 'disabled' : ''}><span class="tag">${k.toUpperCase()}</span><b>${EV[k].nome}</b><i>${EV[k].mote}</i><small>${EV[k].desc}</small></button>`;
+  return `<div class="evo pronta"><div class="asc-cab">${canvasIcone('estrela', 18)}<b>Hora de evoluir!</b><span class="tag ouro">nível ${NIVEL_EVOLUCAO}</span></div>
+    <small>Escolha um caminho. A escolha é para sempre e muda a habilidade${['machadeiro', 'bardo', 'arqueira'].includes(m.classe) ? ' e a passiva' : ''}.</small>
+    <div class="evo-opcoes">${card('a')}${card('b')}</div></div>`;
 }
 function htmlAscensao(m) {
   const asc = m.ascensoes || 0;
@@ -6772,6 +6898,10 @@ function mostrarTutorial() {
   el.innerHTML = `<div class="tut-balao"><small>${p === 0 ? 'Primeiros passos' : `Luta ${p} de ${TUT_FIM} · menu liberado`}</small><p>${T.txt}</p><button class="btn primario pequeno" data-act="tutorial-prox">${p === TUT_FIM ? 'Começar' : 'Entendi'}</button></div>`;
 }
 const NOVIDADES = {
+  14: [
+    ['estrela', 'Evoluções no nível 15', 'Cada classe agora escolhe um de dois caminhos no nível 15, para sempre: o Guardião vira Bastião ou Égide, a Arqueira vira Atiradora de Elite ou Batedora, e assim por diante. A escolha muda a habilidade (e às vezes a passiva). Abra a ficha de quem já passou do 15.'],
+    ['liga', 'Rivais evoluídos', 'Os rivais a partir do nível 15 também vêm com um caminho sorteado. Repare no que muda na luta.'],
+  ],
   13: [
     ['emblema', 'Rumo ao nível 100', 'O nível máximo agora vai até 100. Sem Ascensão o teto é 30; a 1ª Ascensão (no nível 30) libera até 60 e a 2ª (no nível 60) libera até 100. Quem já tinha Ascensões ficou com elas e ganhou o teto novo.'],
     ['estrela', 'Níveis altos', 'Até o 30 tudo continua igual. Do 30 ao 60 os atributos sobem pela metade, e do 60 ao 100 quase não sobem: o que vem lá em cima são escolhas novas para o seu time.'],
@@ -6832,7 +6962,7 @@ const NOVIDADES = {
     ['engrenagem', 'Save na sua conta', 'Jogando dentro do Claude com a sua conta, o progresso também fica salvo nela e você continua de outro aparelho. Veja em Configurações onde o seu progresso está salvo.'],
   ],
 };
-const ROTULO_FASE = { 5: '4.1', 6: '5 · Veldria', 7: '6 · Recordes', 8: '7 · Cérebro', 10: '8 · Formação', 11: '9 · Câmera', 12: '10 · Melhor de 3', 13: '11 · Rumo ao 100' };
+const ROTULO_FASE = { 5: '4.1', 6: '5 · Veldria', 7: '6 · Recordes', 8: '7 · Cérebro', 10: '8 · Formação', 11: '9 · Câmera', 12: '10 · Melhor de 3', 13: '11 · Rumo ao 100', 14: '12 · Evoluções' };
 function mostrarNovidades() {
   const fases = (STATE.novidades || []).slice().sort((a, b) => b - a);
   const bloco = (f) => `${fases.length > 1 ? `<span class="rot">Fase ${ROTULO_FASE[f] || f}</span>` : ''}<div class="lista novidades">${NOVIDADES[f].map(([ic, t, d]) => `<div class="card">${canvasIcone(ic, 28, ic === 'torre' ? { a: '#e9dfc9', b: '#a99bb8' } : null)}<div class="card-corpo"><b>${t}</b><small>${d}</small></div></div>`).join('')}</div>`;
@@ -6869,7 +6999,7 @@ function abrirConfig() {
     <button class="btn" data-act="estatisticas">${canvasIcone('estatisticas', 16)} Ver estatísticas completas</button>
     ${STATE.criador.liberado ? `<button class="btn criador-btn" data-act="criador">${canvasIcone('criador', 16)} Modo Criador</button>` : ''}
     <button class="btn perigo" data-act="reiniciar">Reiniciar jogo</button>
-    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.11</button>`, { dados: { config: true } });
+    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.12</button>`, { dados: { config: true } });
 }
 function mostrarResumoOffline(r) {
   if (!r || r.minutos < 1) return;
@@ -7179,6 +7309,19 @@ const ACOES = {
     preencherTime();
     toast(`${m.nome} deixou a guilda. +${fmt(valorVendaMerc(m))} ouro`, 'ouro');
     fecharTodosModais(); aposMudanca();
+  },
+  evoluir: (el) => {
+    const m = mercPorId(+el.dataset.id), k = el.dataset.v, EV = EVOLUCOES[m.classe];
+    if (!podeEvoluir(m) || !EV[k]) return;
+    const outro = k === 'a' ? 'b' : 'a';
+    abrirModal(`<h2>${esc(m.nome)} vira ${EV[k].nome}?</h2><p>${EV[k].desc}</p><p class="dica">A escolha é <b>para sempre</b>: ${EV[outro].nome} não vai mais estar disponível para ${esc(m.nome)}.</p>
+      <div class="confirmar"><button class="btn" data-act="fechar-modal">Pensar mais</button><button class="btn primario" data-act="evoluir-sim" data-id="${m.id}" data-v="${k}">Evoluir</button></div>`);
+  },
+  'evoluir-sim': (el) => {
+    const m = mercPorId(+el.dataset.id);
+    if (!evoluir(m, el.dataset.v)) return;
+    fecharModal(); somTocar('vitoria'); vibrar([30, 40], true);
+    toast(`${m.nome} agora é ${nomeEvo(m)}!`, 'ouro'); aposMudanca();
   },
   ascender: (el) => {
     const m = mercPorId(+el.dataset.id); if (!m) return;

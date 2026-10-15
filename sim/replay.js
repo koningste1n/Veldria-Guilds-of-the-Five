@@ -2,7 +2,9 @@
 // Teste do registro de partidas: luta "ao vivo" com mercenários variados (itens, pergaminhos, traços,
 // Campeões, toques do jogador) → registro → reprodução a partir do registro. Tem de dar o mesmo resultado.
 //
-// Uso: node sim/replay.js [--n 300]
+// Uso: node sim/replay.js [--n 300] [--gravar arq.json] [--conferir arq.json]
+//   --gravar   além do teste, grava os registros e as assinaturas num arquivo
+//   --conferir só reproduz os registros de um arquivo gravado (por outra versão do código) e compara as assinaturas
 'use strict';
 const { carregarJogo } = require('./carregar');
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i > 0 ? process.argv[i + 1] : d; };
@@ -16,7 +18,8 @@ function mercVariado() {
   const nivel = ri(1, 30);
   const m = r() < 0.1 ? Object.assign(J.gerarMerc(J.CAMPEOES[pk(CAMP)].classe, nivel, 'A'), { campeao: pk(CAMP) }) : J.gerarMerc(pk(CLS), nivel, pk(['F', 'D', 'C', 'B', 'A', 'S']));
   m.tracos = Array.from({ length: ri(0, 3) }, () => pk(TR));
-  m.ascensoes = nivel > 20 ? 2 : nivel > 10 ? 1 : 0;
+  m.ascensoes = J.ascPorNivel(nivel);
+  if (nivel >= J.NIVEL_EVOLUCAO && r() < 0.7) m.evolucao = pk(['a', 'b']);
   for (const t of ['arma', 'armadura', 'amuleto']) if (r() < 0.8) { const it = J.gerarItem(ri(0, 4), nivel, t); it.aprim = ri(0, 10); m.equip[t] = it; }
   m.pergaminhos = Array.from({ length: ri(0, 2) }, () => J.gerarPergaminho(ri(0, 4)));
   m.pos = ri(0, 8); m.linha = m.pos < 3 ? 'frente' : 'tras'; m.postura = pk(Object.keys(J.POSTURAS)); m.tatica = pk(['auto', 'perto', 'fraco', 'forte', 'tras']);
@@ -31,7 +34,16 @@ const ladoVariado = (cor) => {
     ia: r() < 0.5 ? 'v2' : 'v1' };   // metade dos lados com cada cérebro: os dois têm de reproduzir igual
 };
 
+const fs = require('fs');
+if (arg('conferir', null)) {
+  const dados = JSON.parse(fs.readFileSync(arg('conferir'), 'utf8'));
+  let ok = 0;
+  for (const d of dados) { const rep = J.reproduzirPartida(d.reg); if (J.mesmaAssinatura(d.ass, rep)) ok++; }
+  console.log(`Conferência de ${dados.length} registros gravados por outra versão: ${ok}/${dados.length} reproduzem igual`);
+  process.exit(ok === dados.length ? 0 : 1);
+}
 let iguais = 0, difAtrib = 0;
+const gravados = [];
 const t0 = Date.now();
 for (let k = 0; k < N; k++) {
   const A = ladoVariado(0), B = ladoVariado(1);
@@ -55,8 +67,10 @@ for (let k = 0; k < N; k++) {
   reg.replay.entradas = b.entradas;
   const ao = J.assinaturaLuta(b, J.resumoBatalha(b));
   const rep = J.reproduzirPartida(JSON.parse(JSON.stringify(reg)));   // como se viesse do save
+  gravados.push({ reg, ass: ao });
   if (J.mesmaAssinatura(ao, rep)) iguais++;
   else if (iguais + 5 > k) console.log('DIFERENTE', k, JSON.stringify(ao).slice(0, 200), '\n          ', JSON.stringify(rep).slice(0, 200));
 }
 console.log(`Reprodução: ${iguais}/${N} lutas idênticas · atributos divergentes no registro: ${difAtrib} · ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+if (arg('gravar', null)) { fs.writeFileSync(arg('gravar'), JSON.stringify(gravados)); console.log(`${gravados.length} registros gravados em ${arg('gravar')}`); }
 process.exit(iguais === N && difAtrib === 0 ? 0 : 1);

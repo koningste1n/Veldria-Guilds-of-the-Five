@@ -34,7 +34,7 @@ function gerarElencoRival(nivel, q, n = tamanhoTime(), evitar = []) {
   const mercs = [];
   for (const cls of classes) mercs.push(gerarMerc(cls, nivel, POTS[weighted(q.pesos)], [...evitar, ...mercs.map((m) => m.nome)]));
   for (const m of mercs) {
-    ajustarAscPorNivel(m);
+    ajustarAscPorNivel(m); if (m.nivel >= NIVEL_EVOLUCAO) m.evolucao = pick(['a', 'b']);
     for (const tipo of Object.keys(TIPOS_ITEM)) if (Math.random() < q.item) m.equip[tipo] = gerarItem(weighted(q.rar), nivel, tipo);
     if (q.perg && Math.random() < q.perg) darPergaminhoRival(m, q);
     if (q.perg && m.nivel > 10 && Math.random() < q.perg) darPergaminhoRival(m, q);
@@ -99,7 +99,7 @@ function novaTemporada(temporada) {
 function nivelRival(g, i, rodada) {
   return clamp(Math.round(STATE.liga.nivelBase + 0.45 * rodada + (g.offsets ? g.offsets[i] || 0 : 0)), 1, tetoDivisao(divAtual()));
 }
-function ajustarRival(g, rodada) { g.mercs.forEach((m, i) => { m.nivel = nivelRival(g, i, rodada); m.ascensoes = ascPorNivel(m.nivel); }); }
+function ajustarRival(g, rodada) { g.mercs.forEach((m, i) => { m.nivel = nivelRival(g, i, rodada); m.ascensoes = ascPorNivel(m.nivel); if (m.nivel >= NIVEL_EVOLUCAO && !m.evolucao && !m.campeao) m.evolucao = pick(['a', 'b']); }); }
 function ladoJogador(preparo = {}) {
   return {
     nome: STATE.guilda.nome, cor1: STATE.guilda.cor1, cor2: STATE.guilda.cor2, simbolo: STATE.guilda.simbolo,

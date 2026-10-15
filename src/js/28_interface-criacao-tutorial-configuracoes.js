@@ -63,6 +63,10 @@ function mostrarTutorial() {
   el.innerHTML = `<div class="tut-balao"><small>${p === 0 ? 'Primeiros passos' : `Luta ${p} de ${TUT_FIM} · menu liberado`}</small><p>${T.txt}</p><button class="btn primario pequeno" data-act="tutorial-prox">${p === TUT_FIM ? 'Começar' : 'Entendi'}</button></div>`;
 }
 const NOVIDADES = {
+  14: [
+    ['estrela', 'Evoluções no nível 15', 'Cada classe agora escolhe um de dois caminhos no nível 15, para sempre: o Guardião vira Bastião ou Égide, a Arqueira vira Atiradora de Elite ou Batedora, e assim por diante. A escolha muda a habilidade (e às vezes a passiva). Abra a ficha de quem já passou do 15.'],
+    ['liga', 'Rivais evoluídos', 'Os rivais a partir do nível 15 também vêm com um caminho sorteado. Repare no que muda na luta.'],
+  ],
   13: [
     ['emblema', 'Rumo ao nível 100', 'O nível máximo agora vai até 100. Sem Ascensão o teto é 30; a 1ª Ascensão (no nível 30) libera até 60 e a 2ª (no nível 60) libera até 100. Quem já tinha Ascensões ficou com elas e ganhou o teto novo.'],
     ['estrela', 'Níveis altos', 'Até o 30 tudo continua igual. Do 30 ao 60 os atributos sobem pela metade, e do 60 ao 100 quase não sobem: o que vem lá em cima são escolhas novas para o seu time.'],
@@ -123,7 +127,7 @@ const NOVIDADES = {
     ['engrenagem', 'Save na sua conta', 'Jogando dentro do Claude com a sua conta, o progresso também fica salvo nela e você continua de outro aparelho. Veja em Configurações onde o seu progresso está salvo.'],
   ],
 };
-const ROTULO_FASE = { 5: '4.1', 6: '5 · Veldria', 7: '6 · Recordes', 8: '7 · Cérebro', 10: '8 · Formação', 11: '9 · Câmera', 12: '10 · Melhor de 3', 13: '11 · Rumo ao 100' };
+const ROTULO_FASE = { 5: '4.1', 6: '5 · Veldria', 7: '6 · Recordes', 8: '7 · Cérebro', 10: '8 · Formação', 11: '9 · Câmera', 12: '10 · Melhor de 3', 13: '11 · Rumo ao 100', 14: '12 · Evoluções' };
 function mostrarNovidades() {
   const fases = (STATE.novidades || []).slice().sort((a, b) => b - a);
   const bloco = (f) => `${fases.length > 1 ? `<span class="rot">Fase ${ROTULO_FASE[f] || f}</span>` : ''}<div class="lista novidades">${NOVIDADES[f].map(([ic, t, d]) => `<div class="card">${canvasIcone(ic, 28, ic === 'torre' ? { a: '#e9dfc9', b: '#a99bb8' } : null)}<div class="card-corpo"><b>${t}</b><small>${d}</small></div></div>`).join('')}</div>`;
@@ -160,7 +164,7 @@ function abrirConfig() {
     <button class="btn" data-act="estatisticas">${canvasIcone('estatisticas', 16)} Ver estatísticas completas</button>
     ${STATE.criador.liberado ? `<button class="btn criador-btn" data-act="criador">${canvasIcone('criador', 16)} Modo Criador</button>` : ''}
     <button class="btn perigo" data-act="reiniciar">Reiniciar jogo</button>
-    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.11</button>`, { dados: { config: true } });
+    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.12</button>`, { dados: { config: true } });
 }
 function mostrarResumoOffline(r) {
   if (!r || r.minutos < 1) return;

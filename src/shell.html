@@ -393,6 +393,15 @@ label { font-family: var(--f-display); font-size: 10px; color: var(--muted); tex
 .asc.max { box-shadow: inset 0 0 0 2px var(--ouro-esc); }
 .asc-cab { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .asc small { color: var(--muted); }
+.evo { display: flex; flex-direction: column; gap: 6px; background: var(--painel2); padding: 10px; clip-path: var(--entalhe); box-shadow: inset 0 0 0 2px var(--linha); }
+.evo.pronta { box-shadow: inset 0 0 0 2px var(--ouro); }
+.evo.feita { box-shadow: inset 0 0 0 2px var(--ouro-esc); }
+.evo small { color: var(--muted); }
+.evo-opcoes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.evo-card { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-height: 44px; padding: 10px; border: 0; background: var(--linha-esc); color: var(--tinta); text-align: left; clip-path: var(--entalhe); cursor: pointer; font-family: inherit; }
+.evo-card b { font-size: 14px; } .evo-card i { font-size: 12px; color: var(--ouro); font-style: normal; } .evo-card small { font-size: 11px; line-height: 1.3; }
+.evo-card:disabled { opacity: .6; cursor: default; }
+.chip.evo { background: #3a2d1a; color: var(--ouro); }
 .rel-grade { display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: 6px; }
 .rel-tile { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 3px 6px; border: 0; background: var(--linha-esc); clip-path: var(--entalhe); box-shadow: inset 0 0 0 2px var(--rc, var(--linha)); cursor: pointer; color: var(--tinta); min-width: 0; }
 .rel-tile small { font-size: 10px; line-height: 1.15; text-align: center; overflow-wrap: anywhere; color: var(--muted); }

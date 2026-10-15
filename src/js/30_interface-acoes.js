@@ -118,6 +118,19 @@ const ACOES = {
     toast(`${m.nome} deixou a guilda. +${fmt(valorVendaMerc(m))} ouro`, 'ouro');
     fecharTodosModais(); aposMudanca();
   },
+  evoluir: (el) => {
+    const m = mercPorId(+el.dataset.id), k = el.dataset.v, EV = EVOLUCOES[m.classe];
+    if (!podeEvoluir(m) || !EV[k]) return;
+    const outro = k === 'a' ? 'b' : 'a';
+    abrirModal(`<h2>${esc(m.nome)} vira ${EV[k].nome}?</h2><p>${EV[k].desc}</p><p class="dica">A escolha é <b>para sempre</b>: ${EV[outro].nome} não vai mais estar disponível para ${esc(m.nome)}.</p>
+      <div class="confirmar"><button class="btn" data-act="fechar-modal">Pensar mais</button><button class="btn primario" data-act="evoluir-sim" data-id="${m.id}" data-v="${k}">Evoluir</button></div>`);
+  },
+  'evoluir-sim': (el) => {
+    const m = mercPorId(+el.dataset.id);
+    if (!evoluir(m, el.dataset.v)) return;
+    fecharModal(); somTocar('vitoria'); vibrar([30, 40], true);
+    toast(`${m.nome} agora é ${nomeEvo(m)}!`, 'ouro'); aposMudanca();
+  },
   ascender: (el) => {
     const m = mercPorId(+el.dataset.id); if (!m) return;
     const r = ascender(m);

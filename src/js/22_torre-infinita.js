@@ -1,6 +1,6 @@
 /* ============================ TORRE INFINITA ============================ */
 const proximoAndar = () => STATE.torre.recorde + 1;
-const nivelarRival = (m, L) => { m.nivel = clamp(L, 1, NIVEL_TETO); m.ascensoes = ascPorNivel(m.nivel); return m; };
+const nivelarRival = (m, L) => { m.nivel = clamp(L, 1, NIVEL_TETO); m.ascensoes = ascPorNivel(m.nivel); if (m.nivel >= NIVEL_EVOLUCAO && !m.evolucao && !m.campeao) m.evolucao = pick(['a', 'b']); return m; };
 function gerarAndar(n) {
   const nv = TORRE.nivel(n), q = qualidadeRival(TORRE.tier(n)), tam = tamanhoTime();
   if (TORRE.guardiao(n)) {

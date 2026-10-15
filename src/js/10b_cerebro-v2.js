@@ -315,6 +315,7 @@ const VALOR_SKILL = {
   investida(b, u, sup, ini) {
     const o = u.alvo; if (!o || !o.vivo) return 0;
     const d = dist(u, o);
+    if (u.evo === 'b') return d <= 30 * E ? (imobilizado(o) ? 0.2 : 0.9) : 0;   // Sentinela: só quem chegou perto
     if (d > 82 * E || (!sup && d < 14 * E)) return 0;
     if (imobilizado(o)) return 0.1;         // já está parado: atordoar de novo é desperdício
     let s = 0.5;
@@ -327,6 +328,7 @@ const VALOR_SKILL = {
     const o = u.alvo; if (!o || !o.vivo) return 0;
     const d = dist(u, o);
     if (d > u.alcance + 21) return 0;
+    if (u.evo === 'a') return 0.6 + (golpesParaMatar(u, o) <= 2.5 * (sup ? 2 : 1) ? 0.35 : 0);   // Tiro Certeiro: um alvo, melhor se mata
     const raio = (sup ? 21 : 17) * E;
     const naArea = ini.filter((x) => Math.hypot(x.x - o.x, x.y - o.y) <= raio).length;
     if (naArea >= 2) return 1;
@@ -375,12 +377,14 @@ const VALOR_SKILL = {
   hino(b, u, sup) {
     if (!sup && b.t < 2) return 0;
     const al = aliadosDe(b, u), ini = inimigosDe(b, u);
+    if (u.evo === 'b') { const eng = ini.filter((o) => al.some((a) => dist(a, o) <= Math.max(a.alcance, o.alcance) + 8)).length; return eng ? 0.5 + 0.5 * Math.min(1, eng / 3) : 0.15; }   // Dissonante: vale quando a luta já começou
     const engajados = al.filter((a) => ini.some((o) => dist(a, o) <= Math.max(a.alcance, o.alcance) + 8)).length;
     if (!engajados) return 0.15;
     return 0.5 + 0.5 * Math.min(1, engajados / 3);
   },
   esqueletos(b, u, sup) {
-    const meus = b.units.filter((o) => o.vivo && o.dono === u).length, max = sup ? 6 : 4;
+    const meus = b.units.filter((o) => o.vivo && o.dono === u).length, max = u.evo === 'a' ? (sup ? 8 : 6) : u.evo === 'b' ? 1 : sup ? 6 : 4;
+    if (u.evo === 'b' && meus >= 1) return sup ? 0.6 : 0;   // Necromante: SUPREMO cura o cavaleiro
     if (meus >= max) return 0;
     return 0.5 + 0.5 * (max - meus) / max;
   },

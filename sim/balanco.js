@@ -9,7 +9,8 @@
 //   --ia     cérebro dos dois lados: v1 = IA atual do 10_combate.js (padrão), v2 = cérebro de utilidade (10b)
 //   --duelo  IA nova × IA atual: a LINHA joga com o cérebro v2 e a COLUNA com a IA atual (todos os 100 pares,
 //            inclusive a diagonal = espelho). É a medição do critério 1 da E4
-//   --salvar grava sim/resultados/balanco-nN-tT[-v2|-duelo].json e .csv
+//   --evo    a | b | mix: evolução A/B de todos (mix = LINHA com A, COLUNA com B, todos os 100 pares); sem a opção, ninguém evoluiu
+//   --salvar grava sim/resultados/balanco-nN-tT[-v2|-duelo][-evoX].json e .csv
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -19,7 +20,7 @@ const { carregarJogo } = require('./carregar');
 
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i > 0 ? (process.argv[i + 1] && !process.argv[i + 1].startsWith('--') ? process.argv[i + 1] : true) : d; };
 const N = +arg('n', 200), NIVEL = +arg('nivel', 10), TAM = +arg('tam', 1), SALVAR = !!arg('salvar', false);
-const IA = arg('ia', 'v1'), DUELO = !!arg('duelo', false);
+const IA = arg('ia', 'v1'), EVO = arg('evo', null), DUELO = !!arg('duelo', false) || EVO === 'mix';
 const IA_LINHA = DUELO ? 'v2' : IA, IA_COLUNA = DUELO ? 'v1' : IA;
 
 const J = carregarJogo({ semente: 2026 });
@@ -27,14 +28,18 @@ const CLS = Object.keys(J.CLASSES);
 const CURTO = { guardiao: 'Guard', machadeiro: 'Mach', lanceira: 'Lanç', arqueira: 'Arq', piromante: 'Piro', criomante: 'Crio', clerica: 'Clér', lamina: 'Lâm', bardo: 'Bardo', invocador: 'Invoc' };
 
 // Mercenário "padrão" da classe: crescimento no meio da faixa, sem traços, sem itens
-function mercPadrao(cls, k) {
+function mercPadrao(cls, k, evo) {
   const m = J.gerarMerc(cls, NIVEL, 'B');
+  m.evolucao = evo === 'mix' ? null : evo;
   m.cresc = J.CLASSES[cls].cresc.map(([lo, hi]) => Math.round(((lo + hi) / 2) * 100) / 100);
   m.tracos = []; m.ascensoes = J.ascPorNivel(NIVEL); m.nome = `${CURTO[cls]}${k}`;
   return m;
 }
-const times = Object.fromEntries(CLS.map((c) => [c, Array.from({ length: TAM }, (_, k) => mercPadrao(c, k + 1))]));
-const lado = (c, cor, ia) => ({ nome: c, cor1: cor, cor2: cor, simbolo: 0, mercs: times[c], capitaoId: times[c][0].id, mult: 1, ia });
+const times = Object.fromEntries(CLS.map((c) => [c, Array.from({ length: TAM }, (_, k) => mercPadrao(c, k + 1, EVO === 'a' || EVO === 'b' ? EVO : null))]));
+// no modo mix, a LINHA joga com o caminho A e a COLUNA com o caminho B (times separados)
+const timesA = EVO === 'mix' ? Object.fromEntries(CLS.map((c) => [c, Array.from({ length: TAM }, (_, k) => mercPadrao(c, k + 1, 'a'))])) : times;
+const timesB = EVO === 'mix' ? Object.fromEntries(CLS.map((c) => [c, Array.from({ length: TAM }, (_, k) => mercPadrao(c, k + 1, 'b'))])) : times;
+const lado = (c, cor, ia, qual) => { const T = qual === 'linha' ? timesA[c] : qual === 'coluna' ? timesB[c] : times[c]; return { nome: c, cor1: cor, cor2: cor, simbolo: 0, mercs: T, capitaoId: T[0].id, mult: 1, ia }; };
 
 // Cada par de classes (a, b) roda uma vez só: b contra a é o complemento.
 // No duelo (IA nova × IA atual) não há complemento: os 100 pares ordenados rodam.
@@ -45,7 +50,7 @@ function rodarPar([i, j]) {
   let v = 0, d = 0, te = 0;
   for (let k = 0; k < N; k++) {
     const inverte = k % 2 === 1;   // metade das lutas com cada classe do lado esquerdo
-    const L0 = inverte ? lado(b, 1, IA_COLUNA) : lado(a, 0, IA_LINHA), L1 = inverte ? lado(a, 0, IA_LINHA) : lado(b, 1, IA_COLUNA);
+    const L0 = inverte ? lado(b, 1, IA_COLUNA, 'coluna') : lado(a, 0, IA_LINHA, 'linha'), L1 = inverte ? lado(a, 0, IA_LINHA, 'linha') : lado(b, 1, IA_COLUNA, 'coluna');
     const bt = J.criarBatalha(L0, L1, { silencioso: true, seed: (i * 7919 + j * 104729 + k * 15485863) >>> 0 });
     J.simularAteFim(bt);
     if (bt.vencedor === (inverte ? 1 : 0)) v++;
@@ -82,7 +87,7 @@ const seg = (Date.now() - t0) / 1000;
 // ---- saída ----
 const pct = (x) => String(Math.round(x * 100)).padStart(4);
 const col = (s, w = 6) => String(s).padStart(w);
-const rotulo = DUELO ? 'IA nova (linha) × IA atual (coluna)' : IA === 'v2' ? 'cérebro v2 dos dois lados' : 'IA atual dos dois lados';
+const rotulo = (EVO === 'mix' ? 'evolução A (linha) × evolução B (coluna) · ' : EVO ? `evolução ${EVO.toUpperCase()} dos dois lados · ` : '') + (DUELO && EVO !== 'mix' ? 'IA nova (linha) × IA atual (coluna)' : IA === 'v2' ? 'cérebro v2 dos dois lados' : 'IA atual dos dois lados');
 console.log(`\nVeldria · simulador de balanço · ${rotulo} · regras v${J.REGRAS_COMBATE}`);
 console.log(`${TAM}v${TAM} · nível ${NIVEL} · ${N} lutas por par de classes · ${lutas} lutas em ${seg.toFixed(1)} s (${nucleos} núcleos)\n`);
 console.log('Taxa de vitória (%) da LINHA contra a COLUNA\n');
@@ -112,7 +117,7 @@ if (DUELO) {
 
 if (SALVAR) {
   const dir = path.join(__dirname, 'resultados'); fs.mkdirSync(dir, { recursive: true });
-  const base = path.join(dir, `balanco-n${NIVEL}-t${TAM}${DUELO ? '-duelo' : IA === 'v2' ? '-v2' : ''}`);
+  const base = path.join(dir, `balanco-n${NIVEL}-t${TAM}${DUELO && EVO !== 'mix' ? '-duelo' : IA === 'v2' ? '-v2' : ''}${EVO ? `-evo${EVO}` : ''}`);
   fs.writeFileSync(base + '.json', JSON.stringify({ regras: J.REGRAS_COMBATE, ia: DUELO ? 'duelo' : IA, nivel: NIVEL, tam: TAM, n: N, classes: CLS, vitoria: vit, duracao: dur, tempoEsgotado, media, desvio, espelho }, null, 1));
   fs.writeFileSync(base + '.csv', ['linha\\coluna,' + CLS.join(',') + ',media'].concat(CLS.map((a) => [a, ...CLS.map((b) => vit[`${a}|${b}`].toFixed(3)), media[a].toFixed(3)].join(','))).join('\n') + '\n');
   console.log(`\nGravado em ${path.relative(process.cwd(), base)}.json / .csv`);

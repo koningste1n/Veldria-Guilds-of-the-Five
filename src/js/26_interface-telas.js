@@ -169,7 +169,7 @@ function cardMerc(m, opts = {}) {
       <div class="linha1"><b>${nomeMerc(m)}</b>${badgePot(m.pot)}${estrelas(m.ascensoes)}${meu && noTime ? '<span class="tag no-time">No time</span>' : ''}${exp ? '<span class="tag exp">Expedição</span>' : ''}${meu && STATE.capitao === m.id ? canvasIcone('coroa', 14) : ''}</div>
       <small>${m.campeao ? `<span class="ouro-tx">Campeão Lendário</span> · ` : ''}${CLASSES[m.classe].nome} · nv. ${m.nivel}</small>
       <small class="stats">VIDA ${fmt(s.vida)} · ATQ ${fmt(s.atq)} · DEF ${fmt(s.def)} · AGI ${fmt(s.agi)}</small>
-      ${m.tracos.length || m.pergaminhos.length ? `<div class="tracos">${m.tracos.map((t) => `<span class="chip ${TRACOS[t].pos ? '' : 'neg'}">${TRACOS[t].nome}</span>`).join('')}${m.pergaminhos.map((p) => `<span class="chip perg" style="--rc:${RARIDADES[p.raridade].cor}">${esc(p.nome)}</span>`).join('')}</div>` : ''}
+      ${m.tracos.length || m.pergaminhos.length || evoDe(m) ? `<div class="tracos">${evoDe(m) ? `<span class="chip evo">${nomeEvo(m)}</span>` : ''}${m.tracos.map((t) => `<span class="chip ${TRACOS[t].pos ? '' : 'neg'}">${TRACOS[t].nome}</span>`).join('')}${m.pergaminhos.map((p) => `<span class="chip perg" style="--rc:${RARIDADES[p.raridade].cor}">${esc(p.nome)}</span>`).join('')}</div>` : ''}
     </div>
     ${lado}
   </div>`;
@@ -241,6 +241,7 @@ function htmlFicha(m, modo) {
   ${m.tracos.length ? `<div class="tracos">${m.tracos.map(chipTraco).join('')}</div>` : ''}
   <div class="hab ${m.campeao ? 'lendaria' : ''}"><div class="hab-cab"><b>${sk.nome}</b><span class="tag">Ativa · recarga ${fmt1(sk.cd * (1 - s.recarga))} s</span></div><p>${sk.desc(s)}</p><small class="muted">${sk.fx}. Como capitão vira SUPREMO, com o dobro do efeito.</small></div>
   <div class="hab"><div class="hab-cab"><b>${pa.nome}</b><span class="tag">Passiva</span></div><p>${pa.desc}</p></div>
+  ${htmlEvolucao(m, deFora)}
   ${s.unicos.map((u) => `<div class="hab"><div class="hab-cab"><b style="color:var(--ouro)">★ ${UNICOS[u].nome}</b><span class="tag ouro">Lendário</span></div><p>${UNICOS[u].desc}</p></div>`).join('')}
   ${rodape}`;
 }
@@ -254,6 +255,18 @@ function htmlPergaminhosFicha(m, s) {
   for (let i = m.pergaminhos.length; i < n; i++) partes.push(`<button class="slot-perg" data-act="perg-slot" data-id="${m.id}">+ Equipar pergaminho</button>`);
   const prox = m.nivel < 5 ? 'O 1º espaço abre no nível 5.' : m.ascensoes < 2 ? 'Cada Ascensão abre mais 1 espaço.' : '';
   return `<div class="secao"><span class="rot">Pergaminhos de habilidade${n ? ` (${m.pergaminhos.length}/${n})` : ''}</span>${partes.join('')}${prox ? `<p class="dica">${prox} Pergaminhos ativos viram habilidades extras; passivos dão bônus fixos.</p>` : ''}</div>`;
+}
+// Evolução A/B (E5a): no nível 15 a ficha mostra os dois caminhos; a escolha é para sempre
+function htmlEvolucao(m, deFora) {
+  const EV = EVOLUCOES[m.classe];
+  if (!EV || m.campeao) return '';
+  const e = evoDe(m);
+  if (e) return `<div class="evo feita"><div class="asc-cab">${canvasIcone('estrela', 18)}<b>${EV[e].nome}</b><span class="tag">Evolução ${e.toUpperCase()}</span></div><small>${EV[e].desc}</small></div>`;
+  if (m.nivel < NIVEL_EVOLUCAO) return `<div class="evo"><div class="asc-cab">${canvasIcone('estrela', 18)}<b>Evolução</b><span class="tag">no nível ${NIVEL_EVOLUCAO}</span></div><small>Escolha entre <b>${EV.a.nome}</b> (${EV.a.mote.toLowerCase()}) e <b>${EV.b.nome}</b> (${EV.b.mote.toLowerCase()}). A escolha é para sempre.</small></div>`;
+  const card = (k) => `<button class="evo-card" data-act="evoluir" data-id="${m.id}" data-v="${k}" ${deFora ? 'disabled' : ''}><span class="tag">${k.toUpperCase()}</span><b>${EV[k].nome}</b><i>${EV[k].mote}</i><small>${EV[k].desc}</small></button>`;
+  return `<div class="evo pronta"><div class="asc-cab">${canvasIcone('estrela', 18)}<b>Hora de evoluir!</b><span class="tag ouro">nível ${NIVEL_EVOLUCAO}</span></div>
+    <small>Escolha um caminho. A escolha é para sempre e muda a habilidade${['machadeiro', 'bardo', 'arqueira'].includes(m.classe) ? ' e a passiva' : ''}.</small>
+    <div class="evo-opcoes">${card('a')}${card('b')}</div></div>`;
 }
 function htmlAscensao(m) {
   const asc = m.ascensoes || 0;

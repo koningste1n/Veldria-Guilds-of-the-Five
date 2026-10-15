@@ -124,6 +124,33 @@ const PASSIVAS = {
   colheita: { nome: 'Colheita', desc: 'Cada inimigo abatido cura 5% da VIDA máx. de todos os aliados.' },
 };
 
+// Evoluções A/B (E5a, aprovadas pelo Kevin em 15/10/2026): no nível 15 cada classe escolhe um caminho, para sempre.
+// Só nome e texto ficam aqui; os efeitos estão no 10_combate.js e no 10b (busca por `u.evo`). Campeões não evoluem
+// (a habilidade deles já é própria). Rivais a partir do nível 15 vêm com um caminho sorteado.
+const NIVEL_EVOLUCAO = 15;
+const EVOLUCOES = {
+  guardiao: { a: { nome: 'Bastião', mote: 'A muralha que segura', desc: 'A Muralha Viva provoca por 4 s (6 s no SUPREMO) numa área maior.' },
+              b: { nome: 'Égide', mote: 'Escudo de todos', desc: 'A Muralha também dá um escudo de 15% da VIDA ao aliado mais ferido; provoca só por 1 s.' } },
+  machadeiro: { a: { nome: 'Berserker', mote: 'Quanto pior, melhor', desc: 'A Fúria vai até +50% ATQ (antes +30%), mas a DEF cai 10%.' },
+                b: { nome: 'Ceifador', mote: 'Puxa e devora', desc: 'O Redemoinho puxa os inimigos em vez de afastar e cura 20% do dano que causa.' } },
+  lanceira: { a: { nome: 'Cavaleira', mote: 'Carga atrás de carga', desc: 'A Investida recarrega 40% mais rápido e atordoa por 0,5 s.' },
+              b: { nome: 'Sentinela', mote: 'Ninguém passa', desc: 'Não avança: quem chegar perto leva a Investida no lugar (130% ATQ), com empurrão forte e 1,2 s de atordoamento.' } },
+  arqueira: { a: { nome: 'Atiradora de Elite', mote: 'Um tiro, um alvo', desc: 'A Chuva de Flechas vira Tiro Certeiro: 150% ATQ num alvo só, crítico garantido.' },
+              b: { nome: 'Batedora', mote: 'Sempre fora de alcance', desc: 'Recua 20% mais rápido; cada onda da Chuva de Flechas deixa Lentidão leve (20%) por 2 s.' } },
+  piromante: { a: { nome: 'Incendiária', mote: 'Tudo em chamas', desc: 'A explosão da Bola de Fogo tem o dobro da área e a Queimadura dobra; o dano direto cai para 120% ATQ.' },
+               b: { nome: 'Pira', mote: 'Um alvo, cinzas', desc: 'Bola de Fogo de 240% ATQ num alvo só, sem explosão.' } },
+  criomante: { a: { nome: 'Geleira', mote: 'Parado no gelo', desc: 'A Lança de Gelo congela por 1,5 s sempre; o dano cai para 160% ATQ.' },
+               b: { nome: 'Nevasca', mote: 'Atravessa a linha', desc: 'A Lança atravessa o alvo e atinge todos na linha (140% ATQ), deixando Lentidão leve (20%) por 3 s.' } },
+  clerica: { a: { nome: 'Sacerdotisa', mote: 'Luz para todos', desc: 'A Luz Restauradora cura todos os aliados: 280% ATQ no mais ferido (como sempre) e 100% nos outros.' },
+             b: { nome: 'Inquisidora', mote: 'Cura que fere', desc: 'Cura 200% ATQ e causa 150% ATQ ao inimigo mais perto de quem foi curado.' } },
+  lamina: { a: { nome: 'Assassina', mote: 'Mata e segue', desc: 'Se o alvo do Passo Sombrio morrer no golpe, a recarga zera.' },
+            b: { nome: 'Sombra', mote: 'Some depois do golpe', desc: 'Depois do Passo Sombrio, fica 2 s quase impossível de acertar (+40% de esquiva).' } },
+  bardo: { a: { nome: 'Maestro', mote: 'A música não para', desc: 'O Hino de Batalha dura 10 s em vez de 8: o time fica menos tempo sem a música.' },
+           b: { nome: 'Dissonante', mote: 'Canção maldita', desc: 'O Hino vira maldição: todos os inimigos perdem 30% de ATQ e AGI por 8 s.' } },
+  invocador: { a: { nome: 'Legião', mote: 'Ossos por todo lado', desc: 'Ergue 3 esqueletos (25% dos seus atributos), até 6, e eles provocam quem estiver perto.' },
+               b: { nome: 'Necromante', mote: 'Um cavaleiro leal', desc: 'Ergue 1 Cavaleiro de Ossos (VIDA 90%, ATQ 70%) que fica até morrer; o SUPREMO o cura por inteiro e o enfurece.' } },
+};
+
 // Traços: multiplicadores e bônus
 const TRACOS = {
   prodigio: { nome: 'Prodígio', desc: '+25% XP', pos: true, xp: 1.25 },

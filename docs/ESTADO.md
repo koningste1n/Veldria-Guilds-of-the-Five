@@ -4,7 +4,7 @@
 
 **Como trabalhar:** `docs/PROMPT-MAE.md` (papéis, regras, roteiro das etapas com critérios de pronto, handoff).
 
-_Atualizado em 15/10/2026 (**E5a em andamento**: Kevin aprovou curva, opção A e evoluções; bloco 1 publicado, v0.11, save v13)._
+_Atualizado em 15/10/2026 (**E5a em andamento**: blocos 1 e 2 publicados — níveis até 100 e evoluções A/B; v0.12, save v14, regras de combate v4)._
 
 ## O que existe (v0.10.1, E4: cérebro v2, formação 3×3 com tela, câmera de treinador, partidas melhor de 3)
 
@@ -51,7 +51,7 @@ Os testes Playwright antigos (`luta.py`, `lideres.py`, `nuvem.py`, `perf.py`…)
 | E2 | Nome Veldria no jogo, save v6 (tutorial progressivo feito e **desligado** — ver Pendências) | 1 | Opus 5.5 | ✅ 15/10 |
 | E3 | Registro de partidas, ficha de recordes + melhores da temporada, simulador de balanço em Node | 1 | Opus 5.5 | ✅ 15/10 (aguarda teste do Kevin no celular) |
 | E4 | Motor novo: IA de utilidade, 3×3 + posturas, câmera, 3v3 melhor de 3; decisão de orientação de tela | 3–4 | **Fable 5.1** | ✅ **15/10** (4 conversas; veredito do Kevin no celular: tudo aprovado) |
-| E5a | Curva 1→100, Ascensão como portão, maestrias 20/50, Rank S, A/B nv. 15, catálogo com raridades, pity | 2 | **Fable 5.1** | 🟡 bloco 1 de 4 publicado (v0.11) |
+| E5a | Curva 1→100, Ascensão como portão, maestrias 20/50, Rank S, A/B nv. 15, catálogo com raridades, pity | 2 | **Fable 5.1** | 🟡 blocos 1 e 2 de 4 publicados (v0.12) |
 | E5b | Personalidades visíveis, rivais, identidade de build, relíquias 24+, renome, contrato diário, eventos semanais | 2 | Opus 5.5 | |
 | E6 | Classes novas em lotes de 2–4 | 1–2 | Opus 5.5 | |
 
@@ -379,10 +379,10 @@ Testes: `registro.py` (2 partidas assistidas com toques + 3 puladas = 12 lutas; 
 | 1 | Curva 1→100: `xpProx(n) = 50·n^1,5` mantida (1–29 idêntica à de hoje); teto 30 → Ascensão I → 60 → Ascensão II → 100 | ✅ `testes/nivel100.py` |
 | 2 | Save antigo abre no lugar certo: nível, XP e Ascensões preservados; ninguém perde nível nem teto | ✅ `nivel100.py`: nv. 10/20/30 com 0/1/2 Ascensões abrem com tetos 30/60/100, XP intacto, o nv. 30 sobe para 31 |
 | 3 | **Opção A**: nv. 100 com Rank S não vence nv. 60 por mais de 70 % | 🟡 `node sim/nivel.js`: sem Rank S 49 % / 47 %; com +2 % (Rank S simulado) 65 % / 68 % (1v1 / 3v3). Fecha quando o Rank S existir |
-| 4 | Evoluções A/B no nv. 15 (irreversíveis), maestria de função no nv. 20 e de classe no nv. 50, Rank S no nv. 100: tudo visível na ficha | Teste de interface + captura |
+| 4 | Evoluções A/B no nv. 15 (irreversíveis), maestria de função no nv. 20 e de classe no nv. 50, Rank S no nv. 100: tudo visível na ficha | 🟡 evoluções ✅ (`testes/evolucoes.py`, capturas `e5a-evolucao*.png`); faltam maestrias e Rank S |
 | 5 | Catálogo: 2 habilidades garantidas + 6 com raridades comum / incomum / rara / lendária; pergaminhos atuais migrados | Save com pergaminhos abre com eles no catálogo |
 | 6 | Proteção contra azar com contador visível e salvo no save | Teste: N aberturas sem lendário → a seguinte é lendária |
-| 7 | Balanço 3v3 (v2 × v2, nível 10): nenhuma classe abaixo de 20 % nem acima de 80 % (hoje: Invocador 0, Guardião 22, Arqueira 94) | `node sim/balanco.js --ia v2 --tam 3` |
+| 7 | Balanço 3v3 (v2 × v2, nível 10): nenhuma classe abaixo de 20 % nem acima de 80 % (hoje: Invocador 0, Guardião 22, Arqueira 94) | `node sim/balanco.js --ia v2 --tam 3 [--evo a\|b\|mix]`; cada evolução medida em time real com `node sim/evolucoes.js` (todas entre 42 % e 78 % contra a base) |
 
 ### Curva 1→100 proposta (mesma fórmula de hoje, estendida)
 
@@ -468,8 +468,47 @@ Migração: quem já tem Ascensões fica com elas e o teto novo correspondente (
 | Rank S terá **no máximo +2 %** de atributos | `sim/nivel.js`: +2 % dá 65 % / 68 %; mais que isso fura os 70 % |
 | A economia (ouro e preços acima do 30) ainda não foi conferida | Fica para o bloco de balanço, com o simulador |
 
-## Próxima conversa começa por… (E5a bloco 2, **Fable 5.1**)
+### Bloco 2 concluído em 15/10/2026 (v0.12, save v14, regras v4): evoluções A/B no nível 15
 
-1. **Evoluções A/B no nv. 15** (tabela aprovada acima): dados em `02_dados.js` (`EVOLUCOES[classe].a/b` com modificadores das habilidades e passivas), efeitos no `10_combate.js` e regras do cérebro no `10b`; escolha irreversível na ficha; save v14 (`m.evolucao`); `REGRAS_COMBATE` sobe. Medir cada caminho no `sim/balanco.js --ia v2 --tam 3` (critério 7).
-2. Depois: maestrias (nv. 20 função, nv. 50 classe) e Rank S (≤ +2 %, fecha o critério 3) → catálogo com raridades (critério 5) → pity visível (critério 6) → economia acima do 30.
+| O que mudou | Onde |
+|---|---|
+| `EVOLUCOES` (nome, mote, texto de cada caminho) e `NIVEL_EVOLUCAO = 15` | `02_dados.js` |
+| `m.evolucao` (`null`/`'a'`/`'b'`), `evoDe`, `podeEvoluir`, `evoluir`, `nomeEvo`; Campeões não evoluem | `09` |
+| Efeitos dos 20 caminhos (busca por `u.evo`); `st.slowLeve` (Lentidão leve, 20 %), `esquivaEf` (buff de esquiva), debuff de AGI, invocações com `provoca`/`cavaleiro`, `sk.resetar` (recarga zerada) | `10_combate.js` |
+| Cérebro: Sentinela só usa a Investida em quem chegou perto; Tiro Certeiro vale como golpe único; Dissonante canta quando a luta já começou; Legião/Necromante com seus limites | `10b` |
+| Ficha: bloco "Hora de evoluir!" logo abaixo das habilidades, com dois cartões → confirmação ("para sempre") → bloco "feita"; chip da evolução no card do Elenco | `26`, `30`, `shell.html` |
+| Rivais da Liga, Copa e Torre a partir do nv. 15 vêm com caminho sorteado; recrutas do Mercado vêm sem (a escolha é do jogador) | `21`, `22` |
+| Registro da luta guarda `evolucao`; **regras v4**, mas registros v3 reproduzem iguais (`REGRAS_COMPATIVEIS = [3, 4]`): 200 lutas gravadas pelo código v3 reproduziram 200/200 no v4 | `10`, `sim/replay.js --gravar/--conferir` |
+| Save **v14**: só o campo novo; nota "Fase 12 · Evoluções" | `15`, `28` |
+| `sim/evolucoes.js` (valor de cada caminho em time de 3), `sim/balanco.js --evo`, `testes/evolucoes.py` (21 verificações) | `sim/`, `testes/` |
+
+#### Como ficaram os 20 caminhos (medido: time de 3 com a classe evoluída × mesmo time sem evolução, 60 lutas, nv. 15)
+
+| Classe | A | vence a base | B | vence a base |
+|---|---|---|---|---|
+| Guardião | **Bastião** — Muralha provoca 4 s (6 no SUPREMO), raio maior | 45 % | **Égide** — Muralha também dá escudo de 15 % ao aliado mais ferido; provoca 1 s | 45 % |
+| Machadeiro | **Berserker** — Fúria até +50 % ATQ; −10 % DEF | 70 % | **Ceifador** — Redemoinho puxa e cura 20 % do dano | 57 % |
+| Lanceira | **Cavaleira** — Investida recarrega 40 % mais rápido; atordoa 0,5 s | 58 % | **Sentinela** — não avança; quem chega perto leva 130 %, empurrão e 1,2 s de atordoamento | 65 % |
+| Arqueira | **Atiradora de Elite** — Tiro Certeiro: 150 % num alvo, crítico garantido | 70 % | **Batedora** — recua 20 % mais rápido; cada onda da Chuva deixa Lentidão leve 2 s | 48 % |
+| Piromante | **Incendiária** — área e queimadura dobradas; dano direto 120 % | 72 % | **Pira** — 240 % num alvo, sem explosão | 78 % |
+| Criomante | **Geleira** — congela 1,5 s sempre; dano 160 % | 53 % | **Nevasca** — atravessa a linha (140 % nos demais), Lentidão leve 3 s | 62 % |
+| Clériga | **Sacerdotisa** — Luz cura todos: 280 % no mais ferido, 100 % nos outros | 42 % | **Inquisidora** — cura 200 % e causa 150 % ao inimigo mais perto do curado | 47 % |
+| Lâmina | **Assassina** — se o alvo do Passo morrer, a recarga zera | 48 % | **Sombra** — 2 s com +40 % de esquiva depois do Passo | 72 % |
+| Bardo | **Maestro** — Hino dura 10 s | 75 % | **Dissonante** — Hino vira maldição: todos os inimigos −30 % ATQ e AGI por 8 s | 62 % |
+| Invocador | **Legião** — 3 esqueletos (25 %), até 6, que provocam | 75 % | **Necromante** — 1 Cavaleiro de Ossos (VIDA 90 %, ATQ 70 %) permanente; SUPREMO cura e enfurece | 53 % |
+
+| Decisão | Por quê |
+|---|---|
+| Os números da tabela aprovada foram **calibrados** (Tiro Certeiro 250 → 150 % crítico; Pira 260 → 240; Geleira 120 → 160; Sentinela 1,5 → 1,2 s; Legião 30 → 25 %; Necromante ATQ 60 → 70 %; Maestro 12 → 10 s e sem mudar o Ritmo; Dissonante alcança a arena inteira; Sacerdotisa mantém os 280 % no mais ferido; Sombra virou +40 % de esquiva em vez de "sem poder ser alvo") | Primeira medição tinha 0 % e 100 % (Bastião 0, Égide 97, Elite 98, Sacerdotisa 0, Sombra 98, Maestro 100, Dissonante 0). O combate é sensível a atributo (achado do bloco 1), então as evoluções precisam ser **laterais**, não verticais. Nomes e espírito de cada caminho são os aprovados |
+| Alvo de balanço: cada caminho entre 40 % e 80 % contra a base, em time de 3 | Evoluir deve ser recompensa visível, mas o jogador que escolher "errado" não pode ficar fora do jogo. Nenhum caminho fica abaixo de 42 % |
+| Suportes (Clériga, Bardo) medidos num time com dano (tanque + arqueira) | Com dois times de cura a luta ia ao relógio (120 s) e a medida virava moeda |
+| A escolha é irreversível e pede confirmação ("Pensar mais" / "Evoluir") | Regra do prompt-mãe; o toque errado no celular não pode custar a escolha |
+| Regras v4 compatíveis com v3 | Sem evolução, nenhuma conta mudou; reproduções antigas continuam válidas, então não há "versão anterior" para quem já jogava |
+
+Pendente de balanço geral (não é das evoluções): Arqueira ainda domina (88–95 % no 3v3 espelho), Guardião e Clériga fracos no teste espelho (mas o espelho de 3 iguais pune tanques e curas). Fica para o passo de balanço do fim da E5a, com o `sim/evolucoes.js` como medida de time real.
+
+## Próxima conversa começa por… (E5a bloco 3, **Fable 5.1**)
+
+1. **Maestrias e Rank S**: maestria de função no nv. 20 (bônus pequeno ligado ao papel: tanque, atirador, mago…) e de classe no nv. 50 (um toque na habilidade); Rank S no nv. 100 com **no máximo +2 % de atributos** (fecha o critério 3 com `node sim/nivel.js --bonus 0.02`). Tudo em tabelas de dados (`02`), visível na ficha, save v15.
+2. Depois: catálogo de habilidades com raridades (critério 5) → pity visível (critério 6) → economia acima do 30 → balanço geral (Arqueira, Guardião, Clériga) com `sim/evolucoes.js` e `sim/balanco.js --tam 3`.
 3. A confirmar com o Kevin (sem pressa): função principal de cada classe (D1) e se o jogador novo precisa de algum tour.

@@ -2,51 +2,61 @@
 
 **Repositório:** github.com/koningste1n/Veldria-Guilds-of-the-Five · **Jogar:** https://koningste1n.github.io/Veldria-Guilds-of-the-Five/ (publica sozinho a cada envio para `main`).
 
-_Atualizado em 14/10/2026._
+**Como trabalhar:** `docs/PROMPT-MAE.md` (papéis, regras, roteiro das etapas com critérios de pronto, handoff).
+
+_Atualizado em 14/10/2026 (noite)._
 
 ## O que existe (v0.4, Fase 4.1)
 
 - 10 classes: guardião, machadeiro, lanceira, arqueira, piromante, criomante, clérica, lâmina, bardo e invocador.
-- 5 divisões (Bronze → Lenda), Copa dos 4 primeiros com Líderes, cerca de 25 pergaminhos, cerca de 15 relíquias, consumíveis, Forja, Ascensão, Campeões.
+- 5 divisões (Bronze → Lenda) em temporadas, Copa dos 4 primeiros com Líderes, cerca de 25 pergaminhos, cerca de 15 relíquias, consumíveis, Forja, Ascensão (2 níveis; teto de nível hoje = 30), Campeões.
 - Sede ociosa, expedições, Acampamento, Torre Infinita com Guardiões a cada 10 andares, estatísticas, Modo Criador (7 toques na versão).
 - Bonecos 32×40 com membros por cinemática inversa e 3 vistas, arena 384×216 com câmera, VFX direcionais, sons sintetizados, vibração e câmera lenta.
 - Combate com passo fixo de 1/30 s e semente aleatória; "pular luta"; IA por função.
-- Save na nuvem por conta (capacidades db/user do Claude), com resolução de conflito entre aparelhos.
+- Save em `localStorage` (`ligaDasLaminas.save.v1`) com **versão dentro do save (v5) e migrações encadeadas**; save na nuvem por conta no artefato do Claude, com resolução de conflito entre aparelhos.
 
 ## Perdido na migração
 
-Os testes Playwright antigos (`luta.py`, `lideres.py`, `nuvem.py`, `perf.py`…) e as simulações de balanceamento (`balanco2.js`, `jornada.js`) ficaram em pastas temporárias de conversas antigas. Só o teste de fumaça foi refeito. Recriar os outros conforme as fases precisarem.
+Os testes Playwright antigos (`luta.py`, `lideres.py`, `nuvem.py`, `perf.py`…) e as simulações de balanceamento (`balanco2.js`, `jornada.js`) ficaram em pastas temporárias de conversas antigas. Só o teste de fumaça foi refeito. O simulador volta na E3.
 
-## Próxima versão (receita da "Engenharia Reversa do Eslabong")
+## Decisões de 14/10/2026
 
-Decisão do conselho de 14/10/2026: **evoluir, não reescrever.** Trocar só o motor de batalha e manter arte, sons, nuvem, Torre, Forja e expedições.
+**Conselho (tarde):** evoluir, não reescrever. Trocar só o motor de batalha; arte, sons, nuvem, Torre, Forja e expedições ficam.
 
-| Sistema | Destino |
+**Kevin (noite), itens numerados do recap:**
+
+| Item | Decisão |
 |---|---|
-| Arte, VFX, sons, nuvem, testers, Torre, Forja, expedições | Fica |
-| 10 classes → 6 funções (tanque, corpo a corpo, assassino, distância, controle, suporte) | As funções viram etiquetas sobre as 10 classes |
-| Pergaminhos → 2 habilidades garantidas + catálogo de 6 | Adapta |
-| Relíquias → 24 com padrões de efeito | Adapta e amplia |
-| IA de utilidade, personalidades com erro, formação 3×3, posturas, 3v3 melhor de 3 | Motor novo, em módulo isolado, testado sem tela |
-| Evoluções A/B (nv. 15), maestrias (20/30), proteção contra azar, renome | Novo |
-| Registro de partidas (semente, versão das regras, times, vencedor), save versionado, exportar/importar | Novo, e vem **primeiro** |
-
-Estimativa: 8 a 12 conversas de trabalho.
+| E2–E5 | Aprovadas; E5 dividida em E5a (progressão) e E5b (alma); E6 (classes novas) adicionada |
+| D1 | Funções (tanque, corpo a corpo, assassino, distância, controle, suporte) são etiquetas sobre as classes; haverá mais classes |
+| D2 | 2 habilidades garantidas + catálogo de 6 com raridades comum / incomum / rara / lendária |
+| D3 | 24+ relíquias com padrões de efeito |
+| D4–D8 | Aprovados |
+| D9 | Maestrias nv. 20 e nv. 50; **teto de nível 100 = Aventureiro Rank S**; campeões não aposentam |
+| D10, D11 | Aprovados |
+| P1 | Sensação-alvo: "Eu montei esse time, eu escolhi essas relíquias — e quando eles vencem sozinhos, a vitória é minha." |
+| P2 / S6 | Tutorial = 5 primeiras batalhas; os 7 menus liberam um por vez |
+| P4 | Formação 3×3 configurada antes da luta; câmera afastada mostra a formação e aproxima no embate; orientação (em pé × deitada) decidida após o 1º teste |
+| P5 | Personalidade aparece como bônus/penalidade visível na ficha |
+| S1 rivais, S2 contrato diário, S5 identidade de build, S9 recordes e melhores da temporada, S10 simulador | Aprovados |
+| S7 eventos semanais | Aprovado, só a partir do nv. 10 |
+| S3 narração, S4 dica pós-derrota, S8 campeão aposentado, nível de guilda | Não entram |
+| Formato de trabalho | Prompt-mãe único (`docs/PROMPT-MAE.md`), com liberdade de mudar o plano a cada etapa |
 
 ## Ordem combinada
 
-1. ✅ Código-fonte recuperado, versionado no GitHub e publicado no GitHub Pages.
-2. Save com número de versão e migração, mais exportar/importar como texto.
-3. Registro de partidas.
-4. Motor novo de batalha, primeiro 1v1 e depois 3v3, ligado na interface só quando vencer a IA atual nas simulações.
-5. Personalidades, relíquias com padrões de efeito, evoluções A/B.
+| # | Etapa | Conversas | Status |
+|---|---|---|---|
+| E1 | Código recuperado, no GitHub e publicado | — | ✅ |
+| E2 | Exportar/importar save, nome Veldria no jogo, tutorial progressivo nas 5 primeiras lutas | 1–2 | próxima |
+| E3 | Registro de partidas, ficha de recordes + melhores da temporada, simulador de balanço em Node | 1–2 | |
+| E4 | Motor novo: IA de utilidade, 3×3 + posturas, câmera, 3v3 melhor de 3; decisão de orientação de tela | 3–4 | |
+| E5a | Curva 1→100, Ascensão como portão, maestrias 20/50, Rank S, A/B nv. 15, catálogo com raridades, pity | 2 | |
+| E5b | Personalidades visíveis, rivais, identidade de build, relíquias 24+, renome, contrato diário, eventos semanais | 2 | |
+| E6 | Classes novas em lotes de 2–4 | 1–2 | |
 
-## Pendências de ideia
+Critérios de pronto de cada etapa: `docs/PROMPT-MAE.md`, seção 5.
 
-- Trocar o nome dentro do jogo para Veldria sem mudar a chave do save (`ligaDasLaminas.save.v1`).
+## Próxima conversa começa por…
 
-- Uma frase de sensação-alvo: o que deve prender o jogador.
-- Os primeiros 3 minutos de um jogador novo (hoje ele vê 7 menus).
-- Critério de pronto de cada fase.
-- Verificar se a formação 3×3 e as posturas cabem na tela em pé.
-- Testar barato se o jogador percebe personalidades e erros numa luta automática.
+E2. Primeira tarefa: propor ao Kevin a ordem de desbloqueio dos 7 menus no tutorial, depois implementar exportar/importar save em `15_estado-e-save.js` + Configurações (`28_…`).

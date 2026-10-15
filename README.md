@@ -1,4 +1,6 @@
-# Liga das Lâminas
+# Veldria: Guilds of the Five
+
+> Novo nome do jogo (antes "Liga das Lâminas"). Os textos dentro do jogo ainda usam o nome antigo; a troca entra numa próxima fase.
 
 Jogo de gestão de guilda de mercenários com batalhas automáticas em arena, pixel art desenhada por código e feito para celular em pé. HTML + CSS + JavaScript puro, sem bibliotecas e sem nada externo.
 

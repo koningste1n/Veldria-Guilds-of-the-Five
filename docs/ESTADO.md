@@ -552,8 +552,23 @@ Pedido do Kevin: "o jogo até o momento está feio" — pausar a evolução, ref
 
 Capturas: `testes/ev-luta-formacao.png`, `testes/ev-luta-embate.png`, `testes/ev-aparencia.png`.
 
+## EV — retorno do Kevin (15/10/2026, noite) e novo rumo da arte
+
+| Retorno | Decisão |
+|---|---|
+| Fonte Lilita One "muito cartoon" | Trocar por uma simples e minimalista (opções Inter, Manrope, Figtree, DM Sans na página de conceitos) |
+| Bonecos 3/4 da v0.13 não agradaram | Estilo **chibi** (cabeça grande, corpo pequeno), animação simples e coesa, pixel maior na tela |
+| Raça editável | **Raça fixa por lutador**; na Aparência só muda o tom de pele |
+| Animações "meio borradas" | Causa: escala quebrada + suavização + posição em fração de pixel. Correção: só escalas inteiras, vizinho mais próximo, posições inteiras, câmera em degraus |
+| Armaduras simples demais | A arte nova virá do **PixelLab** (Kevin produz); o Claude encaixa, limpa e anima o que não muda a pose |
+
+Página de conceitos (rodada 1): https://claude.ai/artifact/BgcwtDo8niWErKUARZWs5R · Lista de artes e guia do PixelLab (doc): https://claude.ai/code/artifact/3a3e2af0-6d5a-4358-a285-229faab74811
+
+**Plano de arte:** tela 64×64, boneco chibi ~32 px olhando para a direita, PNG 1×. Fase 1 = 10 classes × 2 raças + 3 invocações (23 bases, 89 animações); Fase 2 = 3ª raça + 5 Campeões + 5 Líderes (20 bases, 80 animações); Fase 3 opcional = fundos e 2ª roupa. Kevin faz no PixelLab: base, parado, andar, ataque, habilidade. Claude faz em código: dano, caído, levantar, esquiva, dash, pulo, vitória, piscar, todas as trocas de cor (pele, cabelo, roupa, evolução), efeitos e ícones. Personagem sem arte nova continua com o boneco atual até a sua chegar.
+
 ## Próxima conversa começa por…
 
-1. **Veredito do Kevin sobre a EV** no celular (lista acima). Ajustes visuais que ele pedir vêm antes de qualquer outra coisa. Candidatos já vistos: mais penteados/rostos, roupas exclusivas por evolução (hoje são peças + cor), retratos maiores na ficha, desempenho em celular fraco (limitar efeitos se cair de 60 qps).
+1. **Arte do PixelLab**: Kevin manda primeiro o `guardiao_humano` (âncora do estilo). Claude cria o carregador de folhas de sprite (PNG 64×64, pés na linha 56), a limpeza automática (fundo, semitransparência, paleta, alinhamento), as animações por código e a troca de paleta; prévia antes de publicar. Em paralelo, sem depender da arte: escala inteira sem borrado, fonte escolhida, raça fixa no editor de Aparência, efeitos no estilo escolhido na página de conceitos.
+2. Antigo item 1 — **Veredito do Kevin sobre a EV** no celular (lista acima). Ajustes visuais que ele pedir vêm antes de qualquer outra coisa. Candidatos já vistos: mais penteados/rostos, roupas exclusivas por evolução (hoje são peças + cor), retratos maiores na ficha, desempenho em celular fraco (limitar efeitos se cair de 60 qps).
 2. Depois, voltar à **E5a bloco 3** (Fable 5.1): maestrias nv. 20/50 e Rank S (+2 % no máximo), tudo com visual próprio (regra da EV); depois catálogo com raridades → pity → economia acima do 30 → balanço geral.
 3. A confirmar com o Kevin (sem pressa): função principal de cada classe (D1), se o jogador novo precisa de algum tour, e se as raças devem ganhar bônus.

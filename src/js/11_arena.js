@@ -79,10 +79,23 @@ function focarCamera(x, y, zoom, t) { Arena.camFoco = { x, y, zoom, t }; }
 // "soco" de câmera: um zoom rápido que volta sozinho nos golpes pesados
 function socar(v) { Arena.soco = Math.max(Arena.soco || 0, v); }
 
+/* EV1 — nitidez igual perto e longe: o canvas da arena tem a resolução real da tela (CSS × densidade de pixels).
+   O mundo em pixel art é desenhado numa camada em escala INTEIRA (k = cada pixel do mundo vira k×k) e essa camada
+   é levada à tela com suavização: nenhum pixel some ao afastar nem fica torto ao aproximar ("sharp bilinear").
+   Por cima, na resolução da tela, vêm os efeitos vetoriais, as barras de vida e os números. */
+function ajustarResolucao() {
+  const cv = Arena.cv; if (!cv) return;
+  const dpr = Math.min(3, Math.max(1, window.devicePixelRatio || 1));
+  const cssW = cv.clientWidth || VISTA.w;
+  const w = Math.round(cssW * dpr), h = Math.round((cssW * dpr * VISTA.h) / VISTA.w);
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  Arena.dpr = dpr; Arena.esc = w / VISTA.w;   // pixels de tela por unidade da janela
+}
 function prepararArena(cv, b, cenario = 'arena') {
-  Arena.cv = cv; Arena.ctx = cv.getContext('2d'); Arena.ctx.imageSmoothingEnabled = false;
-  if (!Arena.buf) { Arena.buf = document.createElement('canvas'); Arena.buf.width = ARENA.w; Arena.buf.height = ARENA.h; }
-  Arena.bctx = Arena.buf.getContext('2d'); Arena.bctx.imageSmoothingEnabled = false;
+  Arena.cv = cv; Arena.ctx = cv.getContext('2d');
+  ajustarResolucao();
+  if (!Arena.buf) Arena.buf = document.createElement('canvas');
+  Arena.bctx = Arena.buf.getContext('2d');
   Arena.lenta = 0; Arena.lentaTotal = 0; Arena.zoomFoco = null; Arena.ultimaMorte = null; Arena.camFoco = null; Arena.cutin = null; Arena.lua = null; Arena.soco = 0; Arena.janela = null; timersArena.length = 0;
   Arena.cenario = cenario; Arena.cam = { x: 0, y: 0, zoom: 1, pronta: false }; Arena.camModo = 'formacao'; Arena.camEntrada = 0;
   for (const u of b.units) u.camQuente = 0;
@@ -131,13 +144,17 @@ function faiscas(x, y, n, cores, vel = 55, opt = {}) {
 function fumaca(x, y, n, cores) {
   for (let i = 0; i < n; i++) particula(x + rnd(-7, 7), y + rnd(-8, 3), rnd(-11, 11), rnd(-26, -8), rnd(0.4, 0.8), pick(cores), { tam: 3 });
 }
-function numero(x, y, txt, cor, esc = 2) {
-  Arena.nums.push({ x: x + rnd(-4, 4), y, txt, cor, esc, vida: 0.85, max: 0.85 });
+// Números de dano/cura e rótulos: posição presa ao mundo, tamanho fixo na tela (não crescem com o zoom).
+// esc 1 = rótulo pequeno · 2 = número normal · 3 = crítico. Números do mesmo alvo empilham para não se cobrirem.
+function numero(x, y, txt, cor, esc = 2, dono = null) {
+  const pilha = Arena.nums.filter((n) => n.dono && n.dono === dono && n.max - n.vida < 0.35).length;
+  Arena.nums.push({ x, y, txt: String(txt), cor, esc, vida: esc === 3 ? 1.0 : 0.85, max: esc === 3 ? 1.0 : 0.85, dono, pilha, jx: rnd(-7, 7) });
   if (Arena.nums.length > 40) Arena.nums.shift();
 }
+const TAM_NUM = { 1: 11, 2: 14, 3: 19 };   // px CSS
 function efeito(tipo, props) { Arena.fx.push(Object.assign({ tipo, t: 0 }, props)); }
 function tremer(dur, amp) { Arena.tremorAmp = Arena.tremor > 0 ? Math.max(amp, Arena.tremorAmp) : amp; Arena.tremor = Math.max(Arena.tremor, dur); }
-const cab = (u) => u.y - 40;
+const cab = (u) => u.y - 52;
 
 function processarEventos(b) {
   for (const ev of b.eventos) {
@@ -162,21 +179,21 @@ function vfxEvento(ev) {
     case 'dano': {
       const a = ev.alvo;
       if (ev.crit) {
-        numero(a.x, cab(a) - 6, ev.valor + '!', '#ffd84a', 3);
+        numero(a.x, cab(a) - 6, ev.valor + '!', '#ffd84a', 3, a);
         faiscas(a.x, a.y - 15, 9, ['#ffffff', '#ffd84a', '#ffb36b'], 75);
         fxImpacto(a.x, a.y - 18, '#ffd84a', 8, 13); socar(0.035);
         tremer(0.14, 2); Arena.pausa = Math.max(Arena.pausa, 0.05); Arena.festa = Math.max(Arena.festa, 0.6);
       } else {
-        numero(a.x, cab(a), String(ev.valor), ev.escudo ? '#cfe8ff' : '#ffffff', 2);
+        numero(a.x, cab(a), String(ev.valor), ev.escudo ? '#cfe8ff' : '#ffffff', 2, a);
         faiscas(a.x, a.y - 15, 4, ev.escudo ? ['#cfe8ff', '#9fd3ff'] : ['#ffffff', '#e9dfc9'], 50);
       }
       break;
     }
-    case 'dot': numero(ev.alvo.x, cab(ev.alvo) + 4, String(ev.valor), COR_DOT[ev.dot] || '#ff9a3c', 2); break;
-    case 'esquiva': numero(ev.alvo.x, cab(ev.alvo), 'ESQUIVA', '#b8b0c4', 1); break;
+    case 'dot': numero(ev.alvo.x, cab(ev.alvo) + 4, String(ev.valor), COR_DOT[ev.dot] || '#ff9a3c', 2, ev.alvo); break;
+    case 'esquiva': numero(ev.alvo.x, cab(ev.alvo), 'ESQUIVA', '#b8b0c4', 1, ev.alvo); break;
     case 'cura': {
       const a = ev.alvo;
-      if (!ev.pequeno || ev.valor >= 12) numero(a.x, cab(a), '+' + ev.valor, '#7dff8a', 2);
+      if (!ev.pequeno || ev.valor >= 12) numero(a.x, cab(a), '+' + ev.valor, '#7dff8a', 2, a);
       for (let i = 0; i < (ev.pequeno ? 1 : 4); i++) particula(a.x + rnd(-9, 9), a.y - rnd(6, 24), 0, -22, 0.7, '#7dff8a', { tipo: 'cruz' });
       break;
     }
@@ -184,7 +201,7 @@ function vfxEvento(ev) {
       fxCorte(ev.u, ev.alvo, ev.forte);
       if (ev.forte) { Arena.pausa = Math.max(Arena.pausa, 0.045); tremer(0.1, 1.5); socar(0.05); faiscas(ev.alvo.x, ev.alvo.y - 18, 6, ['#ffffff', '#ffe9a8'], 70); }
       break;
-    case 'congelar': faiscas(ev.alvo.x, ev.alvo.y - 15, 10, ['#e8fbff', '#7fd6ff'], 40); numero(ev.alvo.x, cab(ev.alvo) - 8, 'GELO', '#9fe6ff', 2); break;
+    case 'congelar': faiscas(ev.alvo.x, ev.alvo.y - 15, 10, ['#e8fbff', '#7fd6ff'], 40); numero(ev.alvo.x, cab(ev.alvo) - 8, 'GELO', '#9fe6ff', 2, ev.alvo); break;
     case 'atordoar': faiscas(ev.alvo.x, ev.alvo.y - 30, 7, ['#ffe48a', '#ffffff'], 35); break;
     case 'ritmo': particula(ev.u.x + rnd(-6, 6), ev.u.y - 34, rnd(-8, 8), -20, 0.8, '#f0c24b', { tipo: 'nota' }); break;
     case 'colheita': faiscas(ev.u.x, ev.u.y - 18, 6, ['#7dff9a', '#d6ffe0'], 30); break;
@@ -215,22 +232,22 @@ function vfxEvento(ev) {
     case 'adagaCai': { const a = ev.alvo; particula(a.x + rnd(-30, 30), a.y - 50, 0, 300, 0.15, '#d2d9e0', { tipo: 'adaga', fimY: a.y - 12 }); break; }
     case 'raio': efeito('raioG', { de: ev.de, para: ev.para, dur: 0.2, cor: '#ffffff', cor2: '#ffe14a' }); fxImpacto(ev.para.x, ev.para.y - 18, '#fff7a8', 6, 9); break;
     case 'raioCeu': efeito('raioG', { alvo: ev.alvo, dur: 0.24, cor: '#ffffff', cor2: '#9fc8ff' }); fxImpacto(ev.alvo.x, ev.alvo.y - 10, '#cfe0ff', 8, 12); tremer(0.1, 1.5); Arena.flash = Math.max(Arena.flash, 0.08); Arena.flashCor = '200,220,255'; break;
-    case 'execucao': socar(0.1); numero(ev.alvo.x, cab(ev.alvo) - 10, 'EXECUTADO', '#d4a6ff', 2); faiscas(ev.alvo.x, ev.alvo.y - 15, 14, ['#c48bff', '#3b3150', '#ffffff'], 70); break;
-    case 'renascer': efeito('pilar', { alvo: ev.u, dur: 0.7, cor: '#fff4c2', cor2: '#ffb33c' }); numero(ev.u.x, cab(ev.u) - 6, 'RENASCEU', '#ffe48a', 2); faiscas(ev.u.x, ev.u.y - 16, 16, ['#ffd23f', '#ff8c1a', '#fff4c2'], 70); break;
+    case 'execucao': socar(0.1); numero(ev.alvo.x, cab(ev.alvo) - 10, 'EXECUTADO', '#d4a6ff', 2, ev.alvo); faiscas(ev.alvo.x, ev.alvo.y - 15, 14, ['#c48bff', '#3b3150', '#ffffff'], 70); break;
+    case 'renascer': efeito('pilar', { alvo: ev.u, dur: 0.7, cor: '#fff4c2', cor2: '#ffb33c' }); numero(ev.u.x, cab(ev.u) - 6, 'RENASCEU', '#ffe48a', 2, ev.u); faiscas(ev.u.x, ev.u.y - 16, 16, ['#ffd23f', '#ff8c1a', '#fff4c2'], 70); break;
     case 'bomba': {
       Arena.flash = 0.2; Arena.flashCor = '255,200,120'; tremer(0.35, 3);
       for (const u of Arena.b.units) if (u.vivo && u.team !== ev.team) { efeito('anel', { x: u.x, y: u.y - 10, r0: 3, r1: 18, cor: '#ffb33c', cor2: '#ff5a1f', dur: 0.3 }); faiscas(u.x, u.y - 10, 10, ['#ffd23f', '#ff8c1a', '#5d5868'], 70); }
       break;
     }
-    case 'copia': numero(ev.u.x, cab(ev.u) - 14, 'COPIOU ' + semAcento(nomeHabilidade(ev.id)).toUpperCase(), '#d4a6ff', 1); efeito('raioG', { de: ev.alvo, para: ev.u, dur: 0.4, cor: '#efdcff', cor2: '#7a4fc0' }); break;
+    case 'copia': numero(ev.u.x, cab(ev.u) - 14, 'COPIOU ' + semAcento(nomeHabilidade(ev.id)).toUpperCase(), '#d4a6ff', 1, ev.u); efeito('raioG', { de: ev.alvo, para: ev.u, dur: 0.4, cor: '#efdcff', cor2: '#7a4fc0' }); break;
     case 'elemento': {
       const cor = ev.el === 'fogo' ? '#ff8c1a' : ev.el === 'gelo' ? '#7fd6ff' : '#ffe14a';
       efeito('anel', { x: ev.u.x, y: ev.u.y - 14, r0: 4, r1: 30, cor, cor2: '#ffffff', dur: 0.4 });
-      numero(ev.u.x, cab(ev.u) - 14, ev.el.toUpperCase(), cor, 2);
+      numero(ev.u.x, cab(ev.u) - 14, ev.el.toUpperCase(), cor, 2, ev.u);
       break;
     }
-    case 'golens': numero(ev.u.x, cab(ev.u) - 14, 'GOLENS!', '#ff8a3c', 2); tremer(0.3, 2.5); break;
-    case 'furiaGemea': numero(ev.u.x, cab(ev.u) - 14, 'FURIA!', '#ff5a4f', 3); faiscas(ev.u.x, ev.u.y - 18, 16, ['#ff5a4f', '#7d2219'], 70); break;
+    case 'golens': numero(ev.u.x, cab(ev.u) - 14, 'GOLENS!', '#ff8a3c', 2, ev.u); tremer(0.3, 2.5); break;
+    case 'furiaGemea': numero(ev.u.x, cab(ev.u) - 14, 'FURIA!', '#ff5a4f', 3, ev.u); faiscas(ev.u.x, ev.u.y - 18, 16, ['#ff5a4f', '#7d2219'], 70); break;
     case 'skill': vfxSkill(ev); break;
     case 'supremo': {
       Arena.flash = 0.25; Arena.flashCor = '255,248,220'; tremer(0.35, 3.5); Arena.pausa = Math.max(Arena.pausa, 0.55); Arena.festa = 1.5;
@@ -315,7 +332,7 @@ function vfxSkill(ev) {
     case 'olhoTempestade': Arena.flash = 0.1; Arena.flashCor = '200,220,255'; break;
     case 'chuvaLaminas': faiscas(u.x, u.y - 30, 8, ['#d2d9e0', '#ffffff'], 40); break;
   }
-  numero(u.x, u.y - 54, semAcento(nomeHabilidade(ev.id)), cor, 1);
+  numero(u.x, u.y - 60, nomeHabilidade(ev.id), cor, 1, u);
 }
 function aliadosDeArena(u) { return Arena.b ? Arena.b.units.filter((o) => o.vivo && o.team === u.team) : []; }
 
@@ -337,7 +354,7 @@ function atualizarVfx(dt) {
     if ((p.tipo === 'flecha' || p.tipo === 'adaga' || p.tipo === 'meteoro') && p.y >= p.fimY) { p.vida = 0; faiscas(p.x, p.y, 3, ['#c49c68', '#e9dfc9'], 30); }
     if (p.vida <= 0) Arena.part.splice(i, 1);
   }
-  for (let i = Arena.nums.length - 1; i >= 0; i--) { const n = Arena.nums[i]; n.vida -= dt; n.y -= 32 * dt * (n.vida / n.max + 0.3); if (n.vida <= 0) Arena.nums.splice(i, 1); }
+  for (let i = Arena.nums.length - 1; i >= 0; i--) { const n = Arena.nums[i]; n.vida -= dt; if (n.vida <= 0) Arena.nums.splice(i, 1); }
   for (let i = Arena.fx.length - 1; i >= 0; i--) { const f = Arena.fx[i]; f.t += dt; if (f.t >= f.dur) Arena.fx.splice(i, 1); }
   if (Arena.b) for (const p of Arena.b.projs) {
     if (p.tipo === 'bolaFogo' || p.tipo === 'bolaFogoG' || p.tipo === 'fagulha') { if (Math.random() < (p.tipo === 'fagulha' ? 0.4 : 1)) particula(p.x + rnd(-2, 2), p.y + rnd(-2, 2), rnd(-8, 8), rnd(-16, 0), 0.3, pick(['#ffd23f', '#ff8c1a', '#ff5a1f'])); }
@@ -360,8 +377,52 @@ function atualizarVfx(dt) {
 function desenharArena() {
   const v = Arena.ctx, c = Arena.bctx, b = Arena.b;
   if (!v || !c || !b) return;
-  c.save();
-  if (Arena.tremor > 0) c.translate(Math.round(rnd(-1, 1) * Arena.tremorAmp), Math.round(rnd(-1, 1) * Arena.tremorAmp));
+  ajustarResolucao();
+  // janela da câmera (em unidades do mundo)
+  const cam = Arena.cam, z = cam.zoom * (1 + (Arena.soco || 0)), vw = VISTA.w / z, vh = VISTA.h / z;
+  const ccx = cam.x + VISTA.w / cam.zoom / 2, ccy = cam.y + VISTA.h / cam.zoom / 2;
+  let jx = centrarJanela(ccx, vw, ARENA.w), jy = centrarJanela(ccy, vh, ARENA.h);
+  Arena.janela = { x: jx, y: jy, z };
+  if (Arena.tremor > 0) { jx += rnd(-1, 1) * Arena.tremorAmp * 0.8; jy += rnd(-1, 1) * Arena.tremorAmp * 0.8; }
+  const S = Arena.esc * z;                       // pixels de tela por pixel do mundo
+  const k = Math.max(1, Math.min(8, Math.ceil(S - 0.1)));   // escala inteira da camada de pixels
+  const bw = Math.ceil(vw * k) + 2, bh = Math.ceil(vh * k) + 2;
+  if (Arena.buf.width < bw || Arena.buf.height < bh) { Arena.buf.width = Math.max(bw, Arena.buf.width); Arena.buf.height = Math.max(bh, Arena.buf.height); }
+  Arena.k = k; Arena.S = S; Arena.jx = jx; Arena.jy = jy;
+  // ---- camada de pixels (mundo) ----
+  c.setTransform(1, 0, 0, 1, 0, 0); c.imageSmoothingEnabled = false;
+  c.fillStyle = '#05030a'; c.fillRect(0, 0, bw, bh);
+  c.setTransform(k, 0, 0, k, -jx * k, -jy * k);
+  desenharMundo(c, b);
+  // ---- para a tela, com suavização (pixels inteiros, bordas limpas) ----
+  v.setTransform(1, 0, 0, 1, 0, 0);
+  v.fillStyle = '#05030a'; v.fillRect(0, 0, Arena.cv.width, Arena.cv.height);
+  v.imageSmoothingEnabled = true; v.imageSmoothingQuality = S / k < 0.75 ? 'medium' : 'low';
+  v.drawImage(Arena.buf, 0, 0, bw, bh, 0, 0, (bw * S) / k, (bh * S) / k);
+  // ---- camada vetorial (resolução da tela) ----
+  v.setTransform(S, 0, 0, S, -jx * S, -jy * S);
+  if (typeof desenharVetorMundo === 'function') desenharVetorMundo(v, b);
+  v.setTransform(1, 0, 0, 1, 0, 0);
+  desenharBarrasTela(v, b);
+  desenharNumerosTela(v);
+  // ---- sobreposições na escala da janela (256×180) ----
+  v.setTransform(Arena.esc, 0, 0, Arena.esc, 0, 0); v.imageSmoothingEnabled = false;
+  if (b.eclipse > 0) { v.fillStyle = `rgba(14,6,26,${Math.min(0.65, b.eclipse)})`; v.fillRect(0, 0, VISTA.w, VISTA.h); }
+  if (Arena.lua) desenharFx2(v, { tipo: 'lua', x: VISTA.w / 2, y: 26, t: Arena.lua.t }, Arena.lua.t / Arena.lua.dur);
+  if (Arena.flash > 0) { v.fillStyle = `rgba(${Arena.flashCor},${(Arena.flash / 0.25) * 0.55})`; v.fillRect(0, 0, VISTA.w, VISTA.h); }
+  if (b.furia > 1 && !(Arena.lenta > 0)) { v.fillStyle = `rgba(224,87,79,${0.06 + 0.04 * Math.sin(Arena.t * 6)})`; v.fillRect(0, 0, VISTA.w, VISTA.h); }
+  if (Arena.cutin) desenharCutin(v, Arena.cutin);
+  if (Arena.lenta > 0) {   // faixas de cinema
+    const kk = Math.min(1, (Arena.lentaTotal - Arena.lenta) / 0.15, Arena.lenta / 0.2), h = 14 * kk;
+    v.fillStyle = '#05030a'; v.fillRect(0, 0, VISTA.w, h); v.fillRect(0, VISTA.h - h, VISTA.w, h);
+  }
+  v.setTransform(1, 0, 0, 1, 0, 0);
+}
+// Mundo → pixels de tela
+const naTela = (x, y) => [(x - Arena.jx) * Arena.S, (y - Arena.jy) * Arena.S];
+// Posição de desenho de um sprite: arredonda para a grade da camada (1/k de pixel do mundo) — movimento suave no zoom
+const gradeK = (v) => Math.round(v * (Arena.k || 1)) / (Arena.k || 1);
+function desenharMundo(c, b) {
   c.drawImage(Arena.fundo, 0, 0);
   for (const p of Arena.publico) {
     const pula = Arena.festa > 0 ? (Math.sin(Arena.t * 14 + p.fase) > 0 ? -1 : 0) : (Math.sin(Arena.t * 2 + p.fase * 3) > 0.97 ? -1 : 0);
@@ -384,37 +445,60 @@ function desenharArena() {
   }
   const lista = b.units.filter((u) => u.vivo || u.anim.morteT < 1.3 || u.reviver > 0).sort((p, q) => ((p.vivo ? 1 : 0) - (q.vivo ? 1 : 0)) || p.y - q.y);
   for (const u of lista) desenharUnidade(c, u);
-  for (const u of lista) if (u.vivo) desenharBarras(c, u);
   for (const p of b.projs) desenharProjetil(c, p);
   for (const f of Arena.fx) desenharFx(c, f);
   for (const p of Arena.part) desenharParticula(c, p);
-  for (const n of Arena.nums) {
-    if (n.vida < 0.2 && Math.floor(n.vida * 30) % 2) continue;
-    const w = larguraTexto(n.txt, n.esc);
-    textoPixel(c, n.txt, Math.round(clamp(n.x - w / 2, 2, ARENA.w - w - 2)), Math.round(n.y), n.cor, n.esc);
-  }
   if (b.focoCapitao && b.focoCapitao.vivo && Math.floor(Arena.t * 4) % 2) {
-    const f = b.focoCapitao, x = Math.round(f.x), y = Math.round(f.y) - 54;
+    const f = b.focoCapitao, x = Math.round(f.x), y = Math.round(f.y) - 58;
     c.fillStyle = CONTORNO; c.fillRect(x - 4, y - 1, 9, 6);
     c.fillStyle = '#ff5a4f'; c.fillRect(x - 3, y, 7, 1); c.fillRect(x - 2, y + 1, 5, 1); c.fillRect(x - 1, y + 2, 3, 1); c.fillRect(x, y + 3, 1, 1);
   }
-  c.restore();
-  // janela da câmera
-  const cam = Arena.cam, z = cam.zoom * (1 + (Arena.soco || 0)), vw = VISTA.w / z, vh = VISTA.h / z;
-  const ccx = cam.x + VISTA.w / cam.zoom / 2, ccy = cam.y + VISTA.h / cam.zoom / 2;
-  const jx = centrarJanela(ccx, vw, ARENA.w), jy = centrarJanela(ccy, vh, ARENA.h);
-  Arena.janela = { x: jx, y: jy, z };
-  v.fillStyle = '#05030a'; v.fillRect(0, 0, VISTA.w, VISTA.h);   // faixas quando a janela é maior que a arena (vista afastada)
-  const sx = Math.max(0, jx), sy = Math.max(0, jy), sw = Math.min(ARENA.w, jx + vw) - sx, sh = Math.min(ARENA.h, jy + vh) - sy;
-  v.drawImage(Arena.buf, sx, sy, sw, sh, Math.round((sx - jx) * z), Math.round((sy - jy) * z), Math.round(sw * z), Math.round(sh * z));
-  if (b.eclipse > 0) { v.fillStyle = `rgba(14,6,26,${Math.min(0.65, b.eclipse)})`; v.fillRect(0, 0, VISTA.w, VISTA.h); }
-  if (Arena.lua) desenharFx2(v, { tipo: 'lua', x: VISTA.w / 2, y: 26, t: Arena.lua.t }, Arena.lua.t / Arena.lua.dur);
-  if (Arena.flash > 0) { v.fillStyle = `rgba(${Arena.flashCor},${(Arena.flash / 0.25) * 0.55})`; v.fillRect(0, 0, VISTA.w, VISTA.h); }
-  if (b.furia > 1 && !(Arena.lenta > 0)) { v.fillStyle = `rgba(224,87,79,${0.06 + 0.04 * Math.sin(Arena.t * 6)})`; v.fillRect(0, 0, VISTA.w, VISTA.h); }
-  if (Arena.cutin) desenharCutin(v, Arena.cutin);
-  if (Arena.lenta > 0) {   // faixas de cinema
-    const k = Math.min(1, (Arena.lentaTotal - Arena.lenta) / 0.15, Arena.lenta / 0.2), h = Math.round(14 * k);
-    v.fillStyle = '#05030a'; v.fillRect(0, 0, VISTA.w, h); v.fillRect(0, VISTA.h - h, VISTA.w, h);
+}
+// Números: fonte de verdade, contorno escuro, "pulo" ao nascer, sobem e somem; tamanho fixo na tela
+function desenharNumerosTela(v) {
+  const dpr = Arena.dpr || 1;
+  v.textAlign = 'center'; v.textBaseline = 'alphabetic'; v.lineJoin = 'round';
+  for (const n of Arena.nums) {
+    const idade = n.max - n.vida, t = idade / n.max;
+    const [sx, sy0] = naTela(n.x, n.y);
+    const sobe = (1 - Math.pow(1 - Math.min(1, t * 1.6), 2)) * 22 + n.pilha * 13;
+    const pulo = idade < 0.12 ? 1 + (n.esc === 3 ? 0.7 : 0.4) * (1 - idade / 0.12) : 1;
+    const tam = TAM_NUM[n.esc] * dpr * pulo;
+    const sy = sy0 - (sobe + 4) * dpr;
+    v.globalAlpha = t > 0.7 ? 1 - (t - 0.7) / 0.3 : 1;
+    v.font = `${Math.round(tam)}px 'Lilita One', 'Nunito', sans-serif`;
+    const x = clamp(sx + n.jx * dpr, 20 * dpr, Arena.cv.width - 20 * dpr);
+    v.lineWidth = Math.max(2, tam * 0.2); v.strokeStyle = '#140a1c'; v.strokeText(n.txt, x, sy);
+    v.fillStyle = n.cor; v.fillText(n.txt, x, sy);
+    if (n.esc === 3) { v.globalAlpha *= 0.55; v.fillStyle = '#ffffff'; v.fillText(n.txt, x, sy - tam * 0.06); v.globalAlpha = 1; v.fillStyle = n.cor; v.save(); v.beginPath(); v.rect(x - 200, sy - tam * 0.45, 400, tam); v.clip(); v.fillText(n.txt, x, sy); v.restore(); }
+  }
+  v.globalAlpha = 1;
+}
+// Barras de vida sobre a cabeça: nítidas, proporcionais ao boneco, com um "rastro" branco do dano recente
+function desenharBarrasTela(v, b) {
+  const dpr = Arena.dpr || 1, S = Arena.S;
+  for (const u of b.units) {
+    if (!u.vivo) continue;
+    const grande = u.chefe === 'colosso';
+    const [sx, sy] = naTela(u.x, u.y - (grande ? 62 : 47));
+    const w = clamp((u.chefe ? 28 : 20) * S, 22 * dpr, 46 * dpr), h = Math.max(3 * dpr, Math.min(5 * dpr, 2.6 * S));
+    const x = Math.round(sx - w / 2), y = Math.round(sy);
+    const pct = clamp(u.vida / u.vidaMax, 0, 1);
+    u.vidaRastro = u.vidaRastro === undefined ? pct : Math.max(pct, u.vidaRastro - 0.6 * (1 / 60));
+    v.fillStyle = 'rgba(12,6,18,0.85)'; v.fillRect(x - dpr, y - dpr, w + 2 * dpr, h + 2 * dpr);
+    v.fillStyle = '#3a1f2a'; v.fillRect(x, y, w, h);
+    v.fillStyle = '#fff2d8'; v.fillRect(x, y, w * u.vidaRastro, h);
+    v.fillStyle = u.invocacao ? '#b8b0c4' : COR_TIME[u.team]; v.fillRect(x, y, w * pct, h);
+    v.fillStyle = 'rgba(255,255,255,0.28)'; v.fillRect(x, y, w * pct, Math.max(1, h * 0.35));
+    if (u.st.shield) { const ws = Math.min(w, (w * u.st.shield.v) / u.vidaMax); v.fillStyle = '#dff0ff'; v.fillRect(x, y + h - Math.max(1, h * 0.4), ws, Math.max(1, h * 0.4)); }
+    if (u.capitao) {
+      v.fillStyle = 'rgba(12,6,18,0.85)'; v.fillRect(x - dpr, y + h, w + 2 * dpr, 2 * dpr + dpr);
+      v.fillStyle = u.energia >= 100 ? (Math.floor(Arena.t * 6) % 2 ? '#fff4c2' : '#f0c24b') : '#f0c24b';
+      v.fillRect(x, y + h + dpr, (w * u.energia) / 100, 2 * dpr);
+      const ic = iconeCanvas('coroa'), e = 2 * dpr; v.imageSmoothingEnabled = false;
+      v.drawImage(ic, Math.round(sx - (ic.width * e) / 2), Math.round(y - ic.height * e - dpr), ic.width * e, ic.height * e);
+    }
+    if (u.chefe || u.campeao) { const ic = iconeCanvas(u.chefe ? 'caveira' : 'estrela'), e = 1.5 * dpr; v.imageSmoothingEnabled = false; v.drawImage(ic, Math.round(x - ic.width * e - dpr), Math.round(y + h / 2 - (ic.height * e) / 2), ic.width * e, ic.height * e); }
   }
 }
 // SUPREMO: escurece a janela e mostra o retrato do capitão entrando pela lateral
@@ -465,7 +549,7 @@ function desenharUnidade(c, u) {
   let fr = (u.vivo && u.anim.flash > 0 ? vs.brancos : vs.quadros)[anim][i];
   const virar = vista === 'lado' && u.face < 0;
   if (u.vivo && u.st.freeze > 0) fr = tingir(fr, '#7fd6ff', 0.55);
-  const x = Math.round(u.x), y = Math.round(u.y);
+  const x = gradeK(u.x), y = gradeK(u.y);
   if (u.chefe && u.vivo) desenharElipse(c, x, y + 1, u.chefe === 'colosso' ? 17 : 12, u.chefe === 'colosso' ? 5 : 4, Math.floor(Arena.t * 6) % 2 ? '#ff5a2a' : '#ffb02a');
   c.save();
   c.translate(x, y);
@@ -497,23 +581,6 @@ function desenharUnidade(c, u) {
   if (st.taunt) { c.fillStyle = '#ff5a4f'; c.fillRect(x + 9, y - 44, 2, 5); c.fillRect(x + 9, y - 38, 2, 2); }
   if (st.debuffs.length && Math.floor(Arena.t * 3) % 2) { c.fillStyle = '#bd86f5'; c.fillRect(x - 11, y - 32, 1, 3); c.fillRect(x - 12, y - 30, 3, 1); }
   if (st.buffs.length && Math.floor(Arena.t * 3 + u.anim.fase) % 4 === 0) { c.fillStyle = '#ffe48a'; c.fillRect(x - 11, y - 34, 1, 1); c.fillRect(x - 12, y - 33, 3, 1); }
-}
-function desenharBarras(c, u) {
-  const largo = u.chefe ? 28 : 20, x = Math.round(u.x) - largo / 2, y = Math.round(u.y) - (u.chefe === 'colosso' ? 60 : 48);
-  c.fillStyle = CONTORNO; c.fillRect(x - 1, y - 1, largo + 2, 5);
-  c.fillStyle = '#3a1f2a'; c.fillRect(x, y, largo, 3);
-  const w = Math.max(0, Math.round(largo * u.vida / u.vidaMax));
-  c.fillStyle = u.invocacao ? '#b8b0c4' : COR_TIME[u.team]; c.fillRect(x, y, w, 3);
-  c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(x, y, w, 1);
-  if (u.st.shield) { const ws = Math.min(largo, Math.round(largo * u.st.shield.v / u.vidaMax)); c.fillStyle = '#e8f4ff'; c.fillRect(x, y, ws, 1); }
-  if (u.capitao) {
-    c.fillStyle = '#2a1e2e'; c.fillRect(x, y + 3, largo, 1);
-    c.fillStyle = u.energia >= 100 ? (Math.floor(Arena.t * 6) % 2 ? '#fff4c2' : '#f0c24b') : '#f0c24b';
-    c.fillRect(x, y + 3, Math.round(largo * u.energia / 100), 1);
-    c.drawImage(iconeCanvas('coroa'), Math.round(u.x) - 3, y - 6);
-  }
-  if (u.chefe) c.drawImage(iconeCanvas('caveira'), Math.round(u.x) - 7, y - 12);
-  else if (u.campeao) c.drawImage(iconeCanvas('estrela'), x - 14, y - 4);
 }
 function desenharProjetil(c, p) {
   const x = Math.round(p.x), y = Math.round(p.y);

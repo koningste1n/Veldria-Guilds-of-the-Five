@@ -4,7 +4,7 @@
 
 **Como trabalhar:** `docs/PROMPT-MAE.md` (papéis, regras, roteiro das etapas com critérios de pronto, handoff).
 
-_Atualizado em 15/10/2026 (E3)._
+_Atualizado em 15/10/2026 (E4, parte a)._
 
 ## O que existe (v0.4, Fase 4.1)
 
@@ -50,7 +50,7 @@ Os testes Playwright antigos (`luta.py`, `lideres.py`, `nuvem.py`, `perf.py`…)
 | E1 | Código recuperado, no GitHub e publicado | — | — | ✅ |
 | E2 | Nome Veldria no jogo, save v6 (tutorial progressivo feito e **desligado** — ver Pendências) | 1 | Opus 5.5 | ✅ 15/10 |
 | E3 | Registro de partidas, ficha de recordes + melhores da temporada, simulador de balanço em Node | 1 | Opus 5.5 | ✅ 15/10 (aguarda teste do Kevin no celular) |
-| E4 | Motor novo: IA de utilidade, 3×3 + posturas, câmera, 3v3 melhor de 3; decisão de orientação de tela | 3–4 | **Fable 5.1** | **próxima** |
+| E4 | Motor novo: IA de utilidade, 3×3 + posturas, câmera, 3v3 melhor de 3; decisão de orientação de tela | 3–4 | **Fable 5.1** | **em andamento** — (a) ✅ 15/10 |
 | E5a | Curva 1→100, Ascensão como portão, maestrias 20/50, Rank S, A/B nv. 15, catálogo com raridades, pity | 2 | **Fable 5.1** | |
 | E5b | Personalidades visíveis, rivais, identidade de build, relíquias 24+, renome, contrato diário, eventos semanais | 2 | Opus 5.5 | |
 | E6 | Classes novas em lotes de 2–4 | 1–2 | Opus 5.5 | |
@@ -143,9 +143,74 @@ Como está agora: `TUTORIAL_LIGADO = false` em `28_…`. Todo jogador (novo ou a
 
 Hoje, quem começa do zero não tem tutorial nenhum (o tutorial antigo de 6 dicas foi substituído). A confirmar com o Kevin se isso basta por enquanto ou se volta o tour antigo de 6 dicas.
 
-## Próxima conversa começa por… (E4, **Fable 5.1**)
+## E4 — em andamento (começou em 15/10/2026, Fable 5.1)
 
-1. Ler `10_combate.js` inteiro (o motor atual, ~840 linhas) e `sim/balanco.js` / `sim/carregar.js`.
-2. Escrever no `ESTADO.md` o critério de pronto da E4 (seção 5 do prompt-mãe) e a ordem interna (a)–(e).
-3. Começar o motor novo isolado (`src/js/10b_…` ou equivalente), com IA de utilidade em 1v1, e acrescentar ao simulador um modo "motor novo × motor atual" para medir contra a linha de base acima (meta: vencer ≥ 55 % em média).
-4. Ao mudar qualquer regra de combate, subir `REGRAS_COMBATE` (as reproduções antigas passam a avisar que são de outra versão).
+### Critério de pronto da E4 (seção 5 do prompt-mãe)
+
+| # | Critério | Como medir |
+|---|---|---|
+| 1 | Cérebro novo vence o atual com as mesmas regras e os mesmos lutadores: **média ≥ 55 %** na matriz completa (IA nova com a classe da linha × IA atual com a classe da coluna, 100 pares) e, no espelho (mesma classe dos dois lados), **nenhuma classe abaixo de 42 %** — o cérebro novo não pode piorar classe nenhuma | `node sim/balanco.js --duelo` (linha = IA nova, coluna = IA atual) |
+| 2 | Formação 3×3 + posturas (avançar, segurar, flanquear) configuradas no Preparo e lidas pelo cérebro novo | teste Playwright da formação |
+| 3 | 3×3 roda a 30 passos/s no celular sem travar | `sim/` mede ms por passo; teste no celular do Kevin |
+| 4 | Câmera: afastada mostrando a formação, aproxima no embate | teste no celular |
+| 5 | 3v3 melhor de 3 (D7) | simulador + teste no celular |
+| 6 | Kevin aprovou a orientação de tela (em pé × deitada) depois do 1º teste 3×3 | decisão registrada aqui |
+| 7 | Save abre sem perda; fumaça e `registro.py` passam; reproduções antigas continuam idênticas | testes |
+
+### Ordem interna
+
+| Passo | O quê | Status |
+|---|---|---|
+| (a) | Cérebro de utilidade em 1v1, isolado, medido no simulador contra a IA atual | ✅ 15/10 (critério 1 passou) |
+| (b) | Ligar na interface (todas as lutas passam a usar o cérebro novo; `REGRAS_COMBATE` sobe) | próxima |
+| (c) | Formação 3×3 + posturas em simulação | |
+| (d) | Câmera afastada → aproxima | |
+| (e) | 3v3 melhor de 3 | |
+| (f) | Ponto de decisão do Kevin: orientação da tela (levar dois mockups) | |
+
+### Decisões técnicas da E4
+
+| Decisão | Por quê |
+|---|---|
+| **As regras de combate não mudam na (a).** O "motor novo" é um **cérebro** novo (`src/js/10b_cerebro-v2.js`): escolha de alvo, movimento e hora de usar habilidade. Dano, habilidades, estados e projéteis continuam no `10_combate.js` | É o que o conselho decidiu (trocar o motor de decisão, não o jogo). E só assim dá para medir IA nova × IA atual com os mesmos lutadores e as mesmas regras |
+| O cérebro é ligado por lado da luta (`lado.ia = 'v2'`); o `10_combate.js` ganha 4 ganchos (`u.cerebro`) e nada mais | Uma luta pode ter um lado com cada IA (é a medição). Como `ia` fica dentro do lado, o registro de partidas já guarda qual IA jogou |
+| IA de utilidade: a cada 0,25 s a unidade pontua opções (alvos, manobras, habilidades) com considerações normalizadas 0–1 e pesos **por função** (D1); a opção vencedora vale até a próxima decisão (sem oscilar) | Padrão de IA de utilidade com curvas de resposta; pesos em tabela, para as posturas (c) e as personalidades (E5b) só mexerem em números |
+| Recuar (kiting) é **só para trás** (±60° da direção oposta à ameaça) e pesa a letalidade de quem ameaça: encurralada na parede, a unidade para de fugir e luta; de um esqueleto ninguém foge | Testei primeiro um "fôlego" de recuo (gasta fugindo, recupera parado): a arqueira parava de fugir cedo demais e perdia para quem a IA atual vencia. Limitar pela arena é natural, visível e impede orbitar o inimigo por 2 minutos (a arqueira vence o Guardião, mas em ~60 s, com ele quase morto) |
+| Habilidade sem regra própria no cérebro (pergaminhos, Campeões) usa a decisão atual | Nada regride; o cérebro cobre primeiro as 10 habilidades de classe |
+
+### (a) concluída em 15/10/2026 — resultado do critério 1
+
+`node sim/balanco.js --duelo --n 400` (40.000 lutas, 50 s em 2 núcleos; `sim/resultados/balanco-n10-t1-duelo.*`):
+
+| Medida | Resultado | Meta |
+|---|---|---|
+| Média da matriz (cérebro v2 na linha × IA atual na coluna) | **59,5 %** | ≥ 55 % ✅ |
+| Pior espelho (mesma classe, v2 × atual) | Piromante 45 % (ruído: a N = 2000 dá 49,5 %) | ≥ 42 % ✅ |
+| Reprodução com lados v2 (`sim/replay.js`, metade dos lados com v2) | 300/300 idênticas | ✅ |
+| Lutas que acabam no tempo / duração média | 0,4 % / 27 s (base: 0,4 % / 28 s) | sem lutas de 2 min ✅ |
+| Fumaça + `registro.py` com o jogo montado | 0 erros | ✅ |
+
+Onde o cérebro novo ganha (pontos sobre a linha de base, v2 × atual): Arqueira +22 na média (vence Guardião 100 %, Machadeiro 60 %, antes 0 % e 1 %), Criomante +15, Invocador +13, Piromante +12, Guardião +11, Lanceira +9, Clériga +9. Todo mundo ganha ~+60 a +100 contra o Invocador atual, porque o cérebro novo bate no invocador em vez de nos esqueletos. Machadeiro, Lâmina e Bardo ficam nos 50 % (o espelho de corpo a corpo é cara ou coroa: não há decisão a tomar).
+
+O que mudou e por quê:
+
+| Decisão do cérebro | Efeito medido |
+|---|---|
+| À distância recua **para trás** enquanto atira; na parede, luta | Arqueira × Guardião 0 % → 100 %; × Machadeiro 1 % → 60 % |
+| Invocações valem 45 % de um alvo normal (80 % se estiverem em cima de mim) | Guardião/Lanceira/Clériga/Bardo × Invocador 0 % → 100 % / 82 % / 100 % / 66 % |
+| Chuva de Flechas: vale 0,7 com o alvo parado, 0,45 andando, 0,9 preso/lento, 1 com 2+ na área | Corrigiu a primeira versão (que nunca atirava no espelho: 7 %) |
+| Investida não é gasta em alvo já atordoado/congelado; vale mais contra quem foge | Lanceira +9 |
+| Luz Restauradora: cura quando falta ≥ 60 % do valor da cura (não desperdiça), urgência se o ferido está sendo atacado | Clériga +9 |
+| Habilidade de dano **não é guardada** quando o alvo morreria de um golpe normal (matar agora vale mais que a recarga) | Tinha tirado 20 pontos do Machadeiro na 1ª versão |
+| Manobra "atacar" recalculada a cada passo (persegue se saiu do alcance, ronda se dentro); só as outras manobras duram 0,25 s | Tirava até 20 pontos do corpo a corpo contra quem foge (atraso de 1/4 s para perseguir) |
+
+Achados de balanceamento para a E5a (não mexi): os esqueletos são fracos demais quando ignorados — o Invocador v2 perde para Piromante (14 %), Criomante (31 %) e Lâmina (0 %); Bardo e Clériga continuam sem chance em 1v1 (por desenho, dependem de aliados).
+
+Ganchos no `10_combate.js` (4 linhas): `u.cerebro` criado em `novaUnidade` quando `lado.ia === 'v2'`; `pensar` + `escolherAlvoV2` na escolha de alvo; `querUsarV2` antes de `usarSkill` (normal e SUPREMO; o toque manual do jogador no SUPREMO continua mandando); `destinoV2` no `mover`. `REGRAS_COMBATE` continua 1: nenhuma luta do jogo usa v2 ainda, então toda reprodução antiga segue válida.
+
+## Próxima conversa começa por… (E4 parte b, **Fable 5.1**)
+
+1. **Ligar o cérebro v2 na interface** (passo b): em `27_interface-batalha.js` (e onde mais um `lado` é montado: Liga/`21`, Torre/`22`, Modo Criador/`29`) colocar `ia: 'v2'` nos dois lados; subir `REGRAS_COMBATE` para 2 (as reproduções antigas passam a avisar "regras de outra versão", como previsto); conferir que `registro.py` e a fumaça passam e que o botão "Conferir" das últimas lutas continua funcionando para lutas novas.
+2. Rodar `node sim/balanco.js --ia v2 --salvar` (v2 dos dois lados) e registrar aqui a nova linha de base de balanceamento (a E5a parte dela).
+3. Publicar e pedir ao Kevin para assistir 3 lutas no celular: uma com Arqueira/Piromante no time (ver o recuo para trás), uma contra Invocador (ver que ninguém mais bate em esqueleto) e uma com Clériga (ver a cura no momento certo). A pergunta para ele: **os movimentos parecem decisões de lutador ou parecem bug?**
+4. Depois: passo (c) — formação 3×3 + posturas (avançar / segurar / flanquear) em simulação. As posturas entram como pesos na tabela `IA2` (recuo, proteger, flanco), não como código novo.

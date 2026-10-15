@@ -32,7 +32,9 @@ Simulador (Node, sem tela, usa o mesmo código de `src/js/`):
 ```
 node sim/balanco.js            # matriz 10×10 de vitória por classe (1v1, nível 10, 200 lutas por par) em < 1 min
 node sim/balanco.js --tam 3 --n 100 --salvar   # 3v3; grava sim/resultados/*.json e .csv
-node sim/replay.js             # 300 lutas variadas com toques do jogador: reproduzir do registro dá o mesmo resultado
+node sim/balanco.js --ia v2    # a mesma matriz com o cérebro v2 (10b) dos dois lados
+node sim/balanco.js --duelo --n 400   # E4: cérebro v2 (linha) × IA atual (coluna), 100 pares; imprime se o critério 1 passou
+node sim/replay.js             # 300 lutas variadas com toques do jogador (metade dos lados com o cérebro v2): reproduzir do registro dá o mesmo resultado
 ```
 
 ## Estrutura
@@ -40,6 +42,7 @@ node sim/replay.js             # 300 lutas variadas com toques do jogador: repro
 - `src/shell.html` — HTML e CSS do jogo. `/*__JS__*/` marca onde entra o código e `/*__FONT:x__*/` onde entram as fontes.
 - `src/fonts/` — fontes Silkscreen e Pixelify Sans (licença OFL).
 - `src/js/NN_nome.js` — o código, em módulos concatenados na ordem numérica. **A ordem importa.**
+- `src/js/10b_cerebro-v2.js` — cérebro de utilidade da E4 (alvo, manobra, hora da habilidade). Ligado por lado da luta (`lado.ia = 'v2'`); sem isso vale a IA do `10_combate.js`. Ainda não ligado na interface.
 
 ### Módulos
 
@@ -55,7 +58,8 @@ node sim/replay.js             # 300 lutas variadas com toques do jogador: repro
 | `src/js/07_motor-de-bonecos-v3.js` | 556 |
 | `src/js/08_vistas-de-frente-e-de-costas.js` | 202 |
 | `src/js/09_mercenarios-e-itens.js` | 225 |
-| `src/js/10_combate.js` | 835 |
+| `src/js/10_combate.js` | 839 |
+| `src/js/10b_cerebro-v2.js` | 336 |
 | `src/js/11_arena.js` | 576 |
 | `src/js/12_som-musica-e-vibracao.js` | 174 |
 | `src/js/13_cenarios-da-arena.js` | 131 |

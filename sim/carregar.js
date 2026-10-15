@@ -1,10 +1,10 @@
-// Carrega o combate do jogo em Node, sem tela: dados (00–04), mercenários (09) e combate (10).
+// Carrega o combate do jogo em Node, sem tela: dados (00–04), mercenários (09), combate (10) e cérebro v2 (10b).
 // O mesmo código que roda no celular, lido direto de src/js/. Nada é copiado.
 'use strict';
 const fs = require('fs');
 const path = require('path');
 
-const MODULOS = ['00_', '01_', '02_', '03_', '04_', '09_', '10_'];
+const MODULOS = ['00_', '01_', '02_', '03_', '04_', '09_', '10_', '10b'];
 
 function carregarJogo({ semente = 12345 } = {}) {
   const dir = path.join(__dirname, '..', 'src', 'js');
@@ -14,7 +14,7 @@ function carregarJogo({ semente = 12345 } = {}) {
   codigo += '\nfunction lookDe(m, c1, c2) { return `${m.visual || m.classe}|${m.pele ?? 0}|${m.cabelo ?? 1}|${c1}|${c2}`; }\n';
   codigo += `
     return {
-      CLASSES, SKILLS, PERGAMINHOS, TRACOS, POT_INFO, CAMPEOES, REGRAS_COMBATE,
+      CLASSES, SKILLS, PERGAMINHOS, TRACOS, POT_INFO, CAMPEOES, REGRAS_COMBATE, IA2,
       criarBatalha, passo, simularAteFim, resumoBatalha, atributos, gerarMerc, gerarItem, gerarPergaminho,
       mercParaRegistro, ladoParaRegistro, assinaturaLuta, reproduzirPartida, mesmaAssinatura, entradaJogador,
       setState: (s) => { STATE = s; }, getState: () => STATE,

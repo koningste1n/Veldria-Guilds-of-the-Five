@@ -49,6 +49,8 @@ function novaUnidade(b, m, team, lado) {
   }
   u.skill = u.skills[0];
   u.vida = u.vidaMax;
+  // Cérebro novo (E4, 10b_cerebro-v2.js): ligado por lado da luta. Sem ele, vale a IA atual deste arquivo.
+  u.cerebro = lado.ia === 'v2' ? criarCerebro(b, u) : null;
   if (u.chefe === 'colosso') u.limiares = [0.66, 0.33];
   if (u.chefe === 'selene') { u.elemento = 'fogo'; u.looks = { fogo: lookDe({ ...m, visual: 'selene_fogo' }, lado.cor1, lado.cor2), gelo: lookDe({ ...m, visual: 'selene_gelo' }, lado.cor1, lado.cor2), raio: lookDe({ ...m, visual: 'selene_raio' }, lado.cor1, lado.cor2) }; }
   return u;
@@ -184,11 +186,12 @@ function atualizarUnidade(b, u) {
   if (st.stun > 0 || st.freeze > 0) return;
   if (u.capitao) u.energia = Math.min(100, u.energia + DT * (u.flags.has('energia') ? 1.3 : 1));
   u.retarget -= DT;
-  if (!u.alvo || !u.alvo.vivo || u.retarget <= 0) { u.alvo = escolherAlvo(b, u); u.retarget = 0.6; }
+  if (u.cerebro) pensar(b, u);
+  if (!u.alvo || !u.alvo.vivo || u.retarget <= 0) { u.alvo = u.cerebro ? escolherAlvoV2(b, u) : escolherAlvo(b, u); u.retarget = 0.6; }
   if (st.taunt) u.alvo = st.taunt.src;
   if (u.capitao && u.team === 0 && b.focoCapitao && b.focoCapitao.vivo && !st.taunt) u.alvo = b.focoCapitao;
   if (!u.alvo) return;
-  if (u.capitao && u.skill && u.energia >= 100 && (u.team === 1 || b.modoAuto || b.pedirSupremo)) {
+  if (u.capitao && u.skill && u.energia >= 100 && (u.team === 1 || b.modoAuto || b.pedirSupremo) && (!u.cerebro || b.pedirSupremo || querUsarV2(b, u, u.skill, 2))) {
     if (usarSkill(b, u, u.skill, 2)) {
       u.energia = 0;
       if (u.team === 0) b.pedirSupremo = false;
@@ -199,6 +202,7 @@ function atualizarUnidade(b, u) {
   for (const sk of u.skills) {
     if (!u.vivo || u.st.stun > 0) break;
     if (sk.t > 0) { sk.t -= DT; continue; }
+    if (u.cerebro && !querUsarV2(b, u, sk, 1)) continue;
     if (usarSkill(b, u, sk, 1)) { sk.t = sk.cd; break; }
   }
   if (!u.vivo) return;
@@ -290,7 +294,7 @@ function distSegmento(p, a, b2) {
   return Math.hypot(p.x - (a.x + dx * t), p.y - (a.y + dy * t));
 }
 function mover(b, u) {
-  const dest = destinoDe(b, u);
+  const dest = u.cerebro ? destinoV2(b, u) : destinoDe(b, u);
   const vel = velocidade(u, b) * (dest && dest.modo === 'ronda' ? 0.35 : dest && dest.modo === 'fuga' ? 1.1 : 1);
   let mx = 0, my = 0;
   if (dest) {

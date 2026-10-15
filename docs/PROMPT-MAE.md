@@ -8,6 +8,13 @@ Toda conversa nova começa com uma frase curta, por exemplo:
 
 > **Veldria — continue pelo `docs/PROMPT-MAE.md` e pelo `docs/ESTADO.md`. Etapa de hoje: E3.**
 
+Qual modelo usar em cada etapa (decisão do Kevin, 14/10): trabalho de grande impacto, que precisa sair bem feito de primeira, vai para o **Claude Fable 5.1**; o resto vai para o **Claude Opus 5.5**.
+
+| Etapa | Modelo |
+|---|---|
+| E2 save/nome/tutorial, E3 registro/recordes/simulador, E5b alma, E6 classes | Opus 5.5 |
+| **E4 motor novo** (IA de utilidade, 3×3, posturas, 3v3) e **E5a curva 1→100 e balanceamento** | **Fable 5.1** |
+
 Se o Kevin quiser mudar alguma coisa do plano, ele diz na mesma frase ("…mas antes quero reavaliar as posturas"). Nesse caso o Claude **primeiro** registra a mudança no `docs/ESTADO.md` e só depois executa. O plano é direção, não contrato: o Kevin pode aprovar, cortar ou reordenar qualquer item a qualquer momento.
 
 ## 1. Papéis

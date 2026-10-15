@@ -4,7 +4,7 @@
 //
 // Uso:  node sim/balanco.js [--n 200] [--nivel 10] [--tam 1] [--ia v1|v2] [--duelo] [--salvar] [--nucleos 8]
 //   --n      lutas por par (metade de cada lado da arena, para tirar a vantagem de lado)
-//   --nivel  nível dos mercenários (ascensões automáticas: >10 = 1, >20 = 2)
+//   --nivel  nível dos mercenários (ascensões automáticas: >30 = 1, >60 = 2)
 //   --tam    tamanho do time (1 = duelo; 3 = três da mesma classe)
 //   --ia     cérebro dos dois lados: v1 = IA atual do 10_combate.js (padrão), v2 = cérebro de utilidade (10b)
 //   --duelo  IA nova × IA atual: a LINHA joga com o cérebro v2 e a COLUNA com a IA atual (todos os 100 pares,
@@ -30,7 +30,7 @@ const CURTO = { guardiao: 'Guard', machadeiro: 'Mach', lanceira: 'Lanç', arquei
 function mercPadrao(cls, k) {
   const m = J.gerarMerc(cls, NIVEL, 'B');
   m.cresc = J.CLASSES[cls].cresc.map(([lo, hi]) => Math.round(((lo + hi) / 2) * 100) / 100);
-  m.tracos = []; m.ascensoes = NIVEL > 20 ? 2 : NIVEL > 10 ? 1 : 0; m.nome = `${CURTO[cls]}${k}`;
+  m.tracos = []; m.ascensoes = J.ascPorNivel(NIVEL); m.nome = `${CURTO[cls]}${k}`;
   return m;
 }
 const times = Object.fromEntries(CLS.map((c) => [c, Array.from({ length: TAM }, (_, k) => mercPadrao(c, k + 1))]));

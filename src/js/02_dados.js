@@ -242,7 +242,24 @@ const ECO = {
   amistosoRec: 0.5, vendaMerc: 0.4, vendaItem: 0.3,
 };
 const PREMIOS_TEMPORADA = [800, 500, 350, 250, 150, 120, 100, 80];
-const ASCENSOES = [{ nivel: 10, ouro: 1000, emblemas: 5 }, { nivel: 20, ouro: 5000, emblemas: 15 }];
+// Progressão até o nível 100 (E5a, aprovado pelo Kevin em 15/10/2026): cada Ascensão é um portão de teto
+// (30 → Ascensão I → 60 → Ascensão II → 100). +10% em todos os atributos e +1 espaço por Ascensão.
+const NIVEL_TETO = 100;
+const TETO_POR_ASCENSAO = [30, 60, 100];
+const ASCENSOES = [{ nivel: 30, ouro: 5000, emblemas: 15 }, { nivel: 60, ouro: 20000, emblemas: 40 }];
+// Ascensões que um mercenário (ou rival) precisa ter para estar no nível L
+const ascPorNivel = (L) => (L > TETO_POR_ASCENSAO[1] ? 2 : L > TETO_POR_ASCENSAO[0] ? 1 : 0);
+// Crescimento de atributos por faixa de nível (opção A do Kevin): cheio até 30, metade até 60 e quase nada até 100.
+// Do 60 ao 100 o que se ganha são escolhas (catálogo, maestrias, Rank S), não número: o combate é muito sensível
+// a atributo (+2% já dá 65–74% de vitórias no espelho), e um nv. 100 não pode atropelar um nv. 60.
+const CRESC_FAIXAS = [{ ate: 30, fator: 1 }, { ate: 60, fator: 0.5 }, { ate: 100, fator: 0 }];
+// Nível "efetivo" para os atributos: igual ao nível até 30 (nada muda para quem já joga)
+function nivelEf(L) {
+  let ef = 1, de = 1;
+  for (const F of CRESC_FAIXAS) { const ate = Math.min(L, F.ate); if (ate > de) { ef += (ate - de) * F.fator; de = ate; } }
+  return ef;
+}
+const fatorCrescNivel = (L) => (CRESC_FAIXAS.find((F) => L < F.ate) || CRESC_FAIXAS[CRESC_FAIXAS.length - 1]).fator;
 function divAtual() { return DIVISOES[(typeof STATE !== 'undefined' && STATE && STATE.divisao) || 0]; }
 
 // Pesos de potencial conforme o nível da Taverna (move 2 pontos de F/D para A/S por nível)

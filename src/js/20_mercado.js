@@ -1,5 +1,5 @@
 /* ============================ MERCADO ============================ */
-const nivelRecruta = () => clamp(Math.round(nivelMedioTime()), 1, 30);
+const nivelRecruta = () => clamp(Math.round(nivelMedioTime()), 1, NIVEL_TETO);
 function renovarTaverna(pago) {
   const nT = STATE.construcoes.taverna;
   const vagas = 4 + Math.floor((nT - 1) / 2);
@@ -7,7 +7,7 @@ function renovarTaverna(pago) {
   const ocupados = new Set([...STATE.campeoesObtidos, ...STATE.mercs.map((m) => m.campeao).filter(Boolean)]);
   const ofertas = [];
   for (let i = 0; i < vagas; i++) {
-    const nivel = clamp(nv - rint(0, 2), 1, 30);
+    const nivel = clamp(nv - rint(0, 2), 1, NIVEL_TETO);
     const livres = Object.keys(CAMPEOES).filter((id) => !ocupados.has(id));
     // A partir da Divisão Ouro, cada vaga tem 1% de chance de trazer um Campeão Lendário
     if (STATE.divisao >= 2 && livres.length && Math.random() < 0.01) { const id = pick(livres); ocupados.add(id); ofertas.push(ajustarAscPorNivel(gerarCampeao(id, nivel))); continue; }

@@ -61,7 +61,7 @@ function poderTime(mercs, mods = {}) {
 }
 function poderNoNivel(m, L) {
   const n = m.nivel, a = m.ascensoes;
-  m.nivel = L; m.ascensoes = L > 20 ? 2 : L > 10 ? 1 : 0;
+  m.nivel = L; m.ascensoes = ascPorNivel(L);
   const p = poderMerc(m);
   m.nivel = n; m.ascensoes = a;
   return p;
@@ -75,7 +75,9 @@ function nivelBaseRivais(rivais, poderJ, faixa, mult) {
   }
   return melhor;
 }
-const faixaDivisao = (div) => [Math.max(1, div.base - 2), Math.min(30, div.base + 5)];
+// A última divisão (Lenda) acompanha o time até o nível 100; as outras têm faixa fixa (sobe-se de divisão para enfrentar mais)
+const tetoDivisao = (div) => (div === DIVISOES[DIVISOES.length - 1] ? NIVEL_TETO : 30);
+const faixaDivisao = (div) => [Math.max(1, div.base - 2), Math.min(tetoDivisao(div), div === DIVISOES[DIVISOES.length - 1] ? NIVEL_TETO : div.base + 5)];
 function novaTemporada(temporada) {
   const div = divAtual(), faixa = faixaDivisao(div);
   const usados = [STATE.guilda.nome];
@@ -95,9 +97,9 @@ function novaTemporada(temporada) {
   for (const g of guildas.slice(1)) ajustarRival(g, 0);
 }
 function nivelRival(g, i, rodada) {
-  return clamp(Math.round(STATE.liga.nivelBase + 0.45 * rodada + (g.offsets ? g.offsets[i] || 0 : 0)), 1, 30);
+  return clamp(Math.round(STATE.liga.nivelBase + 0.45 * rodada + (g.offsets ? g.offsets[i] || 0 : 0)), 1, tetoDivisao(divAtual()));
 }
-function ajustarRival(g, rodada) { g.mercs.forEach((m, i) => { m.nivel = nivelRival(g, i, rodada); m.ascensoes = m.nivel > 20 ? 2 : m.nivel > 10 ? 1 : 0; }); }
+function ajustarRival(g, rodada) { g.mercs.forEach((m, i) => { m.nivel = nivelRival(g, i, rodada); m.ascensoes = ascPorNivel(m.nivel); }); }
 function ladoJogador(preparo = {}) {
   return {
     nome: STATE.guilda.nome, cor1: STATE.guilda.cor1, cor2: STATE.guilda.cor2, simbolo: STATE.guilda.simbolo,
@@ -173,7 +175,7 @@ const LIDER_GUILDA = {
 let RAZAO_LIDER = 1.0;
 function gerarLider(divIdx) {
   const Ld = LIDERES[divIdx], G = LIDER_GUILDA[Ld.id], D = DIVISOES[divIdx];
-  const faixa = [Math.max(1, D.base - 2), Math.min(30, D.base + 8)];
+  const faixa = [Math.max(1, D.base - 2), D === DIVISOES[DIVISOES.length - 1] ? NIVEL_TETO : Math.min(30, D.base + 8)];
   const nv0 = clamp(Math.round(nivelMedioTime()), faixa[0], faixa[1]);
   const n = D.time;
   const chefe = (nome) => {
@@ -190,7 +192,7 @@ function gerarLider(divIdx) {
     const p = chefes.reduce((s, m) => s + poderNoNivel(m, L), 0) + escolta.reduce((s, m) => s + poderNoNivel(m, Math.max(1, L - 1)), 0);
     if (Math.abs(p - alvo) < dif) { dif = Math.abs(p - alvo); melhor = L; }
   }
-  const nivelar = (m, L) => { m.nivel = L; m.ascensoes = L > 20 ? 2 : L > 10 ? 1 : 0; };
+  const nivelar = (m, L) => { m.nivel = L; m.ascensoes = ascPorNivel(L); };
   chefes.forEach((m) => nivelar(m, melhor));
   escolta.forEach((m) => nivelar(m, Math.max(1, melhor - 1)));
   return { id: 'lider', lider: Ld.id, nome: G.nome, cor1: G.cor1, cor2: G.cor2, simbolo: G.simbolo, mercs: [...chefes, ...escolta], capitaoId: chefes[0].id };
@@ -248,7 +250,7 @@ function gerarAmistoso() {
   const nv = Math.round(nivelMedioTime());
   const q = qualidadeRival(STATE.divisao);
   const mercs = gerarElencoRival(nv, { ...q, pesos: POTS.map((p) => POT_INFO[p].peso), item: Math.min(q.item, 0.3) });
-  mercs.forEach((m) => { m.nivel = clamp(nv + rint(-1, 1), 1, 30); ajustarAscPorNivel(m); });
+  mercs.forEach((m) => { m.nivel = clamp(nv + rint(-1, 1), 1, NIVEL_TETO); ajustarAscPorNivel(m); });
   STATE.amistoso = { nome: nomeGuildaAleatorio([STATE.guilda.nome]), ...brasaoAleatorio(), mercs, capitaoId: pick(mercs).id };
 }
 

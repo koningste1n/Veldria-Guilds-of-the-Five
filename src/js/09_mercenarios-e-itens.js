@@ -44,15 +44,16 @@ const multExtra = (m) => (1 + 0.1 * (m.ascensoes || 0)) * (m.campeao ? 1.25 : 1)
 // Crescimento efetivo por nível (com traços, Ascensão e bônus de Campeão), para exibir
 const ACEL_VIDA = 0.025;   // a VIDA cresce 2,5% mais rápido a cada nível (lutas não encurtam nos níveis altos)
 function crescEfetivo(m) {
-  const k = multExtra(m), L = m.nivel, bv = CLASSES[m.classe].base[0];
+  const k = multExtra(m) * fatorCrescNivel(m.nivel), L = nivelEf(m.nivel), bv = CLASSES[m.classe].base[0];
   const dVida = m.cresc[0] * (1 + ACEL_VIDA * (L - 1)) + (bv + m.cresc[0] * (L - 1)) * ACEL_VIDA;
   return { vida: dVida * multTraco(m, 'vida') * k, atq: m.cresc[1] * multTraco(m, 'atq') * k, def: m.cresc[2] * multTraco(m, 'def') * k, agi: m.cresc[3] * multTraco(m, 'agi') * k };
 }
-// Atributo no nível N = (base + crescimento × (N − 1)) × traços × (1 + 10% por Ascensão); a VIDA ainda acelera 2,5%/nível
+// Atributo no nível N = (base + crescimento × (Nef − 1)) × traços × (1 + 10% por Ascensão); a VIDA ainda acelera 2,5%/nível.
+// Nef = nivelEf(N): igual a N até 30, depois cresce mais devagar (CRESC_FAIXAS, 02_dados)
 function atributosBase(m, nivel = m.nivel) {
-  const c = CLASSES[m.classe], k = multExtra(m), bc = m.bonusCriador || {};
-  const v = c.base.map((b, i) => (b + m.cresc[i] * (nivel - 1)) * k);
-  v[0] *= 1 + ACEL_VIDA * (nivel - 1);
+  const c = CLASSES[m.classe], k = multExtra(m), bc = m.bonusCriador || {}, ef = nivelEf(nivel);
+  const v = c.base.map((b, i) => (b + m.cresc[i] * (ef - 1)) * k);
+  v[0] *= 1 + ACEL_VIDA * (ef - 1);
   return {
     vida: Math.round(v[0] * multTraco(m, 'vida')) + (bc.vida || 0), atq: Math.round(v[1] * multTraco(m, 'atq')) + (bc.atq || 0),
     def: Math.round(v[2] * multTraco(m, 'def')) + (bc.def || 0), agi: Math.round(v[3] * multTraco(m, 'agi')) + (bc.agi || 0),
@@ -112,7 +113,7 @@ function poderMerc(m, mult = 1) {
 }
 function poderLista(lista, mult = 1) { return lista.reduce((t, m) => t + poderMerc(m, mult), 0); }
 const xpProx = (n) => Math.round(50 * Math.pow(n, 1.5));
-const nivelMax = (m) => Math.min(30, 10 + 10 * ((m && m.ascensoes) || 0));
+const nivelMax = (m) => TETO_POR_ASCENSAO[Math.min(2, (m && m.ascensoes) || 0)];
 const podeAscender = (m) => (m.ascensoes || 0) < 2 && m.nivel >= ASCENSOES[m.ascensoes || 0].nivel;
 const slotsPergaminho = (m) => (m.nivel >= 5 ? 1 : 0) + (m.ascensoes || 0);
 const skillDe = (m) => m.skillFixa || (m.campeao ? CAMPEOES[m.campeao].skill : CLASSES[m.classe].skill);
@@ -149,6 +150,7 @@ function gerarItem(raridade, nivel, tipo) {
   tipo = tipo || pick(Object.keys(TIPOS_ITEM));
   const R = RARIDADES[raridade], mult = R.mult, maior = raridade === 2 ? 1.25 : 1;
   const [baseNome, icone] = pick(ITEM_BASES[tipo]);
+  const nivelItem = nivel; nivel = nivelEf(nivel);   // o bônus segue a mesma faixa de crescimento dos mercenários (igual até 30)
   const bonus = {};
   if (tipo === 'arma') {
     bonus.atq = Math.round((3 + 1.2 * nivel) * mult * maior);
@@ -164,7 +166,7 @@ function gerarItem(raridade, nivel, tipo) {
     for (let i = 0; i < R.nb - 1; i++) addExtra(bonus, ex[i], nivel, mult);
   }
   const unico = raridade === 4 ? pick(Object.keys(UNICOS).filter((k) => UNICOS[k].tipo === tipo)) : null;
-  return { id: novoId(), tipo, raridade, nivel, nome: `${baseNome} ${pick(ITEM_SUFIXOS[raridade])}`, icone, bonus, unico, aprim: 0, investido: 0, flavor: pick(ITEM_FLAVOR[raridade]) };
+  return { id: novoId(), tipo, raridade, nivel: nivelItem, nome: `${baseNome} ${pick(ITEM_SUFIXOS[raridade])}`, icone, bonus, unico, aprim: 0, investido: 0, flavor: pick(ITEM_FLAVOR[raridade]) };
 }
 function gerarPergaminho(raridade, pid) {
   pid = pid || pick(Object.keys(PERGAMINHOS).filter((k) => PERGAMINHOS[k].r === raridade));

@@ -63,6 +63,10 @@ function mostrarTutorial() {
   el.innerHTML = `<div class="tut-balao"><small>${p === 0 ? 'Primeiros passos' : `Luta ${p} de ${TUT_FIM} · menu liberado`}</small><p>${T.txt}</p><button class="btn primario pequeno" data-act="tutorial-prox">${p === TUT_FIM ? 'Começar' : 'Entendi'}</button></div>`;
 }
 const NOVIDADES = {
+  13: [
+    ['emblema', 'Rumo ao nível 100', 'O nível máximo agora vai até 100. Sem Ascensão o teto é 30; a 1ª Ascensão (no nível 30) libera até 60 e a 2ª (no nível 60) libera até 100. Quem já tinha Ascensões ficou com elas e ganhou o teto novo.'],
+    ['estrela', 'Níveis altos', 'Até o 30 tudo continua igual. Do 30 ao 60 os atributos sobem pela metade, e do 60 ao 100 quase não sobem: o que vem lá em cima são escolhas novas para o seu time.'],
+  ],
   12: [
     ['liga', 'Partidas em melhor de 3', 'Na Liga e na Copa, cada partida agora tem até 3 lutas: vence quem ganhar 2. Todos voltam com a vida cheia a cada luta. Amistoso e Torre continuam com uma luta só.'],
     ['estrela', 'Intervalo de treinador', 'Entre uma luta e outra você vê o placar e pode mover a formação e trocar as posturas antes de voltar à arena. As recompensas (ouro, XP, baú) vêm no fim da partida.'],
@@ -93,7 +97,7 @@ const NOVIDADES = {
     ['pocaoV', 'Consumíveis', 'Poções, bomba, tônico de XP e mapa do tesouro. Compre no Boticário ou ache em baús.'],
     ['forja', 'Forja e Relógio', 'Aprimore equipamentos até +10 e aumente o limite offline até 16 h.'],
     ['expedicao', 'Expedições', 'Reservas exploram por 15 min a 8 h e voltam com ouro, XP, baús e Emblemas.'],
-    ['emblema', 'Ascensão', 'Nos níveis 10 e 20: +10 níveis máximos, +10% atributos. Custa ouro e Emblemas.'],
+    ['emblema', 'Ascensão', 'Nos níveis 30 e 60: libera o nível máximo (60 e depois 100), +10% atributos. Custa ouro e Emblemas.'],
     ['liga', 'Divisões, Copa e Líderes', 'Bronze até Lenda. Os 4 primeiros jogam a Copa; a final é contra um Líder com mecânica própria.'],
     ['coroa', 'Campeões Lendários', '5 heróis únicos com habilidades exclusivas. Vencer a Copa pode trazer um para a guilda.'],
   ],
@@ -119,7 +123,7 @@ const NOVIDADES = {
     ['engrenagem', 'Save na sua conta', 'Jogando dentro do Claude com a sua conta, o progresso também fica salvo nela e você continua de outro aparelho. Veja em Configurações onde o seu progresso está salvo.'],
   ],
 };
-const ROTULO_FASE = { 5: '4.1', 6: '5 · Veldria', 7: '6 · Recordes', 8: '7 · Cérebro', 10: '8 · Formação', 11: '9 · Câmera', 12: '10 · Melhor de 3' };
+const ROTULO_FASE = { 5: '4.1', 6: '5 · Veldria', 7: '6 · Recordes', 8: '7 · Cérebro', 10: '8 · Formação', 11: '9 · Câmera', 12: '10 · Melhor de 3', 13: '11 · Rumo ao 100' };
 function mostrarNovidades() {
   const fases = (STATE.novidades || []).slice().sort((a, b) => b - a);
   const bloco = (f) => `${fases.length > 1 ? `<span class="rot">Fase ${ROTULO_FASE[f] || f}</span>` : ''}<div class="lista novidades">${NOVIDADES[f].map(([ic, t, d]) => `<div class="card">${canvasIcone(ic, 28, ic === 'torre' ? { a: '#e9dfc9', b: '#a99bb8' } : null)}<div class="card-corpo"><b>${t}</b><small>${d}</small></div></div>`).join('')}</div>`;
@@ -156,7 +160,7 @@ function abrirConfig() {
     <button class="btn" data-act="estatisticas">${canvasIcone('estatisticas', 16)} Ver estatísticas completas</button>
     ${STATE.criador.liberado ? `<button class="btn criador-btn" data-act="criador">${canvasIcone('criador', 16)} Modo Criador</button>` : ''}
     <button class="btn perigo" data-act="reiniciar">Reiniciar jogo</button>
-    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.10.1</button>`, { dados: { config: true } });
+    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.11</button>`, { dados: { config: true } });
 }
 function mostrarResumoOffline(r) {
   if (!r || r.minutos < 1) return;

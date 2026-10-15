@@ -829,7 +829,24 @@ const ECO = {
   amistosoRec: 0.5, vendaMerc: 0.4, vendaItem: 0.3,
 };
 const PREMIOS_TEMPORADA = [800, 500, 350, 250, 150, 120, 100, 80];
-const ASCENSOES = [{ nivel: 10, ouro: 1000, emblemas: 5 }, { nivel: 20, ouro: 5000, emblemas: 15 }];
+// Progressão até o nível 100 (E5a, aprovado pelo Kevin em 15/10/2026): cada Ascensão é um portão de teto
+// (30 → Ascensão I → 60 → Ascensão II → 100). +10% em todos os atributos e +1 espaço por Ascensão.
+const NIVEL_TETO = 100;
+const TETO_POR_ASCENSAO = [30, 60, 100];
+const ASCENSOES = [{ nivel: 30, ouro: 5000, emblemas: 15 }, { nivel: 60, ouro: 20000, emblemas: 40 }];
+// Ascensões que um mercenário (ou rival) precisa ter para estar no nível L
+const ascPorNivel = (L) => (L > TETO_POR_ASCENSAO[1] ? 2 : L > TETO_POR_ASCENSAO[0] ? 1 : 0);
+// Crescimento de atributos por faixa de nível (opção A do Kevin): cheio até 30, metade até 60 e quase nada até 100.
+// Do 60 ao 100 o que se ganha são escolhas (catálogo, maestrias, Rank S), não número: o combate é muito sensível
+// a atributo (+2% já dá 65–74% de vitórias no espelho), e um nv. 100 não pode atropelar um nv. 60.
+const CRESC_FAIXAS = [{ ate: 30, fator: 1 }, { ate: 60, fator: 0.5 }, { ate: 100, fator: 0 }];
+// Nível "efetivo" para os atributos: igual ao nível até 30 (nada muda para quem já joga)
+function nivelEf(L) {
+  let ef = 1, de = 1;
+  for (const F of CRESC_FAIXAS) { const ate = Math.min(L, F.ate); if (ate > de) { ef += (ate - de) * F.fator; de = ate; } }
+  return ef;
+}
+const fatorCrescNivel = (L) => (CRESC_FAIXAS.find((F) => L < F.ate) || CRESC_FAIXAS[CRESC_FAIXAS.length - 1]).fator;
 function divAtual() { return DIVISOES[(typeof STATE !== 'undefined' && STATE && STATE.divisao) || 0]; }
 
 // Pesos de potencial conforme o nível da Taverna (move 2 pontos de F/D para A/S por nível)
@@ -958,7 +975,7 @@ const COPA = { semiOuro: 300, semiEmblemas: 1, finalEmblemas: 3, chanceCampeao: 
 /* ============================ TORRE INFINITA (Fase 3) ============================
    Nível dos inimigos sobe 0,6 por andar até 30; depois disso os atributos crescem 3% por andar. */
 const TORRE = {
-  nivel: (n) => clamp(Math.round(1 + 0.6 * (n - 1)), 1, 30),
+  nivel: (n) => clamp(Math.round(1 + 0.6 * (n - 1)), 1, NIVEL_TETO),
   mult: (n) => 1 + Math.max(0, n - 49) * 0.03,
   tier: (n) => Math.min(4, Math.floor((n - 1) / 10)),
   ouro: (n) => Math.round(30 + 20 * n),
@@ -2024,15 +2041,16 @@ const multExtra = (m) => (1 + 0.1 * (m.ascensoes || 0)) * (m.campeao ? 1.25 : 1)
 // Crescimento efetivo por nível (com traços, Ascensão e bônus de Campeão), para exibir
 const ACEL_VIDA = 0.025;   // a VIDA cresce 2,5% mais rápido a cada nível (lutas não encurtam nos níveis altos)
 function crescEfetivo(m) {
-  const k = multExtra(m), L = m.nivel, bv = CLASSES[m.classe].base[0];
+  const k = multExtra(m) * fatorCrescNivel(m.nivel), L = nivelEf(m.nivel), bv = CLASSES[m.classe].base[0];
   const dVida = m.cresc[0] * (1 + ACEL_VIDA * (L - 1)) + (bv + m.cresc[0] * (L - 1)) * ACEL_VIDA;
   return { vida: dVida * multTraco(m, 'vida') * k, atq: m.cresc[1] * multTraco(m, 'atq') * k, def: m.cresc[2] * multTraco(m, 'def') * k, agi: m.cresc[3] * multTraco(m, 'agi') * k };
 }
-// Atributo no nível N = (base + crescimento × (N − 1)) × traços × (1 + 10% por Ascensão); a VIDA ainda acelera 2,5%/nível
+// Atributo no nível N = (base + crescimento × (Nef − 1)) × traços × (1 + 10% por Ascensão); a VIDA ainda acelera 2,5%/nível.
+// Nef = nivelEf(N): igual a N até 30, depois cresce mais devagar (CRESC_FAIXAS, 02_dados)
 function atributosBase(m, nivel = m.nivel) {
-  const c = CLASSES[m.classe], k = multExtra(m), bc = m.bonusCriador || {};
-  const v = c.base.map((b, i) => (b + m.cresc[i] * (nivel - 1)) * k);
-  v[0] *= 1 + ACEL_VIDA * (nivel - 1);
+  const c = CLASSES[m.classe], k = multExtra(m), bc = m.bonusCriador || {}, ef = nivelEf(nivel);
+  const v = c.base.map((b, i) => (b + m.cresc[i] * (ef - 1)) * k);
+  v[0] *= 1 + ACEL_VIDA * (ef - 1);
   return {
     vida: Math.round(v[0] * multTraco(m, 'vida')) + (bc.vida || 0), atq: Math.round(v[1] * multTraco(m, 'atq')) + (bc.atq || 0),
     def: Math.round(v[2] * multTraco(m, 'def')) + (bc.def || 0), agi: Math.round(v[3] * multTraco(m, 'agi')) + (bc.agi || 0),
@@ -2092,7 +2110,7 @@ function poderMerc(m, mult = 1) {
 }
 function poderLista(lista, mult = 1) { return lista.reduce((t, m) => t + poderMerc(m, mult), 0); }
 const xpProx = (n) => Math.round(50 * Math.pow(n, 1.5));
-const nivelMax = (m) => Math.min(30, 10 + 10 * ((m && m.ascensoes) || 0));
+const nivelMax = (m) => TETO_POR_ASCENSAO[Math.min(2, (m && m.ascensoes) || 0)];
 const podeAscender = (m) => (m.ascensoes || 0) < 2 && m.nivel >= ASCENSOES[m.ascensoes || 0].nivel;
 const slotsPergaminho = (m) => (m.nivel >= 5 ? 1 : 0) + (m.ascensoes || 0);
 const skillDe = (m) => m.skillFixa || (m.campeao ? CAMPEOES[m.campeao].skill : CLASSES[m.classe].skill);
@@ -2129,6 +2147,7 @@ function gerarItem(raridade, nivel, tipo) {
   tipo = tipo || pick(Object.keys(TIPOS_ITEM));
   const R = RARIDADES[raridade], mult = R.mult, maior = raridade === 2 ? 1.25 : 1;
   const [baseNome, icone] = pick(ITEM_BASES[tipo]);
+  const nivelItem = nivel; nivel = nivelEf(nivel);   // o bônus segue a mesma faixa de crescimento dos mercenários (igual até 30)
   const bonus = {};
   if (tipo === 'arma') {
     bonus.atq = Math.round((3 + 1.2 * nivel) * mult * maior);
@@ -2144,7 +2163,7 @@ function gerarItem(raridade, nivel, tipo) {
     for (let i = 0; i < R.nb - 1; i++) addExtra(bonus, ex[i], nivel, mult);
   }
   const unico = raridade === 4 ? pick(Object.keys(UNICOS).filter((k) => UNICOS[k].tipo === tipo)) : null;
-  return { id: novoId(), tipo, raridade, nivel, nome: `${baseNome} ${pick(ITEM_SUFIXOS[raridade])}`, icone, bonus, unico, aprim: 0, investido: 0, flavor: pick(ITEM_FLAVOR[raridade]) };
+  return { id: novoId(), tipo, raridade, nivel: nivelItem, nome: `${baseNome} ${pick(ITEM_SUFIXOS[raridade])}`, icone, bonus, unico, aprim: 0, investido: 0, flavor: pick(ITEM_FLAVOR[raridade]) };
 }
 function gerarPergaminho(raridade, pid) {
   pid = pid || pick(Object.keys(PERGAMINHOS).filter((k) => PERGAMINHOS[k].r === raridade));
@@ -4538,7 +4557,7 @@ function fxPonta(c, x, y, cor) { for (let i = 0; i < 6; i++) { const a = (i / 6)
 
 /* ============================ ESTADO E SAVE ============================ */
 const SAVE_KEY = 'ligaDasLaminas.save.v1';   // mesma chave da Fase 1: a versão fica dentro do save
-const VERSAO = 12;   // v12 (E4 e): stats.rodadas (lutas = partidas; rodadas = lutas dentro delas) e a nota da partida melhor de 3; v11 (E4 d): só marcava a nota da câmera nova; v10 (E4 d): formato igual ao v9, só marca a nota da tela de formação; v9 (E4 c): pos (casa na formação 3×3) e postura; v8 só marcava a nota do cérebro novo
+const VERSAO = 13;   // v13 (E5a): mesmo formato; teto 30 → 60 → 100 vem das Ascensões que o mercenário já tem (nada a migrar) e marca a nota; v12 (E4 e): v12 (E4 e): stats.rodadas (lutas = partidas; rodadas = lutas dentro delas) e a nota da partida melhor de 3; v11 (E4 d): só marcava a nota da câmera nova; v10 (E4 d): formato igual ao v9, só marca a nota da tela de formação; v9 (E4 c): pos (casa na formação 3×3) e postura; v8 só marcava a nota do cérebro novo
 const consumiveisZerados = () => Object.fromEntries(Object.keys(CONSUMIVEIS).map((k) => [k, 0]));
 const criadorPadrao = () => ({ liberado: false, usado: false, sorteMult: 1, tempoMult: 1 });
 const statsPadrao = () => ({
@@ -4629,7 +4648,7 @@ function normalizarMerc(m) {
   m.pos |= 0; m.linha = linhaDePos(m.pos);
   if (!POSTURAS[m.postura]) m.postura = 'auto';
   if (!m.tatica) m.tatica = 'auto';
-  m.nivel = clamp(m.nivel | 0 || 1, 1, 30);
+  m.nivel = clamp(m.nivel | 0 || 1, 1, NIVEL_TETO);
   m.xp = Math.max(0, +m.xp || 0);
   m.stats = Object.assign(statsMercPadrao(), m.stats || {});
   return m;
@@ -4689,7 +4708,8 @@ function validarSave(s) {
   if (versaoAntiga < 10 && !nov.includes(10) && st.stats.lutas > 0) nov.push(10);   // v9 não tinha nota: a formação só ganhou tela no v10
   if (versaoAntiga < 11 && !nov.includes(11) && st.stats.lutas > 0) nov.push(11);
   if (versaoAntiga < 12 && !nov.includes(12) && st.stats.lutas > 0) nov.push(12);
-  st.novidades = nov.filter((f) => f >= 2 && f <= 12).sort();
+  if (versaoAntiga < 13 && !nov.includes(13) && st.stats.lutas > 0) nov.push(13);
+  st.novidades = nov.filter((f) => f >= 2 && NOVIDADES[f]).sort((a, b) => a - b);   // só fases com nota (antes: teto fixo que esquecia a nota nova)
   if (versaoAntiga < 12) st.stats.rodadas = st.stats.lutas;   // até o v11 toda partida tinha uma luta só
   if (versaoAntiga < 3 && st.tutorial >= 4) st.tutorial = 99;   // quem já viu o tutorial antigo não o repete
   // v6: tutorial progressivo. Quem já lutou (ou terminou o tutorial antigo) não repete nada.
@@ -4703,7 +4723,7 @@ function normalizarLiga(st) {
   const L = st.liga;
   if (!Array.isArray(L.guildas) || L.guildas.length !== 8 || !Array.isArray(L.calendario)) { st.liga = null; return; }
   for (const g of L.guildas) if (g.mercs) g.mercs = mercsValidos(g.mercs);
-  if (L.nivelBase == null) L.nivelBase = clamp(DIVISOES[st.divisao].base + 2 * ((L.temporada || 1) - 1), 1, 30);
+  if (L.nivelBase == null) L.nivelBase = clamp(DIVISOES[st.divisao].base + 2 * ((L.temporada || 1) - 1), 1, NIVEL_TETO);
   if (L.divIdx == null) L.divIdx = st.divisao;
   if (!L.fase) {
     if (!L.encerrada) L.fase = 'liga';
@@ -4730,7 +4750,7 @@ const tamanhoTime = () => divAtual().time;
 function nivelMedioTime() { const t = timeMercs(); const l = t.length ? t : STATE.mercs; return l.length ? l.reduce((s, m) => s + m.nivel, 0) / l.length : 1; }
 function sorteGuilda() { return timeMercs().reduce((s, m) => s + atributos(m).sorte, 0) + somaReliquia('sorte'); }
 const emExpedicao = (id) => !!(STATE && STATE.expedicoes && STATE.expedicoes.some((e) => e.mercId === id));
-const ajustarAscPorNivel = (m) => { m.ascensoes = Math.max(m.ascensoes || 0, m.nivel > 20 ? 2 : m.nivel > 10 ? 1 : 0); return m; };
+const ajustarAscPorNivel = (m) => { m.ascensoes = Math.max(m.ascensoes || 0, ascPorNivel(m.nivel)); return m; };
 // Mantém o time válido: sem repetidos, sem quem está em expedição, no tamanho da divisão e com capitão
 function ajustarTime() {
   STATE.time = [...new Set(STATE.time)].filter((id) => mercPorId(id) && !emExpedicao(id));
@@ -4965,7 +4985,7 @@ function ascender(m) {
 }
 
 /* ============================ MERCADO ============================ */
-const nivelRecruta = () => clamp(Math.round(nivelMedioTime()), 1, 30);
+const nivelRecruta = () => clamp(Math.round(nivelMedioTime()), 1, NIVEL_TETO);
 function renovarTaverna(pago) {
   const nT = STATE.construcoes.taverna;
   const vagas = 4 + Math.floor((nT - 1) / 2);
@@ -4973,7 +4993,7 @@ function renovarTaverna(pago) {
   const ocupados = new Set([...STATE.campeoesObtidos, ...STATE.mercs.map((m) => m.campeao).filter(Boolean)]);
   const ofertas = [];
   for (let i = 0; i < vagas; i++) {
-    const nivel = clamp(nv - rint(0, 2), 1, 30);
+    const nivel = clamp(nv - rint(0, 2), 1, NIVEL_TETO);
     const livres = Object.keys(CAMPEOES).filter((id) => !ocupados.has(id));
     // A partir da Divisão Ouro, cada vaga tem 1% de chance de trazer um Campeão Lendário
     if (STATE.divisao >= 2 && livres.length && Math.random() < 0.01) { const id = pick(livres); ocupados.add(id); ofertas.push(ajustarAscPorNivel(gerarCampeao(id, nivel))); continue; }
@@ -5082,7 +5102,7 @@ function poderTime(mercs, mods = {}) {
 }
 function poderNoNivel(m, L) {
   const n = m.nivel, a = m.ascensoes;
-  m.nivel = L; m.ascensoes = L > 20 ? 2 : L > 10 ? 1 : 0;
+  m.nivel = L; m.ascensoes = ascPorNivel(L);
   const p = poderMerc(m);
   m.nivel = n; m.ascensoes = a;
   return p;
@@ -5096,7 +5116,9 @@ function nivelBaseRivais(rivais, poderJ, faixa, mult) {
   }
   return melhor;
 }
-const faixaDivisao = (div) => [Math.max(1, div.base - 2), Math.min(30, div.base + 5)];
+// A última divisão (Lenda) acompanha o time até o nível 100; as outras têm faixa fixa (sobe-se de divisão para enfrentar mais)
+const tetoDivisao = (div) => (div === DIVISOES[DIVISOES.length - 1] ? NIVEL_TETO : 30);
+const faixaDivisao = (div) => [Math.max(1, div.base - 2), Math.min(tetoDivisao(div), div === DIVISOES[DIVISOES.length - 1] ? NIVEL_TETO : div.base + 5)];
 function novaTemporada(temporada) {
   const div = divAtual(), faixa = faixaDivisao(div);
   const usados = [STATE.guilda.nome];
@@ -5116,9 +5138,9 @@ function novaTemporada(temporada) {
   for (const g of guildas.slice(1)) ajustarRival(g, 0);
 }
 function nivelRival(g, i, rodada) {
-  return clamp(Math.round(STATE.liga.nivelBase + 0.45 * rodada + (g.offsets ? g.offsets[i] || 0 : 0)), 1, 30);
+  return clamp(Math.round(STATE.liga.nivelBase + 0.45 * rodada + (g.offsets ? g.offsets[i] || 0 : 0)), 1, tetoDivisao(divAtual()));
 }
-function ajustarRival(g, rodada) { g.mercs.forEach((m, i) => { m.nivel = nivelRival(g, i, rodada); m.ascensoes = m.nivel > 20 ? 2 : m.nivel > 10 ? 1 : 0; }); }
+function ajustarRival(g, rodada) { g.mercs.forEach((m, i) => { m.nivel = nivelRival(g, i, rodada); m.ascensoes = ascPorNivel(m.nivel); }); }
 function ladoJogador(preparo = {}) {
   return {
     nome: STATE.guilda.nome, cor1: STATE.guilda.cor1, cor2: STATE.guilda.cor2, simbolo: STATE.guilda.simbolo,
@@ -5194,7 +5216,7 @@ const LIDER_GUILDA = {
 let RAZAO_LIDER = 1.0;
 function gerarLider(divIdx) {
   const Ld = LIDERES[divIdx], G = LIDER_GUILDA[Ld.id], D = DIVISOES[divIdx];
-  const faixa = [Math.max(1, D.base - 2), Math.min(30, D.base + 8)];
+  const faixa = [Math.max(1, D.base - 2), D === DIVISOES[DIVISOES.length - 1] ? NIVEL_TETO : Math.min(30, D.base + 8)];
   const nv0 = clamp(Math.round(nivelMedioTime()), faixa[0], faixa[1]);
   const n = D.time;
   const chefe = (nome) => {
@@ -5211,7 +5233,7 @@ function gerarLider(divIdx) {
     const p = chefes.reduce((s, m) => s + poderNoNivel(m, L), 0) + escolta.reduce((s, m) => s + poderNoNivel(m, Math.max(1, L - 1)), 0);
     if (Math.abs(p - alvo) < dif) { dif = Math.abs(p - alvo); melhor = L; }
   }
-  const nivelar = (m, L) => { m.nivel = L; m.ascensoes = L > 20 ? 2 : L > 10 ? 1 : 0; };
+  const nivelar = (m, L) => { m.nivel = L; m.ascensoes = ascPorNivel(L); };
   chefes.forEach((m) => nivelar(m, melhor));
   escolta.forEach((m) => nivelar(m, Math.max(1, melhor - 1)));
   return { id: 'lider', lider: Ld.id, nome: G.nome, cor1: G.cor1, cor2: G.cor2, simbolo: G.simbolo, mercs: [...chefes, ...escolta], capitaoId: chefes[0].id };
@@ -5269,13 +5291,13 @@ function gerarAmistoso() {
   const nv = Math.round(nivelMedioTime());
   const q = qualidadeRival(STATE.divisao);
   const mercs = gerarElencoRival(nv, { ...q, pesos: POTS.map((p) => POT_INFO[p].peso), item: Math.min(q.item, 0.3) });
-  mercs.forEach((m) => { m.nivel = clamp(nv + rint(-1, 1), 1, 30); ajustarAscPorNivel(m); });
+  mercs.forEach((m) => { m.nivel = clamp(nv + rint(-1, 1), 1, NIVEL_TETO); ajustarAscPorNivel(m); });
   STATE.amistoso = { nome: nomeGuildaAleatorio([STATE.guilda.nome]), ...brasaoAleatorio(), mercs, capitaoId: pick(mercs).id };
 }
 
 /* ============================ TORRE INFINITA ============================ */
 const proximoAndar = () => STATE.torre.recorde + 1;
-const nivelarRival = (m, L) => { m.nivel = clamp(L, 1, 30); m.ascensoes = m.nivel > 20 ? 2 : m.nivel > 10 ? 1 : 0; return m; };
+const nivelarRival = (m, L) => { m.nivel = clamp(L, 1, NIVEL_TETO); m.ascensoes = ascPorNivel(m.nivel); return m; };
 function gerarAndar(n) {
   const nv = TORRE.nivel(n), q = qualidadeRival(TORRE.tier(n)), tam = tamanhoTime();
   if (TORRE.guardiao(n)) {
@@ -6084,13 +6106,13 @@ function htmlPergaminhosFicha(m, s) {
 }
 function htmlAscensao(m) {
   const asc = m.ascensoes || 0;
-  if (asc >= 2) return `<div class="asc max"><div class="asc-cab">${estrelas(2, 14)}<b>Ascensão máxima</b></div><small>Nível máximo 30 e +20% em todos os atributos.</small></div>`;
+  if (asc >= 2) return `<div class="asc max"><div class="asc-cab">${estrelas(2, 14)}<b>Ascensão máxima</b></div><small>Nível máximo ${NIVEL_TETO} e +20% em todos os atributos.</small></div>`;
   const A = ASCENSOES[asc], pronto = m.nivel >= A.nivel;
   const ok = pronto && STATE.ouro >= A.ouro && STATE.emblemas >= A.emblemas;
   const falta = !pronto ? `Chegue ao nível ${A.nivel}` : STATE.emblemas < A.emblemas ? `Faltam ${A.emblemas - STATE.emblemas} Emblemas` : STATE.ouro < A.ouro ? `Faltam ${fmt(A.ouro - STATE.ouro)} de ouro` : '';
   return `<div class="asc ${pronto ? 'pronta' : ''}">
     <div class="asc-cab">${canvasIcone('estrela', 18)}<b>${asc === 0 ? '1ª' : '2ª'} Ascensão</b><span class="tag">no nível ${A.nivel}</span></div>
-    <small>Nível máximo ${nivelMax(m)} → ${nivelMax(m) + 10}, +10% em todos os atributos e +1 espaço de pergaminho. Custa ${fmt(A.ouro)} de ouro e ${A.emblemas} Emblemas.</small>
+    <small>Nível máximo ${nivelMax(m)} → ${TETO_POR_ASCENSAO[asc + 1]}, +10% em todos os atributos e +1 espaço de pergaminho. Custa ${fmt(A.ouro)} de ouro e ${A.emblemas} Emblemas.</small>
     <button class="btn ${ok ? 'primario' : ''} largo" data-act="ascender" data-id="${m.id}" ${ok ? '' : 'disabled'}>${ok ? `Ascender · ${precoBtn(A.ouro)} · ${precoBtn(A.emblemas, true)}` : falta}</button>
   </div>`;
 }
@@ -6750,6 +6772,10 @@ function mostrarTutorial() {
   el.innerHTML = `<div class="tut-balao"><small>${p === 0 ? 'Primeiros passos' : `Luta ${p} de ${TUT_FIM} · menu liberado`}</small><p>${T.txt}</p><button class="btn primario pequeno" data-act="tutorial-prox">${p === TUT_FIM ? 'Começar' : 'Entendi'}</button></div>`;
 }
 const NOVIDADES = {
+  13: [
+    ['emblema', 'Rumo ao nível 100', 'O nível máximo agora vai até 100. Sem Ascensão o teto é 30; a 1ª Ascensão (no nível 30) libera até 60 e a 2ª (no nível 60) libera até 100. Quem já tinha Ascensões ficou com elas e ganhou o teto novo.'],
+    ['estrela', 'Níveis altos', 'Até o 30 tudo continua igual. Do 30 ao 60 os atributos sobem pela metade, e do 60 ao 100 quase não sobem: o que vem lá em cima são escolhas novas para o seu time.'],
+  ],
   12: [
     ['liga', 'Partidas em melhor de 3', 'Na Liga e na Copa, cada partida agora tem até 3 lutas: vence quem ganhar 2. Todos voltam com a vida cheia a cada luta. Amistoso e Torre continuam com uma luta só.'],
     ['estrela', 'Intervalo de treinador', 'Entre uma luta e outra você vê o placar e pode mover a formação e trocar as posturas antes de voltar à arena. As recompensas (ouro, XP, baú) vêm no fim da partida.'],
@@ -6780,7 +6806,7 @@ const NOVIDADES = {
     ['pocaoV', 'Consumíveis', 'Poções, bomba, tônico de XP e mapa do tesouro. Compre no Boticário ou ache em baús.'],
     ['forja', 'Forja e Relógio', 'Aprimore equipamentos até +10 e aumente o limite offline até 16 h.'],
     ['expedicao', 'Expedições', 'Reservas exploram por 15 min a 8 h e voltam com ouro, XP, baús e Emblemas.'],
-    ['emblema', 'Ascensão', 'Nos níveis 10 e 20: +10 níveis máximos, +10% atributos. Custa ouro e Emblemas.'],
+    ['emblema', 'Ascensão', 'Nos níveis 30 e 60: libera o nível máximo (60 e depois 100), +10% atributos. Custa ouro e Emblemas.'],
     ['liga', 'Divisões, Copa e Líderes', 'Bronze até Lenda. Os 4 primeiros jogam a Copa; a final é contra um Líder com mecânica própria.'],
     ['coroa', 'Campeões Lendários', '5 heróis únicos com habilidades exclusivas. Vencer a Copa pode trazer um para a guilda.'],
   ],
@@ -6806,7 +6832,7 @@ const NOVIDADES = {
     ['engrenagem', 'Save na sua conta', 'Jogando dentro do Claude com a sua conta, o progresso também fica salvo nela e você continua de outro aparelho. Veja em Configurações onde o seu progresso está salvo.'],
   ],
 };
-const ROTULO_FASE = { 5: '4.1', 6: '5 · Veldria', 7: '6 · Recordes', 8: '7 · Cérebro', 10: '8 · Formação', 11: '9 · Câmera', 12: '10 · Melhor de 3' };
+const ROTULO_FASE = { 5: '4.1', 6: '5 · Veldria', 7: '6 · Recordes', 8: '7 · Cérebro', 10: '8 · Formação', 11: '9 · Câmera', 12: '10 · Melhor de 3', 13: '11 · Rumo ao 100' };
 function mostrarNovidades() {
   const fases = (STATE.novidades || []).slice().sort((a, b) => b - a);
   const bloco = (f) => `${fases.length > 1 ? `<span class="rot">Fase ${ROTULO_FASE[f] || f}</span>` : ''}<div class="lista novidades">${NOVIDADES[f].map(([ic, t, d]) => `<div class="card">${canvasIcone(ic, 28, ic === 'torre' ? { a: '#e9dfc9', b: '#a99bb8' } : null)}<div class="card-corpo"><b>${t}</b><small>${d}</small></div></div>`).join('')}</div>`;
@@ -6843,7 +6869,7 @@ function abrirConfig() {
     <button class="btn" data-act="estatisticas">${canvasIcone('estatisticas', 16)} Ver estatísticas completas</button>
     ${STATE.criador.liberado ? `<button class="btn criador-btn" data-act="criador">${canvasIcone('criador', 16)} Modo Criador</button>` : ''}
     <button class="btn perigo" data-act="reiniciar">Reiniciar jogo</button>
-    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.10.1</button>`, { dados: { config: true } });
+    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.11</button>`, { dados: { config: true } });
 }
 function mostrarResumoOffline(r) {
   if (!r || r.minutos < 1) return;
@@ -6912,7 +6938,7 @@ function htmlCriador() {
   ${m ? `<section class="cri-sec"><h3>Mercenários</h3>
     <div class="escolha-merc">${STATE.mercs.map((x) => `<button class="chip-merc ${x.id === m.id ? 'on' : ''}" data-act="cri-merc" data-id="${x.id}">${canvasLook(lookMeu(x), 36)}<small>${esc(x.nome)}<br>nv. ${x.nivel}</small></button>`).join('')}</div>
     <div class="cri-grade">
-      <label>Nível (1–30)<input id="cri-nivel" type="number" inputmode="numeric" min="1" max="30" value="${m.nivel}"></label>
+      <label>Nível (1–${NIVEL_TETO})<input id="cri-nivel" type="number" inputmode="numeric" min="1" max="${NIVEL_TETO}" value="${m.nivel}"></label>
       <label>Ascensões (0–2)<input id="cri-asc" type="number" inputmode="numeric" min="0" max="2" value="${m.ascensoes}"></label>
       <label>+VIDA<input id="cri-b-vida" type="number" inputmode="numeric" value="${bc.vida || 0}"></label>
       <label>+ATQ<input id="cri-b-atq" type="number" inputmode="numeric" value="${bc.atq || 0}"></label>
@@ -6931,7 +6957,7 @@ function htmlCriador() {
     <div class="chips-grupo">${Object.entries(TIPOS_ITEM).map(([k, n]) => chip('it-tipo', k, n, U.tipo === k)).join('')}</div>
     <div class="chips-grupo">${RARIDADES.map((r, i) => chip('it-rar', i, r.nome, U.raridade === i, `style="--rc:${r.cor}"`)).join('')}</div>
     ${U.raridade === 4 ? `<div class="chips-grupo">${chip('it-unico', '', 'Único aleatório', !U.unico)}${unicos.map((k) => chip('it-unico', k, UNICOS[k].nome, U.unico === k)).join('')}</div>` : ''}
-    <div class="linha-input"><input id="cri-it-nivel" type="number" inputmode="numeric" min="1" max="30" value="${U.nivel}" aria-label="Nível do item"><button class="btn pequeno primario" data-act="cri" data-op="it-criar">Criar</button></div>
+    <div class="linha-input"><input id="cri-it-nivel" type="number" inputmode="numeric" min="1" max="${NIVEL_TETO}" value="${U.nivel}" aria-label="Nível do item"><button class="btn pequeno primario" data-act="cri" data-op="it-criar">Criar</button></div>
     <span class="rot">Pergaminho</span>
     <div class="chips-grupo lista-cri">${Object.entries(PERGAMINHOS).map(([k, P]) => chip('perg-sel', k, P.nome, U.perg === k, `style="--rc:${RARIDADES[P.r].cor}"`)).join('')}</div>
     <button class="btn" data-act="cri" data-op="perg-criar">Criar ${PERGAMINHOS[U.perg].nome}</button>
@@ -6980,8 +7006,8 @@ function acaoCriador(el) {
     case 'merc-aplicar': {
       if (!m) return;
       m.ascensoes = clamp(lerNum('cri-asc', m.ascensoes), 0, 2);
-      m.nivel = clamp(lerNum('cri-nivel', m.nivel), 1, 30);
-      if (m.nivel > nivelMax(m)) m.ascensoes = m.nivel > 20 ? 2 : 1;
+      m.nivel = clamp(lerNum('cri-nivel', m.nivel), 1, NIVEL_TETO);
+      if (m.nivel > nivelMax(m)) m.ascensoes = ascPorNivel(m.nivel);
       m.xp = 0;
       m.bonusCriador = { vida: lerNum('cri-b-vida'), atq: lerNum('cri-b-atq'), def: lerNum('cri-b-def'), agi: lerNum('cri-b-agi') };
       while (m.pergaminhos.length > slotsPergaminho(m)) devolverAoInventario(m.pergaminhos.pop());
@@ -6994,7 +7020,7 @@ function acaoCriador(el) {
     case 'it-unico': U.unico = v || null; break;
     case 'it-criar': {
       if (STATE.inventario.length >= ECO.invMax) { toast('Inventário cheio.', 'erro'); return; }
-      U.nivel = clamp(lerNum('cri-it-nivel', U.nivel), 1, 30);
+      U.nivel = clamp(lerNum('cri-it-nivel', U.nivel), 1, NIVEL_TETO);
       const it = gerarItem(U.raridade, U.nivel, U.tipo);
       if (U.raridade === 4 && U.unico) it.unico = U.unico;
       STATE.inventario.push(it); msg = `${it.nome} criado`; break;

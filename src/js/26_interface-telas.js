@@ -257,13 +257,13 @@ function htmlPergaminhosFicha(m, s) {
 }
 function htmlAscensao(m) {
   const asc = m.ascensoes || 0;
-  if (asc >= 2) return `<div class="asc max"><div class="asc-cab">${estrelas(2, 14)}<b>Ascensão máxima</b></div><small>Nível máximo 30 e +20% em todos os atributos.</small></div>`;
+  if (asc >= 2) return `<div class="asc max"><div class="asc-cab">${estrelas(2, 14)}<b>Ascensão máxima</b></div><small>Nível máximo ${NIVEL_TETO} e +20% em todos os atributos.</small></div>`;
   const A = ASCENSOES[asc], pronto = m.nivel >= A.nivel;
   const ok = pronto && STATE.ouro >= A.ouro && STATE.emblemas >= A.emblemas;
   const falta = !pronto ? `Chegue ao nível ${A.nivel}` : STATE.emblemas < A.emblemas ? `Faltam ${A.emblemas - STATE.emblemas} Emblemas` : STATE.ouro < A.ouro ? `Faltam ${fmt(A.ouro - STATE.ouro)} de ouro` : '';
   return `<div class="asc ${pronto ? 'pronta' : ''}">
     <div class="asc-cab">${canvasIcone('estrela', 18)}<b>${asc === 0 ? '1ª' : '2ª'} Ascensão</b><span class="tag">no nível ${A.nivel}</span></div>
-    <small>Nível máximo ${nivelMax(m)} → ${nivelMax(m) + 10}, +10% em todos os atributos e +1 espaço de pergaminho. Custa ${fmt(A.ouro)} de ouro e ${A.emblemas} Emblemas.</small>
+    <small>Nível máximo ${nivelMax(m)} → ${TETO_POR_ASCENSAO[asc + 1]}, +10% em todos os atributos e +1 espaço de pergaminho. Custa ${fmt(A.ouro)} de ouro e ${A.emblemas} Emblemas.</small>
     <button class="btn ${ok ? 'primario' : ''} largo" data-act="ascender" data-id="${m.id}" ${ok ? '' : 'disabled'}>${ok ? `Ascender · ${precoBtn(A.ouro)} · ${precoBtn(A.emblemas, true)}` : falta}</button>
   </div>`;
 }

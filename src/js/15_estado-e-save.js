@@ -1,6 +1,6 @@
 /* ============================ ESTADO E SAVE ============================ */
 const SAVE_KEY = 'ligaDasLaminas.save.v1';   // mesma chave da Fase 1: a versão fica dentro do save
-const VERSAO = 12;   // v12 (E4 e): stats.rodadas (lutas = partidas; rodadas = lutas dentro delas) e a nota da partida melhor de 3; v11 (E4 d): só marcava a nota da câmera nova; v10 (E4 d): formato igual ao v9, só marca a nota da tela de formação; v9 (E4 c): pos (casa na formação 3×3) e postura; v8 só marcava a nota do cérebro novo
+const VERSAO = 13;   // v13 (E5a): mesmo formato; teto 30 → 60 → 100 vem das Ascensões que o mercenário já tem (nada a migrar) e marca a nota; v12 (E4 e): v12 (E4 e): stats.rodadas (lutas = partidas; rodadas = lutas dentro delas) e a nota da partida melhor de 3; v11 (E4 d): só marcava a nota da câmera nova; v10 (E4 d): formato igual ao v9, só marca a nota da tela de formação; v9 (E4 c): pos (casa na formação 3×3) e postura; v8 só marcava a nota do cérebro novo
 const consumiveisZerados = () => Object.fromEntries(Object.keys(CONSUMIVEIS).map((k) => [k, 0]));
 const criadorPadrao = () => ({ liberado: false, usado: false, sorteMult: 1, tempoMult: 1 });
 const statsPadrao = () => ({
@@ -91,7 +91,7 @@ function normalizarMerc(m) {
   m.pos |= 0; m.linha = linhaDePos(m.pos);
   if (!POSTURAS[m.postura]) m.postura = 'auto';
   if (!m.tatica) m.tatica = 'auto';
-  m.nivel = clamp(m.nivel | 0 || 1, 1, 30);
+  m.nivel = clamp(m.nivel | 0 || 1, 1, NIVEL_TETO);
   m.xp = Math.max(0, +m.xp || 0);
   m.stats = Object.assign(statsMercPadrao(), m.stats || {});
   return m;
@@ -151,7 +151,8 @@ function validarSave(s) {
   if (versaoAntiga < 10 && !nov.includes(10) && st.stats.lutas > 0) nov.push(10);   // v9 não tinha nota: a formação só ganhou tela no v10
   if (versaoAntiga < 11 && !nov.includes(11) && st.stats.lutas > 0) nov.push(11);
   if (versaoAntiga < 12 && !nov.includes(12) && st.stats.lutas > 0) nov.push(12);
-  st.novidades = nov.filter((f) => f >= 2 && f <= 12).sort();
+  if (versaoAntiga < 13 && !nov.includes(13) && st.stats.lutas > 0) nov.push(13);
+  st.novidades = nov.filter((f) => f >= 2 && NOVIDADES[f]).sort((a, b) => a - b);   // só fases com nota (antes: teto fixo que esquecia a nota nova)
   if (versaoAntiga < 12) st.stats.rodadas = st.stats.lutas;   // até o v11 toda partida tinha uma luta só
   if (versaoAntiga < 3 && st.tutorial >= 4) st.tutorial = 99;   // quem já viu o tutorial antigo não o repete
   // v6: tutorial progressivo. Quem já lutou (ou terminou o tutorial antigo) não repete nada.
@@ -165,7 +166,7 @@ function normalizarLiga(st) {
   const L = st.liga;
   if (!Array.isArray(L.guildas) || L.guildas.length !== 8 || !Array.isArray(L.calendario)) { st.liga = null; return; }
   for (const g of L.guildas) if (g.mercs) g.mercs = mercsValidos(g.mercs);
-  if (L.nivelBase == null) L.nivelBase = clamp(DIVISOES[st.divisao].base + 2 * ((L.temporada || 1) - 1), 1, 30);
+  if (L.nivelBase == null) L.nivelBase = clamp(DIVISOES[st.divisao].base + 2 * ((L.temporada || 1) - 1), 1, NIVEL_TETO);
   if (L.divIdx == null) L.divIdx = st.divisao;
   if (!L.fase) {
     if (!L.encerrada) L.fase = 'liga';
@@ -192,7 +193,7 @@ const tamanhoTime = () => divAtual().time;
 function nivelMedioTime() { const t = timeMercs(); const l = t.length ? t : STATE.mercs; return l.length ? l.reduce((s, m) => s + m.nivel, 0) / l.length : 1; }
 function sorteGuilda() { return timeMercs().reduce((s, m) => s + atributos(m).sorte, 0) + somaReliquia('sorte'); }
 const emExpedicao = (id) => !!(STATE && STATE.expedicoes && STATE.expedicoes.some((e) => e.mercId === id));
-const ajustarAscPorNivel = (m) => { m.ascensoes = Math.max(m.ascensoes || 0, m.nivel > 20 ? 2 : m.nivel > 10 ? 1 : 0); return m; };
+const ajustarAscPorNivel = (m) => { m.ascensoes = Math.max(m.ascensoes || 0, ascPorNivel(m.nivel)); return m; };
 // Mantém o time válido: sem repetidos, sem quem está em expedição, no tamanho da divisão e com capitão
 function ajustarTime() {
   STATE.time = [...new Set(STATE.time)].filter((id) => mercPorId(id) && !emExpedicao(id));

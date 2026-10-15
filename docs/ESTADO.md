@@ -4,7 +4,7 @@
 
 **Como trabalhar:** `docs/PROMPT-MAE.md` (papéis, regras, roteiro das etapas com critérios de pronto, handoff).
 
-_Atualizado em 15/10/2026 (**E4 concluída**; **E5a aberta**: critério, curva e evoluções A/B aguardando o Kevin)._
+_Atualizado em 15/10/2026 (**E5a em andamento**: Kevin aprovou curva, opção A e evoluções; bloco 1 publicado, v0.11, save v13)._
 
 ## O que existe (v0.10.1, E4: cérebro v2, formação 3×3 com tela, câmera de treinador, partidas melhor de 3)
 
@@ -51,7 +51,7 @@ Os testes Playwright antigos (`luta.py`, `lideres.py`, `nuvem.py`, `perf.py`…)
 | E2 | Nome Veldria no jogo, save v6 (tutorial progressivo feito e **desligado** — ver Pendências) | 1 | Opus 5.5 | ✅ 15/10 |
 | E3 | Registro de partidas, ficha de recordes + melhores da temporada, simulador de balanço em Node | 1 | Opus 5.5 | ✅ 15/10 (aguarda teste do Kevin no celular) |
 | E4 | Motor novo: IA de utilidade, 3×3 + posturas, câmera, 3v3 melhor de 3; decisão de orientação de tela | 3–4 | **Fable 5.1** | ✅ **15/10** (4 conversas; veredito do Kevin no celular: tudo aprovado) |
-| E5a | Curva 1→100, Ascensão como portão, maestrias 20/50, Rank S, A/B nv. 15, catálogo com raridades, pity | 2 | **Fable 5.1** | 🟡 proposta enviada 15/10 |
+| E5a | Curva 1→100, Ascensão como portão, maestrias 20/50, Rank S, A/B nv. 15, catálogo com raridades, pity | 2 | **Fable 5.1** | 🟡 bloco 1 de 4 publicado (v0.11) |
 | E5b | Personalidades visíveis, rivais, identidade de build, relíquias 24+, renome, contrato diário, eventos semanais | 2 | Opus 5.5 | |
 | E6 | Classes novas em lotes de 2–4 | 1–2 | Opus 5.5 | |
 
@@ -372,13 +372,13 @@ Testes: `registro.py` (2 partidas assistidas com toques + 3 puladas = 12 lutas; 
 
 > Começou no Opus 5.5 (o prompt-mãe indica Fable 5.1). Esta conversa só faz a proposta, as medições e o critério; a implementação espera a aprovação do Kevin.
 
-### Critério de pronto (proposta, aguardando o Kevin)
+### Critério de pronto (aprovado pelo Kevin em 15/10/2026)
 
 | # | Critério | Como medir |
 |---|---|---|
-| 1 | Curva 1→100: `xpProx(n) = 50·n^1,5` mantida (1–29 idêntica à de hoje); teto 30 → Ascensão I → 60 → Ascensão II → 100 | Tabela abaixo; `testes/` sobe um mercenário até 100 |
-| 2 | Save antigo abre no lugar certo: nível, XP e Ascensões preservados; ninguém perde nível nem teto | Migração v12 → v13 testada com saves nv. 10 (asc 0), nv. 20 (asc 1), nv. 30 (asc 2) |
-| 3 | Diferença de nível no topo: **depende da decisão A/B do Kevin** (ver "Achado") | `node sim/nivel.js` (novo): nv. 100 Rank S × nv. 60, 1v1 e 3v3, espelho de classe |
+| 1 | Curva 1→100: `xpProx(n) = 50·n^1,5` mantida (1–29 idêntica à de hoje); teto 30 → Ascensão I → 60 → Ascensão II → 100 | ✅ `testes/nivel100.py` |
+| 2 | Save antigo abre no lugar certo: nível, XP e Ascensões preservados; ninguém perde nível nem teto | ✅ `nivel100.py`: nv. 10/20/30 com 0/1/2 Ascensões abrem com tetos 30/60/100, XP intacto, o nv. 30 sobe para 31 |
+| 3 | **Opção A**: nv. 100 com Rank S não vence nv. 60 por mais de 70 % | 🟡 `node sim/nivel.js`: sem Rank S 49 % / 47 %; com +2 % (Rank S simulado) 65 % / 68 % (1v1 / 3v3). Fecha quando o Rank S existir |
 | 4 | Evoluções A/B no nv. 15 (irreversíveis), maestria de função no nv. 20 e de classe no nv. 50, Rank S no nv. 100: tudo visível na ficha | Teste de interface + captura |
 | 5 | Catálogo: 2 habilidades garantidas + 6 com raridades comum / incomum / rara / lendária; pergaminhos atuais migrados | Save com pergaminhos abre com eles no catálogo |
 | 6 | Proteção contra azar com contador visível e salvo no save | Teste: N aberturas sem lendário → a seguinte é lendária |
@@ -414,7 +414,7 @@ Consequência: "nv. 100 não vence nv. 60 por mais de 70 %" só é possível se 
 | **A** (sugestão do Claude) | Crescem cheio até 30, metade de 30 a 60, quase nada de 60 a 100. Do 60 ao 100 o que se ganha são **escolhas**: uma a cada 10 níveis (vaga do catálogo, habilidade lendária) e o Rank S | nv. 100 × nv. 60 ≤ 70 %, como está no prompt-mãe |
 | B | Continuam crescendo (cada vez menos) até 100; a Torre é onde o nível alto aparece | Troca para: um nv. 60 com formação/contra-classe certa vence um nv. 70 em ≥ 30 % |
 
-### Evoluções A/B no nv. 15 (proposta para o Kevin)
+### Evoluções A/B no nv. 15 (aprovadas pelo Kevin em 15/10/2026, todas como propostas)
 
 | Classe | Caminho A | Caminho B |
 |---|---|---|
@@ -431,7 +431,7 @@ Consequência: "nv. 100 não vence nv. 60 por mais de 70 %" só é possível se 
 
 Bastião e Legião/Necromante também atacam os dois problemas da linha de base (tanque que não segura, esqueletos ignorados).
 
-### Ascensões (proposta)
+### Ascensões (aprovadas)
 
 | Ascensão | Nível | Custo | Efeito (igual ao de hoje) |
 |---|---|---|---|
@@ -440,8 +440,36 @@ Bastião e Legião/Necromante também atacam os dois problemas da linha de base 
 
 Migração: quem já tem Ascensões fica com elas e o teto novo correspondente (asc 0 → teto 30; asc 1 → 60; asc 2 → 100). Ninguém perde nada; os testers ficam adiantados. Os rivais da Liga já se ajustam pelo poder do time, então isso não desequilibra a Liga.
 
-## Próxima conversa começa por… (E5a, **Fable 5.1**)
+### Decisões do Kevin (15/10/2026)
 
-1. Ler as respostas do Kevin: curva 1→100 e Ascensões (ok?), opção A ou B do achado de atributos, evoluções A/B (ok ou ajustes). Registrar aqui e fechar o critério 3.
-2. Implementar na ordem: curva + Ascensões + migração v13 → `sim/nivel.js` → evoluções A/B (dados em `02`, efeitos no `10`/`10b`) → maestrias e Rank S → catálogo com raridades → pity.
-3. Ainda a confirmar com o Kevin (sem pressa): função principal de cada classe (D1) e se o jogador novo precisa de algum tour.
+| Item | Decisão |
+|---|---|
+| Curva 1→100 e Ascensões no 30 e no 60 | Aprovadas como propostas (~3 meses até o 100 no ritmo de referência) |
+| Atributos depois do 60 | **Opção A**: crescem cheio até 30, metade até 60, nada do 60 ao 100; o topo dá escolhas |
+| Evoluções A/B | As 10 aprovadas como estão na tabela |
+
+### Bloco 1 concluído em 15/10/2026 (v0.11, save v13): curva, Ascensões e níveis até 100
+
+| O que mudou | Onde |
+|---|---|
+| `NIVEL_TETO = 100`, `TETO_POR_ASCENSAO = [30, 60, 100]`, `ASCENSOES` no 30 (5.000 ouro + 15 emblemas) e no 60 (20.000 + 40), `ascPorNivel(L)` | `02_dados.js` |
+| `CRESC_FAIXAS` (1 / 0,5 / 0) e `nivelEf(L)`: os atributos usam o nível efetivo (igual ao nível até 30); `crescEfetivo` mostra o crescimento da faixa atual | `02`, `09` |
+| Itens novos também usam o nível efetivo no bônus (senão um item nv. 100 furaria a opção A); itens já existentes não mudam | `09` (`gerarItem`) |
+| Rivais, Copa, Torre, Mercado e Modo Criador até o nível 100; Ascensões dos rivais por `ascPorNivel`. Só a **Lenda** acompanha o time acima do 30 (faixa 22–100); as outras divisões têm a faixa de sempre. Torre: nível 100 no andar 166 | `21`, `22`, `20`, `29`, `04` |
+| Save **v13**: mesmo formato; o teto vem das Ascensões que o mercenário já tem (asc 0 → 30, 1 → 60, 2 → 100). Nota "Fase 11 · Rumo ao 100" | `15`, `28` |
+| **Bug corrigido**: a lista de novidades tinha um teto fixo (≤ 12) que descartaria toda nota nova; agora aceita qualquer fase que tenha nota | `15` |
+| `sim/nivel.js` (critério 3); `sim/balanco.js` usa `ascPorNivel` | `sim/` |
+| `testes/nivel100.py` (16 verificações); `registro.py` espera v13 | `testes/` |
+
+| Decisão técnica | Por quê |
+|---|---|
+| Ninguém perde nada na migração; quem já tinha Ascensão fica adiantado | Regra 1 do prompt-mãe. Os rivais da Liga se ajustam pelo poder do time, então a vantagem não desequilibra a Liga |
+| `REGRAS_COMBATE` não sobe | Até o nível 30 os atributos são idênticos (o teste confere nível a nível) e nenhuma luta registrada passou do 30: as reproduções seguem idênticas (300/300) |
+| Rank S terá **no máximo +2 %** de atributos | `sim/nivel.js`: +2 % dá 65 % / 68 %; mais que isso fura os 70 % |
+| A economia (ouro e preços acima do 30) ainda não foi conferida | Fica para o bloco de balanço, com o simulador |
+
+## Próxima conversa começa por… (E5a bloco 2, **Fable 5.1**)
+
+1. **Evoluções A/B no nv. 15** (tabela aprovada acima): dados em `02_dados.js` (`EVOLUCOES[classe].a/b` com modificadores das habilidades e passivas), efeitos no `10_combate.js` e regras do cérebro no `10b`; escolha irreversível na ficha; save v14 (`m.evolucao`); `REGRAS_COMBATE` sobe. Medir cada caminho no `sim/balanco.js --ia v2 --tam 3` (critério 7).
+2. Depois: maestrias (nv. 20 função, nv. 50 classe) e Rank S (≤ +2 %, fecha o critério 3) → catálogo com raridades (critério 5) → pity visível (critério 6) → economia acima do 30.
+3. A confirmar com o Kevin (sem pressa): função principal de cada classe (D1) e se o jogador novo precisa de algum tour.

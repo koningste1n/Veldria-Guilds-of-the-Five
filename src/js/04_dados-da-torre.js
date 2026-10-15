@@ -1,7 +1,7 @@
 /* ============================ TORRE INFINITA (Fase 3) ============================
    Nível dos inimigos sobe 0,6 por andar até 30; depois disso os atributos crescem 3% por andar. */
 const TORRE = {
-  nivel: (n) => clamp(Math.round(1 + 0.6 * (n - 1)), 1, 30),
+  nivel: (n) => clamp(Math.round(1 + 0.6 * (n - 1)), 1, NIVEL_TETO),
   mult: (n) => 1 + Math.max(0, n - 49) * 0.03,
   tier: (n) => Math.min(4, Math.floor((n - 1) / 10)),
   ouro: (n) => Math.round(30 + 20 * n),

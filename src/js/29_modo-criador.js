@@ -29,7 +29,7 @@ function htmlCriador() {
   ${m ? `<section class="cri-sec"><h3>Mercenários</h3>
     <div class="escolha-merc">${STATE.mercs.map((x) => `<button class="chip-merc ${x.id === m.id ? 'on' : ''}" data-act="cri-merc" data-id="${x.id}">${canvasLook(lookMeu(x), 36)}<small>${esc(x.nome)}<br>nv. ${x.nivel}</small></button>`).join('')}</div>
     <div class="cri-grade">
-      <label>Nível (1–30)<input id="cri-nivel" type="number" inputmode="numeric" min="1" max="30" value="${m.nivel}"></label>
+      <label>Nível (1–${NIVEL_TETO})<input id="cri-nivel" type="number" inputmode="numeric" min="1" max="${NIVEL_TETO}" value="${m.nivel}"></label>
       <label>Ascensões (0–2)<input id="cri-asc" type="number" inputmode="numeric" min="0" max="2" value="${m.ascensoes}"></label>
       <label>+VIDA<input id="cri-b-vida" type="number" inputmode="numeric" value="${bc.vida || 0}"></label>
       <label>+ATQ<input id="cri-b-atq" type="number" inputmode="numeric" value="${bc.atq || 0}"></label>
@@ -48,7 +48,7 @@ function htmlCriador() {
     <div class="chips-grupo">${Object.entries(TIPOS_ITEM).map(([k, n]) => chip('it-tipo', k, n, U.tipo === k)).join('')}</div>
     <div class="chips-grupo">${RARIDADES.map((r, i) => chip('it-rar', i, r.nome, U.raridade === i, `style="--rc:${r.cor}"`)).join('')}</div>
     ${U.raridade === 4 ? `<div class="chips-grupo">${chip('it-unico', '', 'Único aleatório', !U.unico)}${unicos.map((k) => chip('it-unico', k, UNICOS[k].nome, U.unico === k)).join('')}</div>` : ''}
-    <div class="linha-input"><input id="cri-it-nivel" type="number" inputmode="numeric" min="1" max="30" value="${U.nivel}" aria-label="Nível do item"><button class="btn pequeno primario" data-act="cri" data-op="it-criar">Criar</button></div>
+    <div class="linha-input"><input id="cri-it-nivel" type="number" inputmode="numeric" min="1" max="${NIVEL_TETO}" value="${U.nivel}" aria-label="Nível do item"><button class="btn pequeno primario" data-act="cri" data-op="it-criar">Criar</button></div>
     <span class="rot">Pergaminho</span>
     <div class="chips-grupo lista-cri">${Object.entries(PERGAMINHOS).map(([k, P]) => chip('perg-sel', k, P.nome, U.perg === k, `style="--rc:${RARIDADES[P.r].cor}"`)).join('')}</div>
     <button class="btn" data-act="cri" data-op="perg-criar">Criar ${PERGAMINHOS[U.perg].nome}</button>
@@ -97,8 +97,8 @@ function acaoCriador(el) {
     case 'merc-aplicar': {
       if (!m) return;
       m.ascensoes = clamp(lerNum('cri-asc', m.ascensoes), 0, 2);
-      m.nivel = clamp(lerNum('cri-nivel', m.nivel), 1, 30);
-      if (m.nivel > nivelMax(m)) m.ascensoes = m.nivel > 20 ? 2 : 1;
+      m.nivel = clamp(lerNum('cri-nivel', m.nivel), 1, NIVEL_TETO);
+      if (m.nivel > nivelMax(m)) m.ascensoes = ascPorNivel(m.nivel);
       m.xp = 0;
       m.bonusCriador = { vida: lerNum('cri-b-vida'), atq: lerNum('cri-b-atq'), def: lerNum('cri-b-def'), agi: lerNum('cri-b-agi') };
       while (m.pergaminhos.length > slotsPergaminho(m)) devolverAoInventario(m.pergaminhos.pop());
@@ -111,7 +111,7 @@ function acaoCriador(el) {
     case 'it-unico': U.unico = v || null; break;
     case 'it-criar': {
       if (STATE.inventario.length >= ECO.invMax) { toast('Inventário cheio.', 'erro'); return; }
-      U.nivel = clamp(lerNum('cri-it-nivel', U.nivel), 1, 30);
+      U.nivel = clamp(lerNum('cri-it-nivel', U.nivel), 1, NIVEL_TETO);
       const it = gerarItem(U.raridade, U.nivel, U.tipo);
       if (U.raridade === 4 && U.unico) it.unico = U.unico;
       STATE.inventario.push(it); msg = `${it.nome} criado`; break;

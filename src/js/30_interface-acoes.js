@@ -76,7 +76,7 @@ const ACOES = {
   },
   'time-rem': (el) => { STATE.time = STATE.time.filter((x) => x !== +el.dataset.id); ajustarTime(); aposMudanca(); },
   capitao: (el) => { STATE.capitao = +el.dataset.id; toast('Novo capitão definido.', 'ok'); aposMudanca(); },
-  linha: (el) => { mercPorId(+el.dataset.id).linha = el.dataset.v; aposMudanca(); },
+  linha: (el) => { const m = mercPorId(+el.dataset.id); m.pos = posDe(el.dataset.v === 'frente' ? 0 : 2, posFileira(m.pos)); m.linha = linhaDePos(m.pos); aposMudanca(); },
   tatica: (el) => { mercPorId(+el.dataset.id).tatica = el.dataset.v; aposMudanca(); },
   'vender-merc': (el) => {
     const m = mercPorId(+el.dataset.id);

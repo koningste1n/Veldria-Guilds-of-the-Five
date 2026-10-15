@@ -8,7 +8,7 @@ const E = 256 / 180;   // escala das distâncias (valores calibrados na arena an
 const DT = 1 / 30;
 // Versão das regras de combate: sobe a cada mudança que altere o resultado de uma luta.
 // Um registro só é reproduzível com a mesma versão (ver reproduzirPartida).
-const REGRAS_COMBATE = 2;   // v2 (15/10/2026): todas as lutas do jogo passam a usar o cérebro de utilidade (10b)
+const REGRAS_COMBATE = 3;   // v2 (15/10/2026): cérebro de utilidade (10b) · v3: posição inicial pela formação 3×3 e posturas
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const minPor = (arr, f) => { let best = null, bv = Infinity; for (const o of arr) { const v = f(o); if (v < bv) { bv = v; best = o; } } return best; };
 const PAPEIS_CONJURADORES = ['mago', 'curandeira', 'suporte', 'invocador'];
@@ -38,7 +38,7 @@ function novaUnidade(b, m, team, lado) {
     vidaMax: Math.round(s.vida * mult * (1 + (T.vidaPct || 0))), atq: s.atq * mult * (1 + (T.atqPct || 0)),
     def: s.def * mult * (1 + (T.defPct || 0)), agi: s.agi * mult * (1 + (T.agiPct || 0)),
     crit: Math.min(0.8, s.crit + (T.crit || 0)), critDmg: s.critDmg, esquiva: Math.min(0.6, s.esquiva + (T.esquiva || 0)), roubo: s.roubo + (T.roubo || 0),
-    alcance: s.alcance, flags, passiva: c.passiva, proj: m.campeao === 'okon' ? null : c.proj, papel: c.papelId, linha: m.linha, tatica: m.tatica,
+    alcance: s.alcance, flags, passiva: c.passiva, proj: m.campeao === 'okon' ? null : c.proj, papel: c.papelId, linha: m.linha, tatica: m.tatica, postura: m.postura || 'auto',
     capitao: m.id === lado.capitaoId, chefe: m.chefe || null, campeao: m.campeao || null,
   });
   const sk0 = skillDe(m);
@@ -65,16 +65,16 @@ function criarBatalha(A, B, opts = {}) {
     furiaInicio: opts.furiaInicio || 60, multCura: opts.multCura ?? 1,
   };
   [A, B].forEach((lado, team) => {
-    const frente = lado.mercs.filter((m) => m.linha === 'frente');
-    const tras = lado.mercs.filter((m) => m.linha !== 'frente');
-    const posicionar = (lista, xBase) => lista.forEach((m, i) => {
-      const n = lista.length;
+    // formação 3×3: cada mercenário na sua casa (casas repetidas são resolvidas na ordem do time)
+    const casas = resolverFormacao(lado.mercs);
+    lado.mercs.forEach((m, i) => {
       const u = novaUnidade(b, m, team, lado);
-      u.x = team === 0 ? xBase : ARENA.w - xBase;
-      u.y = clamp(142 + (i - (n - 1) / 2) * (n > 3 ? 28 : n > 2 ? 38 : 46) + (b.rng() * 6 - 3), ARENA.chao, ARENA.fundo);
+      const col = posColuna(casas[i]), fil = posFileira(casas[i]);
+      u.x = team === 0 ? FORMACAO.x[col] : ARENA.w - FORMACAO.x[col];
+      u.y = clamp(FORMACAO.y[fil] + (b.rng() * 6 - 3), ARENA.chao, ARENA.fundo);
+      u.x0 = u.x; u.y0 = u.y; u.pos = casas[i];
       b.units.push(u);
     });
-    posicionar(frente, 96); posicionar(tras, 56);
     const T = lado.mods || {};
     if ((T.flags || []).includes('fenix')) b.fenix[team] = true;
     for (const u of b.units) {
@@ -89,6 +89,19 @@ function criarBatalha(A, B, opts = {}) {
   });
   for (const u of b.units) if (u.chefe === 'rei') b.atrasos.push({ t: 1, fn: () => copiarHabilidade(b, u) });
   return b;
+}
+// Casa de cada mercenário do lado: a dele, se livre; senão a casa livre mais próxima na mesma coluna, depois nas outras
+function resolverFormacao(mercs) {
+  const ocupadas = new Set(), out = [];
+  for (const m of mercs) {
+    const p = typeof m.pos === 'number' ? m.pos | 0 : (m.linha === 'frente' ? 1 : 7);
+    const col = posColuna(p);
+    const cands = [p];
+    for (const c of [col, (col + 1) % 3, (col + 2) % 3]) for (const f of [1, 0, 2]) cands.push(posDe(c, f));
+    const casa = cands.find((c) => !ocupadas.has(c));
+    ocupadas.add(casa); out.push(casa);
+  }
+  return out;
 }
 function copiarHabilidade(b, u) {
   if (!u.vivo) return;
@@ -805,7 +818,7 @@ function aplicarEntrada(b, e) {
 }
 function entradaJogador(b, e) { e.n = b.n; b.entradas.push(e); aplicarEntrada(b, e); }
 // Campos do mercenário que afetam o combate (atributos, habilidades, posição, tática) + aparência para exibir
-const CAMPOS_MERC_REG = ['id', 'nome', 'classe', 'nivel', 'pot', 'cresc', 'tracos', 'ascensoes', 'campeao', 'chefe', 'skillFixa', 'bonusCriador', 'linha', 'tatica', 'visual', 'pele', 'cabelo'];
+const CAMPOS_MERC_REG = ['id', 'nome', 'classe', 'nivel', 'pot', 'cresc', 'tracos', 'ascensoes', 'campeao', 'chefe', 'skillFixa', 'bonusCriador', 'linha', 'pos', 'postura', 'tatica', 'visual', 'pele', 'cabelo'];
 function mercParaRegistro(m) {
   const o = {};
   for (const k of CAMPOS_MERC_REG) if (m[k] != null) o[k] = m[k];

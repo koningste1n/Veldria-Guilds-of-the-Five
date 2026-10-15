@@ -620,6 +620,18 @@ const CLASSES = {
 };
 const CLASSES_RECRUTAVEIS = Object.keys(CLASSES);
 const CLASSES_FRENTE = ['guardiao', 'machadeiro', 'lanceira'];
+// Formação 3×3 (E4, P4): cada mercenário ocupa uma casa — coluna (0 frente, 1 meio, 2 trás) × fileira
+// (0 cima, 1 centro, 2 baixo). pos = coluna × 3 + fileira. `x` é a distância da borda do seu lado da arena.
+const FORMACAO = { colunas: ['Frente', 'Meio', 'Trás'], fileiras: ['Cima', 'Centro', 'Baixo'], x: [108, 80, 52], y: [100, 142, 184] };
+const posColuna = (pos) => Math.floor((pos | 0) / 3), posFileira = (pos) => (pos | 0) % 3, posDe = (col, fil) => col * 3 + fil;
+const linhaDePos = (pos) => (posColuna(pos) === 0 ? 'frente' : 'tras');
+// Posturas (D6, P4): como o mercenário se comporta na luta. Viram pesos na tabela IA2 do cérebro (10b).
+const POSTURAS = {
+  auto: { nome: 'Automática', desc: 'Decide sozinho pela função.' },
+  avancar: { nome: 'Avançar', desc: 'Vai para cima: recua menos, chega mais perto para atirar, não fica protegendo.' },
+  segurar: { nome: 'Segurar', desc: 'Mantém a posição e espera o inimigo vir; protege os aliados e recua mais.' },
+  flanquear: { nome: 'Flanquear', desc: 'Contorna a linha de frente pelas laterais para alcançar a retaguarda.' },
+};
 // Funções (D1): etiquetas sobre as classes. Cada classe tem uma função principal.
 // Proposta da E3 (15/10/2026), a confirmar pelo Kevin.
 const FUNCOES = { tanque: 'Tanque', corpo: 'Corpo a corpo', assassino: 'Assassino', distancia: 'Distância', controle: 'Controle', suporte: 'Suporte' };
@@ -1961,7 +1973,7 @@ function gerarMerc(cls, nivel, pot, evitar = []) {
   return {
     id: novoId(), nome: nomeLivre(evitar), classe: cls, nivel, xp: 0, pot, cresc: rolarCresc(cls, pot), tracos: rolarTracos(pot),
     equip: { arma: null, armadura: null, amuleto: null }, pergaminhos: [], ascensoes: 0,
-    linha: CLASSES_FRENTE.includes(cls) ? 'frente' : 'tras', tatica: 'auto',
+    linha: CLASSES_FRENTE.includes(cls) ? 'frente' : 'tras', pos: CLASSES_FRENTE.includes(cls) ? 1 : 7, postura: 'auto', tatica: 'auto',
     pele: rint(0, 3), cabelo: CABELO_PADRAO[cls] != null && Math.random() < 0.5 ? CABELO_PADRAO[cls] : rint(0, 5),
   };
 }
@@ -2168,7 +2180,7 @@ const E = 256 / 180;   // escala das distâncias (valores calibrados na arena an
 const DT = 1 / 30;
 // Versão das regras de combate: sobe a cada mudança que altere o resultado de uma luta.
 // Um registro só é reproduzível com a mesma versão (ver reproduzirPartida).
-const REGRAS_COMBATE = 2;   // v2 (15/10/2026): todas as lutas do jogo passam a usar o cérebro de utilidade (10b)
+const REGRAS_COMBATE = 3;   // v2 (15/10/2026): cérebro de utilidade (10b) · v3: posição inicial pela formação 3×3 e posturas
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const minPor = (arr, f) => { let best = null, bv = Infinity; for (const o of arr) { const v = f(o); if (v < bv) { bv = v; best = o; } } return best; };
 const PAPEIS_CONJURADORES = ['mago', 'curandeira', 'suporte', 'invocador'];
@@ -2198,7 +2210,7 @@ function novaUnidade(b, m, team, lado) {
     vidaMax: Math.round(s.vida * mult * (1 + (T.vidaPct || 0))), atq: s.atq * mult * (1 + (T.atqPct || 0)),
     def: s.def * mult * (1 + (T.defPct || 0)), agi: s.agi * mult * (1 + (T.agiPct || 0)),
     crit: Math.min(0.8, s.crit + (T.crit || 0)), critDmg: s.critDmg, esquiva: Math.min(0.6, s.esquiva + (T.esquiva || 0)), roubo: s.roubo + (T.roubo || 0),
-    alcance: s.alcance, flags, passiva: c.passiva, proj: m.campeao === 'okon' ? null : c.proj, papel: c.papelId, linha: m.linha, tatica: m.tatica,
+    alcance: s.alcance, flags, passiva: c.passiva, proj: m.campeao === 'okon' ? null : c.proj, papel: c.papelId, linha: m.linha, tatica: m.tatica, postura: m.postura || 'auto',
     capitao: m.id === lado.capitaoId, chefe: m.chefe || null, campeao: m.campeao || null,
   });
   const sk0 = skillDe(m);
@@ -2225,16 +2237,16 @@ function criarBatalha(A, B, opts = {}) {
     furiaInicio: opts.furiaInicio || 60, multCura: opts.multCura ?? 1,
   };
   [A, B].forEach((lado, team) => {
-    const frente = lado.mercs.filter((m) => m.linha === 'frente');
-    const tras = lado.mercs.filter((m) => m.linha !== 'frente');
-    const posicionar = (lista, xBase) => lista.forEach((m, i) => {
-      const n = lista.length;
+    // formação 3×3: cada mercenário na sua casa (casas repetidas são resolvidas na ordem do time)
+    const casas = resolverFormacao(lado.mercs);
+    lado.mercs.forEach((m, i) => {
       const u = novaUnidade(b, m, team, lado);
-      u.x = team === 0 ? xBase : ARENA.w - xBase;
-      u.y = clamp(142 + (i - (n - 1) / 2) * (n > 3 ? 28 : n > 2 ? 38 : 46) + (b.rng() * 6 - 3), ARENA.chao, ARENA.fundo);
+      const col = posColuna(casas[i]), fil = posFileira(casas[i]);
+      u.x = team === 0 ? FORMACAO.x[col] : ARENA.w - FORMACAO.x[col];
+      u.y = clamp(FORMACAO.y[fil] + (b.rng() * 6 - 3), ARENA.chao, ARENA.fundo);
+      u.x0 = u.x; u.y0 = u.y; u.pos = casas[i];
       b.units.push(u);
     });
-    posicionar(frente, 96); posicionar(tras, 56);
     const T = lado.mods || {};
     if ((T.flags || []).includes('fenix')) b.fenix[team] = true;
     for (const u of b.units) {
@@ -2249,6 +2261,19 @@ function criarBatalha(A, B, opts = {}) {
   });
   for (const u of b.units) if (u.chefe === 'rei') b.atrasos.push({ t: 1, fn: () => copiarHabilidade(b, u) });
   return b;
+}
+// Casa de cada mercenário do lado: a dele, se livre; senão a casa livre mais próxima na mesma coluna, depois nas outras
+function resolverFormacao(mercs) {
+  const ocupadas = new Set(), out = [];
+  for (const m of mercs) {
+    const p = typeof m.pos === 'number' ? m.pos | 0 : (m.linha === 'frente' ? 1 : 7);
+    const col = posColuna(p);
+    const cands = [p];
+    for (const c of [col, (col + 1) % 3, (col + 2) % 3]) for (const f of [1, 0, 2]) cands.push(posDe(c, f));
+    const casa = cands.find((c) => !ocupadas.has(c));
+    ocupadas.add(casa); out.push(casa);
+  }
+  return out;
 }
 function copiarHabilidade(b, u) {
   if (!u.vivo) return;
@@ -2965,7 +2990,7 @@ function aplicarEntrada(b, e) {
 }
 function entradaJogador(b, e) { e.n = b.n; b.entradas.push(e); aplicarEntrada(b, e); }
 // Campos do mercenário que afetam o combate (atributos, habilidades, posição, tática) + aparência para exibir
-const CAMPOS_MERC_REG = ['id', 'nome', 'classe', 'nivel', 'pot', 'cresc', 'tracos', 'ascensoes', 'campeao', 'chefe', 'skillFixa', 'bonusCriador', 'linha', 'tatica', 'visual', 'pele', 'cabelo'];
+const CAMPOS_MERC_REG = ['id', 'nome', 'classe', 'nivel', 'pot', 'cresc', 'tracos', 'ascensoes', 'campeao', 'chefe', 'skillFixa', 'bonusCriador', 'linha', 'pos', 'postura', 'tatica', 'visual', 'pele', 'cabelo'];
 function mercParaRegistro(m) {
   const o = {};
   for (const k of CAMPOS_MERC_REG) if (m[k] != null) o[k] = m[k];
@@ -3021,9 +3046,12 @@ const IA2 = {
   limiar: 0.35,          // pontuação mínima para gastar uma habilidade
   limiarSupremo: 0.45,   // o SUPREMO é mais caro: exige uma situação melhor
   // Pesos das considerações de ALVO por função
+  // Corpo a corpo e tanque: o que está perto pesa mais e o resto (fraco, matar, ameaça, foco) só conta
+  // dentro do `alcanceDeInteresse` — um lutador bate em quem está na frente dele; ir buscar a retaguarda
+  // é trabalho do assassino ou da postura Flanquear. Sem isso a linha de frente não serve para nada.
   alvo: {
-    tanque:    { perto: 0.50, ameaca: 0.40, fraco: 0.15, matar: 0.20, foco: 0.30, retaguarda: 0.00 },
-    corpo:     { perto: 0.45, ameaca: 0.10, fraco: 0.30, matar: 0.30, foco: 0.30, retaguarda: 0.10 },
+    tanque:    { perto: 0.60, ameaca: 0.40, fraco: 0.15, matar: 0.20, foco: 0.30, retaguarda: 0.00 },
+    corpo:     { perto: 0.60, ameaca: 0.10, fraco: 0.30, matar: 0.35, foco: 0.30, retaguarda: 0.00 },
     assassino: { perto: 0.10, ameaca: 0.10, fraco: 0.40, matar: 0.40, foco: 0.10, retaguarda: 0.60 },
     distancia: { perto: 0.30, ameaca: 0.25, fraco: 0.40, matar: 0.40, foco: 0.30, retaguarda: 0.10 },
     controle:  { perto: 0.30, ameaca: 0.35, fraco: 0.25, matar: 0.30, foco: 0.25, retaguarda: 0.00 },
@@ -3038,9 +3066,24 @@ const IA2 = {
     passo: 46,           // quanto anda por recuo (px)
     abertura: 60,        // graus para cada lado da direção oposta à ameaça
   },
+  alcanceDeInteresse: 150,   // px: além disso, para o corpo a corpo, um alvo é só "longe"
   // Distância (fração do alcance) em que uma unidade à distância para de avançar
   paradaDistancia: 0.88,
+  // Posturas (D6/P4): multiplicadores sobre as considerações. O jogador escolhe na ficha; o cérebro só lê.
+  //   recuo: × no desejo de recuar · parada: fração do alcance onde quem atira para de avançar ·
+  //   proteger: × no desejo de entrar na frente de um aliado · retaguarda: + no peso de alvos da retaguarda ·
+  //   posto: segura a posição inicial até um inimigo chegar a `raioPosto` px (o raio cresce depois de `pacienciaPosto` s) ·
+  //   flanco: contorna a linha de frente pelas laterais para chegar ao alvo
+  postura: {
+    auto:      { recuo: 1.0, parada: 0.88, proteger: 1.0, retaguarda: 0.0, posto: 0, flanco: 0 },
+    avancar:   { recuo: 0.4, parada: 0.72, proteger: 0.4, retaguarda: 0.0, posto: 0, flanco: 0, semLimite: 1 },
+    segurar:   { recuo: 1.3, parada: 0.95, proteger: 1.6, retaguarda: 0.0, posto: 1, flanco: 0 },
+    flanquear: { recuo: 0.8, parada: 0.85, proteger: 0.3, retaguarda: 0.5, posto: 0, flanco: 1 },
+  },
+  raioPosto: 70, pacienciaPosto: 8, crescimentoPosto: 15,
+  atrasDaFrente: 22,   // quem atira fica este tanto atrás do aliado corpo a corpo mais avançado (exceto na postura Avançar)
 };
+const posturaDe = (u) => IA2.postura[u.postura] || IA2.postura.auto;
 
 function criarCerebro(b, u) {
   return { t: b.rng() * IA2.tick, manobra: null, flanco: 0 };
@@ -3075,7 +3118,7 @@ function escolherAlvoV2(b, u) {
   if (t === 'forte') return minPor(ini, (o) => -o.atq);
   if (t === 'tras') { const tr = ini.filter(daRetaguarda); return tr.length ? minPor(tr, (o) => o.vida) : minPor(ini, (o) => dist(u, o)); }
   if (t === 'perto') return minPor(ini, (o) => dist(u, o));
-  const W = IA2.alvo[funcaoDe(u.cls)] || IA2.alvo.corpo;
+  const W = IA2.alvo[funcaoDe(u.cls)] || IA2.alvo.corpo, P = posturaDe(u);
   const al = aliadosDe(b, u).filter((o) => o !== u && !o.invocacao);
   let maxAtq = 1;
   for (const o of ini) maxAtq = Math.max(maxAtq, atqEf(o));
@@ -3089,7 +3132,8 @@ function escolherAlvoV2(b, u) {
     const ameaca = atqEf(o) / maxAtq;
     const foco = al.length ? al.filter((a) => a.alvo === o).length / al.length : 0;
     const ret = daRetaguarda(o) ? 1 : 0;
-    let s = W.perto * perto + W.fraco * fraco + W.matar * matar + W.ameaca * ameaca + W.foco * foco + W.retaguarda * ret;
+    const interesse = corpoACorpo(u) ? clamp(1 - d / IA2.alcanceDeInteresse, 0, 1) : 1;
+    let s = W.perto * perto + (W.fraco * fraco + W.matar * matar + W.ameaca * ameaca + W.foco * foco + (W.retaguarda + P.retaguarda) * ret) * interesse;
     // invocações valem menos que quem as invocou, a não ser que estejam em cima de mim
     if (o.invocacao) s *= d < u.alcance + 6 ? 0.8 : 0.45;
     // à distância: não vale a pena trocar para um alvo fora do alcance se há um dentro
@@ -3104,14 +3148,20 @@ function escolherAlvoV2(b, u) {
 // Devolve { modo, p?, dir?, ate? }. O destino concreto é recalculado a cada passo em destinoV2
 // (o alvo se mexe); a manobra em si dura até a próxima decisão.
 function escolherManobra(b, u) {
-  const c = u.cerebro, f = funcaoDe(u.cls), papel = u.papel;
+  const c = u.cerebro, f = funcaoDe(u.cls), papel = u.papel, P = posturaDe(u);
   const alvo = u.alvo && u.alvo.vivo ? u.alvo : null;
   const ini = inimigosDe(b, u), al = aliadosDe(b, u).filter((o) => o !== u && !o.invocacao);
   const ameaca = ameacaMaisProxima(b, u), dAmeaca = ameaca ? dist(u, ameaca) : 999;
   const opcoes = [];
 
+  // segurar: fico no meu posto até um inimigo se aproximar (o raio cresce com o tempo, para a luta não empacar)
+  if (P.posto && !u.invocacao) {
+    const raio = IA2.raioPosto + IA2.crescimentoPosto * Math.max(0, b.t - IA2.pacienciaPosto);
+    const chegou = ini.some((o) => dist(o, { x: u.x0, y: u.y0 }) <= raio || dist(o, u) <= Math.max(u.alcance, 30));
+    if (!chegou) return { s: 0.9, modo: 'posto' };
+  }
   // recuar: só quem tem alcance; exposto × espaço para trás × (sou mais rápido?)
-  const pesoRec = IA2.recuo.peso[f] || 0;
+  const pesoRec = (IA2.recuo.peso[f] || 0) * P.recuo;
   if (pesoRec > 0 && ameaca) {
     const raioPerigo = u.alcance * (IA2.recuo.perigo[f] || 0.5);
     const exposto = clamp(1 - dAmeaca / raioPerigo, 0, 1);
@@ -3140,23 +3190,27 @@ function escolherManobra(b, u) {
   }
   if (!corpoACorpo(u)) {
     // à distância: avança só até a parada; dentro do alcance, segura (destinoV2 decide a cada passo)
-    const falta = clamp((d - u.alcance * IA2.paradaDistancia) / u.alcance, 0, 1);
+    const falta = clamp((d - u.alcance * P.parada) / u.alcance, 0, 1);
     opcoes.push({ s: 0.2 + falta * 0.6, modo: 'atacar' });
     return melhorOpcao(opcoes);
   }
-  // corpo a corpo
-  if (papel === 'assassino' && d > u.alcance + 4 && d > 36) {
-    const bloq = ini.some((o) => o !== alvo && dist(o, u) < d && distSegmento(o, u, alvo) < 18);
-    if (bloq) opcoes.push({ s: 0.7, modo: 'flanco' });
+  // corpo a corpo: flanquear quando há alguém no caminho até o alvo (assassino sempre; os outros, na postura Flanquear)
+  if ((papel === 'assassino' || P.flanco) && d > u.alcance + 4 && d > 36) {
+    const bloq = ini.some((o) => o !== alvo && dist(o, u) < d && distSegmento(o, u, alvo) < (P.flanco ? 26 : 18));
+    if (bloq) opcoes.push({ s: 0.7, modo: 'flanco', lateral: !!P.flanco });
   }
-  // proteger: tanque e corpo a corpo entram na frente de um aliado frágil ameaçado
+  // proteger: o tanque se põe entre o inimigo corpo a corpo e o aliado frágil que ele está indo buscar
+  // (escolta desde cedo, não só quando já chegou); o corpo a corpo só quando o aliado está mesmo em risco
   if ((f === 'tanque' || f === 'corpo') && al.length) {
     for (const o of al) {
       if (corpoACorpo(o)) continue;
-      const am = minPor(ini.filter(corpoACorpo), (x) => dist(x, o));
+      const am = minPor(ini.filter((x) => corpoACorpo(x) && !x.invocacao), (x) => dist(x, o));
       if (!am) continue;
-      const dA = dist(am, o);
-      if (dA < 60 && dist(u, am) > u.alcance + 4) opcoes.push({ s: (f === 'tanque' ? 0.75 : 0.5) * clamp(1 - dA / 60, 0, 1) + 0.2, modo: 'proteger', quem: o, de: am });
+      const dA = dist(am, o), vaiNele = am.alvo === o;
+      if (dist(u, am) <= u.alcance + 4) continue;   // já estou em cima dele: é só bater
+      const urg = clamp(1 - dA / 150, 0, 1);
+      const s = f === 'tanque' ? (vaiNele ? 0.6 : 0.3) + 0.3 * urg : (dA < 60 ? 0.5 * clamp(1 - dA / 60, 0, 1) + 0.2 : 0);
+      if (s > 0) opcoes.push({ s: s * P.proteger, modo: 'proteger', quem: o, de: am });
     }
   }
   opcoes.push({ s: d > u.alcance ? 0.55 : 0.5, modo: 'atacar' });
@@ -3200,7 +3254,22 @@ function destinoV2(b, u) {
     case 'atacar': {
       // decidido a cada passo (o alvo se mexe): fora do alcance persegue, dentro espera/ronda
       if (!alvo) return null;
-      if (!corpoACorpo(u)) return dist(u, alvo) > u.alcance * IA2.paradaDistancia ? { p: [alvo.x, alvo.y] } : null;
+      if (!corpoACorpo(u)) {
+        if (dist(u, alvo) <= u.alcance * posturaDe(u).parada) return null;
+        // formação: quem atira não passa da própria linha de frente (fica `atrasDaFrente` px atrás do aliado
+        // corpo a corpo mais avançado), a não ser na postura Avançar. É o que faz "tanque na frente" valer.
+        let x = alvo.x;
+        if (!posturaDe(u).semLimite) {
+          const frente = aliadosDe(b, u).filter((o) => o !== u && corpoACorpo(o) && !o.invocacao);
+          if (frente.length) {
+            const dir = u.team === 0 ? 1 : -1;
+            const xFrente = frente.reduce((m, o) => (o.x * dir > m * dir ? o.x : m), frente[0].x) - dir * IA2.atrasDaFrente;
+            if ((x - xFrente) * dir > 0) x = xFrente;
+            if ((x - u.x) * dir <= 0) return null;   // já estou na linha: espero o inimigo entrar no alcance
+          }
+        }
+        return { p: [x, alvo.y] };
+      }
       if (dist(u, alvo) > u.alcance) return { p: pontoDeAtaque(b, u, alvo) };
       if (u.atkT > 0.3 && !u.invocacao) {
         u.rondaT = (u.rondaT || 0) - DT;
@@ -3211,8 +3280,18 @@ function destinoV2(b, u) {
     }
     case 'flanco': {
       if (!alvo) return null;
-      if (!c.flanco) c.flanco = alvo.y > (ARENA.chao + ARENA.fundo) / 2 ? -1 : 1;
+      if (!c.flanco) c.flanco = u.y > (ARENA.chao + ARENA.fundo) / 2 ? 1 : -1;
+      // postura Flanquear: pela lateral da arena (borda de cima ou de baixo) até passar da altura do alvo; assassino: arco curto
+      if (m.lateral) {
+        const faixa = c.flanco > 0 ? ARENA.fundo - 8 : ARENA.chao + 8;
+        const passou = Math.sign(alvo.x - u.x) !== Math.sign(alvo.x - u.x0) || Math.abs(alvo.x - u.x) < 24;
+        return passou ? { p: pontoDeAtaque(b, u, alvo) } : { p: dentroArena(u.x + Math.sign(alvo.x - u.x) * 40, faixa), modo: 'flanco' };
+      }
       return { p: dentroArena(u.x + (alvo.x - u.x) * 0.5, alvo.y + c.flanco * 46), modo: 'flanco' };
+    }
+    case 'posto': {
+      // segurar: volta para o posto; chegando lá, espera (e atira em quem estiver no alcance)
+      return dist(u, { x: u.x0, y: u.y0 }) > 6 ? { p: [u.x0, u.y0] } : null;
     }
     case 'proteger': {
       const o = m.quem, am = m.de;
@@ -4397,7 +4476,7 @@ function fxPonta(c, x, y, cor) { for (let i = 0; i < 6; i++) { const a = (i / 6)
 
 /* ============================ ESTADO E SAVE ============================ */
 const SAVE_KEY = 'ligaDasLaminas.save.v1';   // mesma chave da Fase 1: a versão fica dentro do save
-const VERSAO = 8;   // v8 (E4): formato igual ao v7; só marca a nota de novidades do cérebro novo
+const VERSAO = 9;   // v9 (E4 c): mercenário ganha pos (casa na formação 3×3) e postura; v8 só marcava a nota de novidades do cérebro novo
 const consumiveisZerados = () => Object.fromEntries(Object.keys(CONSUMIVEIS).map((k) => [k, 0]));
 const criadorPadrao = () => ({ liberado: false, usado: false, sorteMult: 1, tempoMult: 1 });
 const statsPadrao = () => ({
@@ -4480,6 +4559,10 @@ function normalizarMerc(m) {
   if (!Array.isArray(m.cresc) || m.cresc.length !== 4) m.cresc = rolarCresc(m.classe, m.pot);
   if (m.campeao && !CAMPEOES[m.campeao]) m.campeao = null;
   if (m.linha !== 'frente' && m.linha !== 'tras') m.linha = CLASSES_FRENTE.includes(m.classe) ? 'frente' : 'tras';
+  // v9: formação 3×3. Quem não tem casa vai para o centro da coluna da sua linha (frente → coluna 0, trás → coluna 2)
+  if (typeof m.pos !== 'number' || m.pos < 0 || m.pos > 8) m.pos = m.linha === 'frente' ? 1 : 7;
+  m.pos |= 0; m.linha = linhaDePos(m.pos);
+  if (!POSTURAS[m.postura]) m.postura = 'auto';
   if (!m.tatica) m.tatica = 'auto';
   m.nivel = clamp(m.nivel | 0 || 1, 1, 30);
   m.xp = Math.max(0, +m.xp || 0);
@@ -4536,7 +4619,7 @@ function validarSave(s) {
   if (versaoAntiga < 6 && !nov.includes(6) && (st.stats.lutas > 0 || st.tutorial >= 4)) nov.push(6);
   if (versaoAntiga < 7 && !nov.includes(7) && st.stats.lutas > 0) nov.push(7);
   if (versaoAntiga < 8 && !nov.includes(8) && st.stats.lutas > 0) nov.push(8);
-  st.novidades = nov.filter((f) => f >= 2 && f <= 8).sort();
+  st.novidades = nov.filter((f) => f >= 2 && f <= 8).sort();   // v9 não tem nota: a tela da formação chega no passo (d)
   if (versaoAntiga < 3 && st.tutorial >= 4) st.tutorial = 99;   // quem já viu o tutorial antigo não o repete
   // v6: tutorial progressivo. Quem já lutou (ou terminou o tutorial antigo) não repete nada.
   if (versaoAntiga < 6) { st.tutorial = (st.tutorial >= 4 || st.stats.lutas > 0) ? 99 : 0; st.tutorialVisto = -1; }
@@ -6822,7 +6905,7 @@ const ACOES = {
   },
   'time-rem': (el) => { STATE.time = STATE.time.filter((x) => x !== +el.dataset.id); ajustarTime(); aposMudanca(); },
   capitao: (el) => { STATE.capitao = +el.dataset.id; toast('Novo capitão definido.', 'ok'); aposMudanca(); },
-  linha: (el) => { mercPorId(+el.dataset.id).linha = el.dataset.v; aposMudanca(); },
+  linha: (el) => { const m = mercPorId(+el.dataset.id); m.pos = posDe(el.dataset.v === 'frente' ? 0 : 2, posFileira(m.pos)); m.linha = linhaDePos(m.pos); aposMudanca(); },
   tatica: (el) => { mercPorId(+el.dataset.id).tatica = el.dataset.v; aposMudanca(); },
   'vender-merc': (el) => {
     const m = mercPorId(+el.dataset.id);

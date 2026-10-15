@@ -19,7 +19,7 @@ function mercVariado() {
   m.ascensoes = nivel > 20 ? 2 : nivel > 10 ? 1 : 0;
   for (const t of ['arma', 'armadura', 'amuleto']) if (r() < 0.8) { const it = J.gerarItem(ri(0, 4), nivel, t); it.aprim = ri(0, 10); m.equip[t] = it; }
   m.pergaminhos = Array.from({ length: ri(0, 2) }, () => J.gerarPergaminho(ri(0, 4)));
-  m.linha = r() < 0.5 ? 'frente' : 'tras'; m.tatica = pk(['auto', 'perto', 'fraco', 'forte', 'tras']);
+  m.pos = ri(0, 8); m.linha = m.pos < 3 ? 'frente' : 'tras'; m.postura = pk(Object.keys(J.POSTURAS)); m.tatica = pk(['auto', 'perto', 'fraco', 'forte', 'tras']);
   m.stats = { lutas: 5, dano: 999 };   // lixo que não deve importar
   return m;
 }

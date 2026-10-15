@@ -65,7 +65,9 @@ async def main():
             await pg.click('[data-act="luta-pular"]'); await pg.wait_for_timeout(500)
             await pg.click('[data-act="resultado-ok"]'); await pg.wait_for_timeout(400)
         st = await pg.evaluate("JSON.parse(localStorage.getItem('ligaDasLaminas.save.v1'))")
-        checa(st['versao'] == 8, f"save na versão 8 ({st['versao']})")
+        checa(st['versao'] == 9, f"save na versão 9 ({st['versao']})")
+        # E4 (c): todo mercenário tem casa na formação 3×3 e postura; linha derivada da coluna
+        checa(all(isinstance(m.get('pos'), int) and 0 <= m['pos'] <= 8 and m.get('postura') in ('auto', 'avancar', 'segurar', 'flanquear') and m['linha'] == ('frente' if m['pos'] < 3 else 'tras') for m in st['mercs']), 'mercenários com pos (0–8), postura e linha derivada da coluna')
         P = st['partidas']
         checa(len(P) == 5, f'5 partidas registradas ({len(P)})')
         campos = all(all(k in p for k in ('seed', 'regras', 'times', 'vencedor', 'tempo', 'passos', 'replay')) for p in P)
@@ -78,7 +80,8 @@ async def main():
         checa(res == ['igual'] * 5, f'reproduzir do registro dá o mesmo resultado: {res}')
         # E4 (b): as lutas do jogo usam o cérebro v2 e as regras v2; uma luta de regras antigas avisa em vez de reproduzir
         ia = [(p['regras'], p['replay']['A'].get('ia'), p['replay']['B'].get('ia')) for p in P]
-        checa(all(x == (2, 'v2', 'v2') for x in ia), f'toda luta com regras v2 e cérebro v2 nos dois lados: {ia[0]}')
+        checa(all(x == (3, 'v2', 'v2') for x in ia), f'toda luta com regras v3 e cérebro v2 nos dois lados: {ia[0]}')
+        checa(all('pos' in m and 'postura' in m for p in P for t in (p['replay']['A'], p['replay']['B']) for m in t['mercs']), 'o registro guarda casa e postura de cada lutador')
         antiga = await pg.evaluate("(() => { const p = JSON.parse(JSON.stringify(JSON.parse(localStorage.getItem('ligaDasLaminas.save.v1')).partidas[0])); p.regras = 1; return conferirPartida(p); })()")
         checa(antiga == 'regras', f'luta de regras antigas não reproduz (avisa "{antiga}")')
         # e o botão Conferir na tela
@@ -112,6 +115,7 @@ async def main():
         v6 = dict(st); v6['versao'] = 6
         for k in ('partidas', 'temporadaRec'): v6.pop(k, None)
         for k in ('seqAtual', 'seqRecorde', 'tempoJogo', 'lideresVencidos', 'partidasN'): v6['stats'].pop(k, None)
+        for m in v6['mercs']: m.pop('pos', None); m.pop('postura', None)   # v6 não tinha formação
         v6['novidades'] = []
         # página nova (a antiga grava o próprio save ao sair, por isso não dá para trocar o save por baixo dela)
         await pg.close()
@@ -121,9 +125,10 @@ async def main():
             "if (!sessionStorage.getItem('v6')) { sessionStorage.setItem('v6', '1'); localStorage.setItem('ligaDasLaminas.save.v1', " + json.dumps(json.dumps(v6)) + "); }")
         await pg.goto(ARQ.as_uri()); await pg.wait_for_timeout(1500)
         st2 = await pg.evaluate("JSON.parse(localStorage.getItem('ligaDasLaminas.save.v1'))")
-        checa(st2['versao'] == 8, 'save v6 abre como v8')
+        checa(st2['versao'] == 9, 'save v6 abre como v9')
         checa([m['id'] for m in st2['mercs']] == [m['id'] for m in v6['mercs']] and st2['ouro'] >= v6['ouro'] and st2['stats']['lutas'] == v6['stats']['lutas'], 'mercenários, ouro e lutas preservados')
         checa(st2['partidas'] == [] and st2['stats']['seqRecorde'] == 0, 'campos novos criados vazios')
+        checa(all(m['pos'] == (1 if v['linha'] == 'frente' else 7) and m['postura'] == 'auto' for m, v in zip(st2['mercs'], v6['mercs'])), 'migração: linha Frente → casa frente-centro, Trás → trás-centro, postura automática')
         checa((7 in st2['novidades'] and 8 in st2['novidades']) or await pg.is_visible('[data-act="fechar-novidades"]'), 'mostra as novidades da v0.6 e da v0.7')
         await pg.screenshot(path=str(PASTA / 'e3-novidades.png'))
 

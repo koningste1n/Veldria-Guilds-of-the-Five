@@ -4,7 +4,7 @@
 
 Jogo de gestão de guilda de mercenários com batalhas automáticas em arena, pixel art desenhada por código e feito para celular em pé. HTML + CSS + JavaScript puro, sem bibliotecas e sem nada externo.
 
-**Versão atual:** v0.7 (etapa E4, passo b) · save versão 8 · regras de combate v2.
+**Versão atual:** v0.7 (etapa E4, passo c) · save versão 9 · regras de combate v3.
 
 ## Como montar
 
@@ -34,7 +34,8 @@ node sim/balanco.js            # matriz 10×10 de vitória por classe (1v1, nív
 node sim/balanco.js --tam 3 --n 100 --salvar   # 3v3; grava sim/resultados/*.json e .csv
 node sim/balanco.js --ia v2    # a mesma matriz com o cérebro v2 (10b) dos dois lados
 node sim/balanco.js --duelo --n 400   # E4: cérebro v2 (linha) × IA atual (coluna), 100 pares; imprime se o critério 1 passou
-node sim/replay.js             # 300 lutas variadas com toques do jogador (metade dos lados com o cérebro v2): reproduzir do registro dá o mesmo resultado
+node sim/formacao.js           # E4 (c): 4 formações × 4 posturas contra 2 adversários; a escolha do jogador tem de mudar o resultado (≥ 10 pontos)
+node sim/replay.js             # 300 lutas variadas com toques do jogador (metade dos lados com cada cérebro, casas e posturas sorteadas): reproduzir do registro dá o mesmo resultado
 ```
 
 ## Estrutura
@@ -50,7 +51,7 @@ node sim/replay.js             # 300 lutas variadas com toques do jogador (metad
 |---|---|
 | `src/js/00_cabecalho.js` | 9 |
 | `src/js/01_util.js` | 37 |
-| `src/js/02_dados.js` | 240 |
+| `src/js/02_dados.js` | 252 |
 | `src/js/03_dados-da-fase-2.js` | 113 |
 | `src/js/04_dados-da-torre.js` | 37 |
 | `src/js/05_pixel.js` | 119 |
@@ -58,13 +59,13 @@ node sim/replay.js             # 300 lutas variadas com toques do jogador (metad
 | `src/js/07_motor-de-bonecos-v3.js` | 556 |
 | `src/js/08_vistas-de-frente-e-de-costas.js` | 202 |
 | `src/js/09_mercenarios-e-itens.js` | 225 |
-| `src/js/10_combate.js` | 839 |
-| `src/js/10b_cerebro-v2.js` | 336 |
+| `src/js/10_combate.js` | 852 |
+| `src/js/10b_cerebro-v2.js` | 395 |
 | `src/js/11_arena.js` | 576 |
 | `src/js/12_som-musica-e-vibracao.js` | 174 |
 | `src/js/13_cenarios-da-arena.js` | 131 |
 | `src/js/14_vfx-direcionais.js` | 176 |
-| `src/js/15_estado-e-save.js` | 217 |
+| `src/js/15_estado-e-save.js` | 222 |
 | `src/js/16_reliquias-e-preparo.js` | 70 |
 | `src/js/17_ocioso.js` | 36 |
 | `src/js/18_expedicoes.js` | 50 |
@@ -77,7 +78,7 @@ node sim/replay.js             # 300 lutas variadas com toques do jogador (metad
 | `src/js/25_interface-base.js` | 186 |
 | `src/js/26_interface-telas.js` | 516 |
 | `src/js/27_interface-batalha.js` | 244 |
-| `src/js/28_interface-criacao-tutorial-configuracoes.js` | 181 |
+| `src/js/28_interface-criacao-tutorial-configuracoes.js` | 185 |
 | `src/js/29_modo-criador.js` | 153 |
 | `src/js/30_interface-acoes.js` | 385 |
 | `src/js/31_interface-torre-infinita-e-estatisticas.js` | 130 |

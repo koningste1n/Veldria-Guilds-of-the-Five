@@ -14,7 +14,7 @@ function carregarJogo({ semente = 12345 } = {}) {
   codigo += '\nfunction lookDe(m, c1, c2) { return `${m.visual || m.classe}|${m.pele ?? 0}|${m.cabelo ?? 1}|${c1}|${c2}`; }\n';
   codigo += `
     return {
-      CLASSES, SKILLS, PERGAMINHOS, TRACOS, POT_INFO, CAMPEOES, REGRAS_COMBATE, IA2,
+      CLASSES, SKILLS, PERGAMINHOS, TRACOS, POT_INFO, CAMPEOES, REGRAS_COMBATE, IA2, POSTURAS, FORMACAO, posDe,
       criarBatalha, passo, simularAteFim, resumoBatalha, atributos, gerarMerc, gerarItem, gerarPergaminho,
       mercParaRegistro, ladoParaRegistro, assinaturaLuta, reproduzirPartida, mesmaAssinatura, entradaJogador,
       setState: (s) => { STATE = s; }, getState: () => STATE,

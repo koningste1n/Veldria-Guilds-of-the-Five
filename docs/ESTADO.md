@@ -4,7 +4,7 @@
 
 **Como trabalhar:** `docs/PROMPT-MAE.md` (papéis, regras, roteiro das etapas com critérios de pronto, handoff).
 
-_Atualizado em 15/10/2026 (E4, passos a e b)._
+_Atualizado em 15/10/2026 (E4, passos a, b e c-simulação)._
 
 ## O que existe (v0.7, E4 passo b)
 
@@ -50,7 +50,7 @@ Os testes Playwright antigos (`luta.py`, `lideres.py`, `nuvem.py`, `perf.py`…)
 | E1 | Código recuperado, no GitHub e publicado | — | — | ✅ |
 | E2 | Nome Veldria no jogo, save v6 (tutorial progressivo feito e **desligado** — ver Pendências) | 1 | Opus 5.5 | ✅ 15/10 |
 | E3 | Registro de partidas, ficha de recordes + melhores da temporada, simulador de balanço em Node | 1 | Opus 5.5 | ✅ 15/10 (aguarda teste do Kevin no celular) |
-| E4 | Motor novo: IA de utilidade, 3×3 + posturas, câmera, 3v3 melhor de 3; decisão de orientação de tela | 3–4 | **Fable 5.1** | **em andamento** — (a) ✅ e (b) ✅ 15/10 (aguarda veredito do Kevin no celular) |
+| E4 | Motor novo: IA de utilidade, 3×3 + posturas, câmera, 3v3 melhor de 3; decisão de orientação de tela | 3–4 | **Fable 5.1** | **em andamento** — (a) ✅, (b) ✅, (c) ✅ em simulação 15/10; falta a tela do Preparo (vai com a câmera, d) |
 | E5a | Curva 1→100, Ascensão como portão, maestrias 20/50, Rank S, A/B nv. 15, catálogo com raridades, pity | 2 | **Fable 5.1** | |
 | E5b | Personalidades visíveis, rivais, identidade de build, relíquias 24+, renome, contrato diário, eventos semanais | 2 | Opus 5.5 | |
 | E6 | Classes novas em lotes de 2–4 | 1–2 | Opus 5.5 | |
@@ -150,7 +150,7 @@ Hoje, quem começa do zero não tem tutorial nenhum (o tutorial antigo de 6 dica
 | # | Critério | Como medir |
 |---|---|---|
 | 1 | Cérebro novo vence o atual com as mesmas regras e os mesmos lutadores: **média ≥ 55 %** na matriz completa (IA nova com a classe da linha × IA atual com a classe da coluna, 100 pares) e, no espelho (mesma classe dos dois lados), **nenhuma classe abaixo de 42 %** — o cérebro novo não pode piorar classe nenhuma | `node sim/balanco.js --duelo` (linha = IA nova, coluna = IA atual) |
-| 2 | Formação 3×3 + posturas (avançar, segurar, flanquear) configuradas no Preparo e lidas pelo cérebro novo | teste Playwright da formação |
+| 2 | Formação 3×3 + posturas (avançar, segurar, flanquear) configuradas no Preparo e lidas pelo cérebro novo | **metade feita**: modelo, save v9, cérebro e `sim/formacao.js` ✅ (a escolha muda o resultado em até 74 pontos); a tela do Preparo fica para o passo (d) |
 | 3 | 3×3 roda a 30 passos/s no celular sem travar | `sim/` mede ms por passo (medido em Node: 6–16 µs por passo em 3v3 e 5v5, ~2.000× abaixo dos 33 ms); falta o teste no celular do Kevin |
 | 4 | Câmera: afastada mostrando a formação, aproxima no embate | teste no celular |
 | 5 | 3v3 melhor de 3 (D7) | simulador + teste no celular |
@@ -163,8 +163,8 @@ Hoje, quem começa do zero não tem tutorial nenhum (o tutorial antigo de 6 dica
 |---|---|---|
 | (a) | Cérebro de utilidade em 1v1, isolado, medido no simulador contra a IA atual | ✅ 15/10 (critério 1 passou) |
 | (b) | Ligar na interface (todas as lutas passam a usar o cérebro novo; `REGRAS_COMBATE` sobe) | ✅ 15/10 (v0.7, save v8, regras v2) |
-| (c) | Formação 3×3 + posturas em simulação | próxima |
-| (d) | Câmera afastada → aproxima | |
+| (c) | Formação 3×3 + posturas em simulação | ✅ 15/10 (regras v3, save v9) |
+| (d) | Tela do Preparo (grade 3×3 + postura por mercenário) e câmera afastada → aproxima | próxima |
 | (e) | 3v3 melhor de 3 | |
 | (f) | Ponto de decisão do Kevin: orientação da tela (levar dois mockups) | |
 
@@ -236,9 +236,52 @@ Leitura: o cérebro novo virou a mesa — de corpo a corpo dominante (Machadeiro
 | **Invocador cai para 4 % / 0 %** | O cérebro novo bate no invocador e ignora os esqueletos (36 % dos atributos, 168 de vida: não ameaçam ninguém). A classe só funcionava porque a IA antiga batia no inimigo mais perto. Já testei o invocador ficar atrás dos esqueletos em vez de fugir (ficou no código): não basta, o atacante passa por eles | Esqueletos precisam **impor** presença: provocar quem está perto (como a Muralha) e/ou bloquear o caminho de verdade (separação maior) e/ou serem mais fortes. Decisão do Kevin |
 | Guardião 44 % / 22 % | Tanque sozinho não alcança quem recua; em 3 Guardiões × 3 Arqueiras ninguém chega perto | Esperado sem formação; reavaliar depois do passo (c) (posturas) antes de mexer em número |
 
-## Próxima conversa começa por… (E4 passo c, **Fable 5.1**)
+### (c) concluída em simulação em 15/10/2026 — formação 3×3 e posturas (regras v3, save v9)
 
-0. **Antes de tudo, ler o veredito do Kevin** sobre as 3 lutas no celular (recuo para trás, invocador, cura). Se ele achou que parece bug, ajustar `IA2` antes de seguir.
-1. Passo (c): formação 3×3 + posturas (avançar / segurar / flanquear) **em simulação primeiro**. Formação = posição inicial (coluna frente/meio/trás × linha cima/centro/baixo) configurada no Preparo; postura = pesos na tabela `IA2` (recuo, proteger, flanco, parada à distância) — não código novo. Critério: `node sim/balanco.js --tam 3` com 3 formações × 3 posturas mostra diferença de resultado (a escolha do jogador tem de mudar a luta: sensação-alvo).
-2. Formato do save: a formação entra no mercenário (`m.pos`, 0–8) com migração v8 → v9 (quem é `linha: 'frente'` vai para a coluna da frente).
-3. Depois: (d) câmera afastada → aproxima; (e) 3v3 melhor de 3; (f) mockups em pé × deitada para o Kevin decidir.
+| O que mudou | Onde |
+|---|---|
+| `FORMACAO` (3 colunas × 3 fileiras; `x` por coluna 108/80/52 da borda, `y` por fileira 100/142/184) e `POSTURAS` (auto, avançar, segurar, flanquear) em tabela de dados | `02_dados.js` |
+| Mercenário ganha `pos` (0–8 = coluna×3 + fileira) e `postura`; `linha` passa a ser derivada da coluna (os chips Frente/Trás da ficha mexem no `pos`) | `09`, `15` (save **v9**: quem era Frente vai para frente-centro, Trás para trás-centro, postura automática), `30` |
+| `criarBatalha` posiciona pela grade; casas repetidas são resolvidas na ordem do time (`resolverFormacao`); o registro guarda `pos` e `postura` → `REGRAS_COMBATE = 3` | `10_combate.js` |
+| Posturas viram multiplicadores na tabela `IA2.postura` (recuo, parada de quem atira, proteger, alvos da retaguarda, posto, flanco) — nada de código por postura | `10b` |
+| Manobras novas: **posto** (Segurar: fica na casa até um inimigo chegar a 70 px; o raio cresce 15 px/s depois de 8 s para a luta não empacar) e **flanco lateral** (Flanquear: pela borda de cima/baixo até passar da altura do alvo) | `10b` |
+| `sim/formacao.js`: 4 formações × 4 posturas × 2 adversários, imprime se a escolha importa (≥ 10 pontos) | `sim/` |
+| `testes/registro.py` +3 verificações (pos/postura/linha, registro com casa e postura, migração v6 → v9); `sim/replay.js` sorteia casas e posturas | `testes/`, `sim/` |
+
+Dois ajustes no cérebro foram necessários para a formação **valer alguma coisa** (antes, "tanque na frente" perdia para "tanque atrás"):
+
+| Ajuste | Por quê | Efeito |
+|---|---|---|
+| Quem atira não passa da própria linha de frente (fica 22 px atrás do aliado corpo a corpo mais avançado), exceto na postura Avançar | A arqueira saía andando na frente do Guardião para alcançar 88 % do alcance e era a primeira a ser pega | Muralha × trio corpo a corpo: 53 % → 100 % |
+| Corpo a corpo e tanque pesam o que está **perto** (0,6) e só consideram fraco/matar/ameaça/foco dentro de 150 px; nenhum peso para retaguarda | O Machadeiro inimigo mirava a arqueira a 224 px desde o 1º segundo e passava reto pelo tanque; buscar a retaguarda virou trabalho do assassino e da postura Flanquear | Critério 1 continua passando (59,2 %) |
+| Tanque escolta desde cedo (põe-se entre o inimigo corpo a corpo e o aliado frágil que ele está indo buscar), não só quando o inimigo já chegou | Antes o `proteger` só disparava a 60 px, tarde demais para um Guardião de 24 px/s | — |
+
+Resultado de `node sim/formacao.js --n 200` (Guardião + Arqueira + Clériga, nível 10):
+
+| Formação \ postura | auto | avançar | segurar | flanquear |
+|---|---|---|---|---|
+| **contra Machadeiro + Lanceira + Piromante** | | | | |
+| muralha (tanque na frente, duas atrás) | **100** | 100 | 100 | 51 |
+| tudo na frente | 99 | 29 | 94 | 31 |
+| invertida (tanque atrás) | 83 | 27 | 68 | 31 |
+| em coluna | 100 | 100 | 100 | 50 |
+| **contra Arqueira + Criomante + Lâmina** | | | | |
+| muralha | 0 | 2 | 4 | 1 |
+| tudo na frente | 8 | 7 | 20 | 6 |
+| invertida | 4 | 12 | 4 | 25 |
+| em coluna | 0 | 0 | 1 | 1 |
+
+E um trio corpo a corpo (Machadeiro + Lanceira + Lâmina) contra a muralha: auto 76 % · avançar 76 % · **flanquear 92 %** · segurar 68 %. Leitura: formação e postura mudam o resultado em até 74 pontos (sensação-alvo ✅); contra o trio à distância nada salva — Arqueira (94 % no 3v3) e Criomante continuam fortes demais (E5a).
+
+Linha de base v2×v2 refeita (`sim/resultados/*-v2.*`): 1v1 Crio 80 · Mach 75 · Arq 71 · Lanç 70 · Lâm 60 · Piro 51 · Guard 44 · Clér 39 · Bardo 7 · Invoc 4 · 3v3 Arq 94 · Lanç 76 · Mach 68 · Crio 66 · Piro 58 · Lâm 48 · Bardo 45 · Clér 24 · Guard 22 · Invoc 0.
+
+**O jogo publicado já luta com a grade e as regras v3**, mas o jogador ainda não vê nem mexe na formação (todo mundo está na casa padrão da sua linha, postura automática). Candidato para a E5a/rules: bloqueio físico de verdade (hoje unidades se atravessam; a separação é só um empurrão de 16 px), que faria o tanque segurar a linha sem depender só do alvo do inimigo.
+
+## Próxima conversa começa por… (E4 passo d, **Fable 5.1**)
+
+0. Ler o veredito do Kevin sobre as 3 lutas no celular (recuo, invocador, cura) — ainda não chegou — e ajustar `IA2` se pareceu bug.
+1. **Tela do Preparo com a grade 3×3** (frontend-design): grade 3×3 com os retratos arrastáveis ou toque-seleciona-toque-coloca (botões ≥ 44 px, tela de 390 px), postura por mercenário (4 chips), capitão marcado. Substitui os chips Frente/Trás da ficha. Teste Playwright: mudar a casa e a postura, lutar, conferir no registro (`pos`/`postura` do lado A).
+2. **Câmera**: afastada no início mostrando as duas formações, aproxima no primeiro embate (`11_arena.js`, câmera já existe). Decidir o enquadramento para 384×216 numa tela em pé.
+3. Nota de novidades "Fase 8 · Formação" quando a tela estiver pronta (save v10 só se o formato mudar; senão, marcar a nota de outro jeito).
+4. Preparar os **dois mockups** (em pé × deitada) para o ponto de decisão do Kevin (f) — podem ser feitos com o Visualizer/artefato na própria conversa.
+5. Depois: (e) 3v3 melhor de 3.

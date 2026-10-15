@@ -22,9 +22,12 @@ const IA2 = {
   limiar: 0.35,          // pontuação mínima para gastar uma habilidade
   limiarSupremo: 0.45,   // o SUPREMO é mais caro: exige uma situação melhor
   // Pesos das considerações de ALVO por função
+  // Corpo a corpo e tanque: o que está perto pesa mais e o resto (fraco, matar, ameaça, foco) só conta
+  // dentro do `alcanceDeInteresse` — um lutador bate em quem está na frente dele; ir buscar a retaguarda
+  // é trabalho do assassino ou da postura Flanquear. Sem isso a linha de frente não serve para nada.
   alvo: {
-    tanque:    { perto: 0.50, ameaca: 0.40, fraco: 0.15, matar: 0.20, foco: 0.30, retaguarda: 0.00 },
-    corpo:     { perto: 0.45, ameaca: 0.10, fraco: 0.30, matar: 0.30, foco: 0.30, retaguarda: 0.10 },
+    tanque:    { perto: 0.60, ameaca: 0.40, fraco: 0.15, matar: 0.20, foco: 0.30, retaguarda: 0.00 },
+    corpo:     { perto: 0.60, ameaca: 0.10, fraco: 0.30, matar: 0.35, foco: 0.30, retaguarda: 0.00 },
     assassino: { perto: 0.10, ameaca: 0.10, fraco: 0.40, matar: 0.40, foco: 0.10, retaguarda: 0.60 },
     distancia: { perto: 0.30, ameaca: 0.25, fraco: 0.40, matar: 0.40, foco: 0.30, retaguarda: 0.10 },
     controle:  { perto: 0.30, ameaca: 0.35, fraco: 0.25, matar: 0.30, foco: 0.25, retaguarda: 0.00 },
@@ -39,9 +42,24 @@ const IA2 = {
     passo: 46,           // quanto anda por recuo (px)
     abertura: 60,        // graus para cada lado da direção oposta à ameaça
   },
+  alcanceDeInteresse: 150,   // px: além disso, para o corpo a corpo, um alvo é só "longe"
   // Distância (fração do alcance) em que uma unidade à distância para de avançar
   paradaDistancia: 0.88,
+  // Posturas (D6/P4): multiplicadores sobre as considerações. O jogador escolhe na ficha; o cérebro só lê.
+  //   recuo: × no desejo de recuar · parada: fração do alcance onde quem atira para de avançar ·
+  //   proteger: × no desejo de entrar na frente de um aliado · retaguarda: + no peso de alvos da retaguarda ·
+  //   posto: segura a posição inicial até um inimigo chegar a `raioPosto` px (o raio cresce depois de `pacienciaPosto` s) ·
+  //   flanco: contorna a linha de frente pelas laterais para chegar ao alvo
+  postura: {
+    auto:      { recuo: 1.0, parada: 0.88, proteger: 1.0, retaguarda: 0.0, posto: 0, flanco: 0 },
+    avancar:   { recuo: 0.4, parada: 0.72, proteger: 0.4, retaguarda: 0.0, posto: 0, flanco: 0, semLimite: 1 },
+    segurar:   { recuo: 1.3, parada: 0.95, proteger: 1.6, retaguarda: 0.0, posto: 1, flanco: 0 },
+    flanquear: { recuo: 0.8, parada: 0.85, proteger: 0.3, retaguarda: 0.5, posto: 0, flanco: 1 },
+  },
+  raioPosto: 70, pacienciaPosto: 8, crescimentoPosto: 15,
+  atrasDaFrente: 22,   // quem atira fica este tanto atrás do aliado corpo a corpo mais avançado (exceto na postura Avançar)
 };
+const posturaDe = (u) => IA2.postura[u.postura] || IA2.postura.auto;
 
 function criarCerebro(b, u) {
   return { t: b.rng() * IA2.tick, manobra: null, flanco: 0 };
@@ -76,7 +94,7 @@ function escolherAlvoV2(b, u) {
   if (t === 'forte') return minPor(ini, (o) => -o.atq);
   if (t === 'tras') { const tr = ini.filter(daRetaguarda); return tr.length ? minPor(tr, (o) => o.vida) : minPor(ini, (o) => dist(u, o)); }
   if (t === 'perto') return minPor(ini, (o) => dist(u, o));
-  const W = IA2.alvo[funcaoDe(u.cls)] || IA2.alvo.corpo;
+  const W = IA2.alvo[funcaoDe(u.cls)] || IA2.alvo.corpo, P = posturaDe(u);
   const al = aliadosDe(b, u).filter((o) => o !== u && !o.invocacao);
   let maxAtq = 1;
   for (const o of ini) maxAtq = Math.max(maxAtq, atqEf(o));
@@ -90,7 +108,8 @@ function escolherAlvoV2(b, u) {
     const ameaca = atqEf(o) / maxAtq;
     const foco = al.length ? al.filter((a) => a.alvo === o).length / al.length : 0;
     const ret = daRetaguarda(o) ? 1 : 0;
-    let s = W.perto * perto + W.fraco * fraco + W.matar * matar + W.ameaca * ameaca + W.foco * foco + W.retaguarda * ret;
+    const interesse = corpoACorpo(u) ? clamp(1 - d / IA2.alcanceDeInteresse, 0, 1) : 1;
+    let s = W.perto * perto + (W.fraco * fraco + W.matar * matar + W.ameaca * ameaca + W.foco * foco + (W.retaguarda + P.retaguarda) * ret) * interesse;
     // invocações valem menos que quem as invocou, a não ser que estejam em cima de mim
     if (o.invocacao) s *= d < u.alcance + 6 ? 0.8 : 0.45;
     // à distância: não vale a pena trocar para um alvo fora do alcance se há um dentro
@@ -105,14 +124,20 @@ function escolherAlvoV2(b, u) {
 // Devolve { modo, p?, dir?, ate? }. O destino concreto é recalculado a cada passo em destinoV2
 // (o alvo se mexe); a manobra em si dura até a próxima decisão.
 function escolherManobra(b, u) {
-  const c = u.cerebro, f = funcaoDe(u.cls), papel = u.papel;
+  const c = u.cerebro, f = funcaoDe(u.cls), papel = u.papel, P = posturaDe(u);
   const alvo = u.alvo && u.alvo.vivo ? u.alvo : null;
   const ini = inimigosDe(b, u), al = aliadosDe(b, u).filter((o) => o !== u && !o.invocacao);
   const ameaca = ameacaMaisProxima(b, u), dAmeaca = ameaca ? dist(u, ameaca) : 999;
   const opcoes = [];
 
+  // segurar: fico no meu posto até um inimigo se aproximar (o raio cresce com o tempo, para a luta não empacar)
+  if (P.posto && !u.invocacao) {
+    const raio = IA2.raioPosto + IA2.crescimentoPosto * Math.max(0, b.t - IA2.pacienciaPosto);
+    const chegou = ini.some((o) => dist(o, { x: u.x0, y: u.y0 }) <= raio || dist(o, u) <= Math.max(u.alcance, 30));
+    if (!chegou) return { s: 0.9, modo: 'posto' };
+  }
   // recuar: só quem tem alcance; exposto × espaço para trás × (sou mais rápido?)
-  const pesoRec = IA2.recuo.peso[f] || 0;
+  const pesoRec = (IA2.recuo.peso[f] || 0) * P.recuo;
   if (pesoRec > 0 && ameaca) {
     const raioPerigo = u.alcance * (IA2.recuo.perigo[f] || 0.5);
     const exposto = clamp(1 - dAmeaca / raioPerigo, 0, 1);
@@ -141,23 +166,27 @@ function escolherManobra(b, u) {
   }
   if (!corpoACorpo(u)) {
     // à distância: avança só até a parada; dentro do alcance, segura (destinoV2 decide a cada passo)
-    const falta = clamp((d - u.alcance * IA2.paradaDistancia) / u.alcance, 0, 1);
+    const falta = clamp((d - u.alcance * P.parada) / u.alcance, 0, 1);
     opcoes.push({ s: 0.2 + falta * 0.6, modo: 'atacar' });
     return melhorOpcao(opcoes);
   }
-  // corpo a corpo
-  if (papel === 'assassino' && d > u.alcance + 4 && d > 36) {
-    const bloq = ini.some((o) => o !== alvo && dist(o, u) < d && distSegmento(o, u, alvo) < 18);
-    if (bloq) opcoes.push({ s: 0.7, modo: 'flanco' });
+  // corpo a corpo: flanquear quando há alguém no caminho até o alvo (assassino sempre; os outros, na postura Flanquear)
+  if ((papel === 'assassino' || P.flanco) && d > u.alcance + 4 && d > 36) {
+    const bloq = ini.some((o) => o !== alvo && dist(o, u) < d && distSegmento(o, u, alvo) < (P.flanco ? 26 : 18));
+    if (bloq) opcoes.push({ s: 0.7, modo: 'flanco', lateral: !!P.flanco });
   }
-  // proteger: tanque e corpo a corpo entram na frente de um aliado frágil ameaçado
+  // proteger: o tanque se põe entre o inimigo corpo a corpo e o aliado frágil que ele está indo buscar
+  // (escolta desde cedo, não só quando já chegou); o corpo a corpo só quando o aliado está mesmo em risco
   if ((f === 'tanque' || f === 'corpo') && al.length) {
     for (const o of al) {
       if (corpoACorpo(o)) continue;
-      const am = minPor(ini.filter(corpoACorpo), (x) => dist(x, o));
+      const am = minPor(ini.filter((x) => corpoACorpo(x) && !x.invocacao), (x) => dist(x, o));
       if (!am) continue;
-      const dA = dist(am, o);
-      if (dA < 60 && dist(u, am) > u.alcance + 4) opcoes.push({ s: (f === 'tanque' ? 0.75 : 0.5) * clamp(1 - dA / 60, 0, 1) + 0.2, modo: 'proteger', quem: o, de: am });
+      const dA = dist(am, o), vaiNele = am.alvo === o;
+      if (dist(u, am) <= u.alcance + 4) continue;   // já estou em cima dele: é só bater
+      const urg = clamp(1 - dA / 150, 0, 1);
+      const s = f === 'tanque' ? (vaiNele ? 0.6 : 0.3) + 0.3 * urg : (dA < 60 ? 0.5 * clamp(1 - dA / 60, 0, 1) + 0.2 : 0);
+      if (s > 0) opcoes.push({ s: s * P.proteger, modo: 'proteger', quem: o, de: am });
     }
   }
   opcoes.push({ s: d > u.alcance ? 0.55 : 0.5, modo: 'atacar' });
@@ -201,7 +230,22 @@ function destinoV2(b, u) {
     case 'atacar': {
       // decidido a cada passo (o alvo se mexe): fora do alcance persegue, dentro espera/ronda
       if (!alvo) return null;
-      if (!corpoACorpo(u)) return dist(u, alvo) > u.alcance * IA2.paradaDistancia ? { p: [alvo.x, alvo.y] } : null;
+      if (!corpoACorpo(u)) {
+        if (dist(u, alvo) <= u.alcance * posturaDe(u).parada) return null;
+        // formação: quem atira não passa da própria linha de frente (fica `atrasDaFrente` px atrás do aliado
+        // corpo a corpo mais avançado), a não ser na postura Avançar. É o que faz "tanque na frente" valer.
+        let x = alvo.x;
+        if (!posturaDe(u).semLimite) {
+          const frente = aliadosDe(b, u).filter((o) => o !== u && corpoACorpo(o) && !o.invocacao);
+          if (frente.length) {
+            const dir = u.team === 0 ? 1 : -1;
+            const xFrente = frente.reduce((m, o) => (o.x * dir > m * dir ? o.x : m), frente[0].x) - dir * IA2.atrasDaFrente;
+            if ((x - xFrente) * dir > 0) x = xFrente;
+            if ((x - u.x) * dir <= 0) return null;   // já estou na linha: espero o inimigo entrar no alcance
+          }
+        }
+        return { p: [x, alvo.y] };
+      }
       if (dist(u, alvo) > u.alcance) return { p: pontoDeAtaque(b, u, alvo) };
       if (u.atkT > 0.3 && !u.invocacao) {
         u.rondaT = (u.rondaT || 0) - DT;
@@ -212,8 +256,18 @@ function destinoV2(b, u) {
     }
     case 'flanco': {
       if (!alvo) return null;
-      if (!c.flanco) c.flanco = alvo.y > (ARENA.chao + ARENA.fundo) / 2 ? -1 : 1;
+      if (!c.flanco) c.flanco = u.y > (ARENA.chao + ARENA.fundo) / 2 ? 1 : -1;
+      // postura Flanquear: pela lateral da arena (borda de cima ou de baixo) até passar da altura do alvo; assassino: arco curto
+      if (m.lateral) {
+        const faixa = c.flanco > 0 ? ARENA.fundo - 8 : ARENA.chao + 8;
+        const passou = Math.sign(alvo.x - u.x) !== Math.sign(alvo.x - u.x0) || Math.abs(alvo.x - u.x) < 24;
+        return passou ? { p: pontoDeAtaque(b, u, alvo) } : { p: dentroArena(u.x + Math.sign(alvo.x - u.x) * 40, faixa), modo: 'flanco' };
+      }
       return { p: dentroArena(u.x + (alvo.x - u.x) * 0.5, alvo.y + c.flanco * 46), modo: 'flanco' };
+    }
+    case 'posto': {
+      // segurar: volta para o posto; chegando lá, espera (e atira em quem estiver no alcance)
+      return dist(u, { x: u.x0, y: u.y0 }) > 6 ? { p: [u.x0, u.y0] } : null;
     }
     case 'proteger': {
       const o = m.quem, am = m.de;

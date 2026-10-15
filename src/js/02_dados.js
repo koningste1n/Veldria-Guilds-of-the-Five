@@ -61,6 +61,18 @@ const CLASSES = {
 };
 const CLASSES_RECRUTAVEIS = Object.keys(CLASSES);
 const CLASSES_FRENTE = ['guardiao', 'machadeiro', 'lanceira'];
+// Formação 3×3 (E4, P4): cada mercenário ocupa uma casa — coluna (0 frente, 1 meio, 2 trás) × fileira
+// (0 cima, 1 centro, 2 baixo). pos = coluna × 3 + fileira. `x` é a distância da borda do seu lado da arena.
+const FORMACAO = { colunas: ['Frente', 'Meio', 'Trás'], fileiras: ['Cima', 'Centro', 'Baixo'], x: [108, 80, 52], y: [100, 142, 184] };
+const posColuna = (pos) => Math.floor((pos | 0) / 3), posFileira = (pos) => (pos | 0) % 3, posDe = (col, fil) => col * 3 + fil;
+const linhaDePos = (pos) => (posColuna(pos) === 0 ? 'frente' : 'tras');
+// Posturas (D6, P4): como o mercenário se comporta na luta. Viram pesos na tabela IA2 do cérebro (10b).
+const POSTURAS = {
+  auto: { nome: 'Automática', desc: 'Decide sozinho pela função.' },
+  avancar: { nome: 'Avançar', desc: 'Vai para cima: recua menos, chega mais perto para atirar, não fica protegendo.' },
+  segurar: { nome: 'Segurar', desc: 'Mantém a posição e espera o inimigo vir; protege os aliados e recua mais.' },
+  flanquear: { nome: 'Flanquear', desc: 'Contorna a linha de frente pelas laterais para alcançar a retaguarda.' },
+};
 // Funções (D1): etiquetas sobre as classes. Cada classe tem uma função principal.
 // Proposta da E3 (15/10/2026), a confirmar pelo Kevin.
 const FUNCOES = { tanque: 'Tanque', corpo: 'Corpo a corpo', assassino: 'Assassino', distancia: 'Distância', controle: 'Controle', suporte: 'Suporte' };

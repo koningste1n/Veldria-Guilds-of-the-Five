@@ -26,7 +26,7 @@ function gerarMerc(cls, nivel, pot, evitar = []) {
   return {
     id: novoId(), nome: nomeLivre(evitar), classe: cls, nivel, xp: 0, pot, cresc: rolarCresc(cls, pot), tracos: rolarTracos(pot),
     equip: { arma: null, armadura: null, amuleto: null }, pergaminhos: [], ascensoes: 0,
-    linha: CLASSES_FRENTE.includes(cls) ? 'frente' : 'tras', tatica: 'auto',
+    linha: CLASSES_FRENTE.includes(cls) ? 'frente' : 'tras', pos: CLASSES_FRENTE.includes(cls) ? 1 : 7, postura: 'auto', tatica: 'auto',
     pele: rint(0, 3), cabelo: CABELO_PADRAO[cls] != null && Math.random() < 0.5 ? CABELO_PADRAO[cls] : rint(0, 5),
   };
 }

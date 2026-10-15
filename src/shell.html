@@ -365,6 +365,11 @@ label { font-family: var(--f-display); font-size: 13px; color: var(--muted); tex
 .card.campeao, .slot.campeao { box-shadow: inset 0 0 0 2px var(--ouro-esc); background: linear-gradient(180deg, #3a2d1a, var(--painel2) 60%); }
 .slot.campeao.capitao { box-shadow: inset 0 0 0 2px var(--ouro); }
 .retrato.campeao { box-shadow: inset 0 0 0 2px var(--ouro); }
+.retrato-col { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.ap-prev { display: flex; align-items: center; gap: 12px; margin: 6px 0 4px; }
+.ap-linha { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.ap-cor { width: 44px; height: 44px; border: 0; background: var(--c); clip-path: var(--entalhe); cursor: pointer; box-shadow: inset 0 0 0 3px rgba(0,0,0,.35); }
+.ap-cor.on { box-shadow: inset 0 0 0 3px var(--ouro), inset 0 0 0 5px #000; }
 .estrelas { display: inline-flex; gap: 1px; vertical-align: middle; }
 .tag.exp { background: #1d3550; color: #a8dcff; }
 .chip.perg { background: var(--linha-esc); color: var(--tinta); box-shadow: inset 0 0 0 1px var(--rc); }

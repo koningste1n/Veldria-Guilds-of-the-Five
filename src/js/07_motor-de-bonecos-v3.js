@@ -5,9 +5,11 @@
 
 function paletaBoneco(def, pele, cabelo, c1, c2) {
   const P = {};
-  const pl = PELES[pele] || PELES[0];
+  const pl = PELES_TODAS[pele] || PELES_TODAS[0];
   P.S = pl[0]; P.s = pl[1]; P.z = pl[2]; P.Q = escurecer(pl[2], 0.3); P.e = '#1a1020';
-  [P.H, P.h, P.j] = rampa(def.cabeloCor || CABELOS[cabelo] || CABELOS[1]);
+  P.B = def.cabeca === 'caveira' ? '#bdb3a0' : rgbHex(...hexRgb(pl[1]).map((v, i) => v * 0.75 + [255, 120, 130][i] * 0.25));   // rubor / parte de dentro da orelha
+  P.m = escurecer(pl[2], 0.45); P.Y = (def.ap && RACAS[def.ap.raca] && RACAS[def.ap.raca].olhoCor) || '#e8d84a';
+  [P.H, P.h, P.j] = rampa(def.cabeloCor || CABELOS_TODOS[cabelo] || CABELOS_TODOS[1]);
   [P.A, P.a, P.b] = rampa(def.cores.a);
   [P['1'], P['2'], P['3']] = rampa(def.cores.b || def.cores.a);
   [P['4'], P['5'], P['6']] = rampa(c1); P['7'] = c2;
@@ -223,7 +225,22 @@ const POSES = {
 function quadros(anim) {
   switch (anim) {
     case 'idle': return [
-      { by: 0 }, { by: 0, dmy: 0.5, capa: 0.3 }, { by: 1, dmy: 1, capa: 0.6 }, { by: 1, dmy: 1, hy: 0.5, capa: 0.4 }, { by: 1, dmy: 0.5, capa: 0 }, { by: 0, capa: -0.3 }];
+      { by: 0 }, { by: 0, dmy: 0.5, capa: 0.3 }, { by: 1, dmy: 1, capa: 0.6 }, { by: 1, dmy: 1, hy: 0.5, capa: 0.4, piscar: true }, { by: 1, dmy: 0.5, capa: 0 }, { by: 0, capa: -0.3 }];
+    // EV3: esquiva (inclina para trás e recua), pulo (agacha, sobe encolhido, desce), cura (as duas mãos para cima),
+    // levantar (do chão depois do atordoamento)
+    case 'esquiva': return [
+      { bx: -3, by: 1, lean: -3, pf: [2, 0], pt: [-4, 0], dm: [-2, -2], dt: [-2, -1], da: 20, hx: -1.5, capa: 3, piscar: true },
+      { bx: -2, by: 0, lean: -1.5, pf: [1, 0], pt: [-2, 0], dm: [-1, -1], da: 10, hx: -0.5, capa: 1.5 }];
+    case 'pulo': return [
+      { by: 2, lean: 1, pf: [1, 0], pt: [-1, 0], dm: [-1, 1], dt: [1, 1], capa: 1 },
+      { by: -3, lean: 2, pf: [2, 4], pt: [-3, 3], dm: [-1, -3], dt: [-2, -3], capa: -3 },
+      { by: -4, lean: 1, pf: [3, 5], pt: [-1, 5], dm: [1, -2], dt: [-1, -2], capa: -2 },
+      { by: 1, lean: 1, pf: [2, 0], pt: [-2, 0], dm: [0, 1], dt: [0, 1], capa: 1.5 }];
+    case 'cura': return [
+      { by: 0, cast: true, dt: [1, -6], capa: 0.5 }, { by: -1, cast: true, dt: [1, -9], hy: -0.5, capa: 1 }, { by: -1, cast: true, dt: [1, -9.5], hy: -1, capa: 1.5 }];
+    case 'levantar': return [
+      { by: 6, bx: -1, joelhos: true, pf: [3, 2], pt: [-2, 2], dm: [2, 4], dt: [0, 4], da: 50, lean: 3, piscar: true },
+      { by: 3, joelhos: true, pf: [2, 1], pt: [-1, 1], dm: [1, 2], dt: [0, 2], da: 30, lean: 2 }];
     case 'walk': return [
       { by: 0, pf: [3, 0], pt: [-3, 0], dm: [-2, 0], dt: [2, 0], saia: 1, capa: -1.5 },
       { by: -1, pf: [1.5, 1.5], pt: [-1.5, 0], dm: [-1, 0], dt: [1, 0], saia: 0.5, capa: -2 },
@@ -242,8 +259,8 @@ function quadros(anim) {
     case 'cast': return [
       { by: 0, cast: true, dt: [0, -5], capa: 0.5 }, { by: -1, cast: true, dt: [0, -8], hy: -0.5, capa: 1 },
       { by: -1, cast: true, dt: [0, -8.5], hy: -0.5, capa: 1.5 }, { by: 0, cast: true, dt: [1, -6], capa: 0.5 }];
-    case 'hurt': return [{ bx: -2, hx: -1, hy: -0.5, dm: [-1, -1], da: 15, dt: [-1, -1], lean: -1, capa: 3 }, { bx: -1, hx: -0.5, dm: [-0.5, -0.5], da: 8, lean: -0.5, capa: 1.5 }];
-    case 'empurrao': return [{ bx: -3, by: -1, hx: -1.5, hy: -1, pf: [4, 1], pt: [2, 2], dm: [-3, -4], dt: [-2, -4], da: 40, lean: -3, capa: 4 }, { bx: -2, hx: -1, pf: [3, 0], pt: [1, 1], dm: [-2, -2], dt: [-1, -2], da: 25, lean: -2, capa: 3 }];
+    case 'hurt': return [{ hurtOlhos: true, bx: -2, hx: -1, hy: -0.5, dm: [-1, -1], da: 15, dt: [-1, -1], lean: -1, capa: 3 }, { bx: -1, hx: -0.5, dm: [-0.5, -0.5], da: 8, lean: -0.5, capa: 1.5 }];
+    case 'empurrao': return [{ hurtOlhos: true, bx: -3, by: -1, hx: -1.5, hy: -1, pf: [4, 1], pt: [2, 2], dm: [-3, -4], dt: [-2, -4], da: 40, lean: -3, capa: 4 }, { bx: -2, hx: -1, pf: [3, 0], pt: [1, 1], dm: [-2, -2], dt: [-1, -2], da: 25, lean: -2, capa: 3 }];
     case 'dash': return [{ bx: 3, lean: 4, pf: [3, 1], pt: [-6, 2], dm: [-3, -2], dt: [-4, -1], capa: -6, hx: 1 }, { bx: 2, lean: 3, pf: [4, 0], pt: [-4, 1], dm: [-2, -1], dt: [-3, 0], capa: -5, hx: 1 }];
     case 'morte': return [
       { bx: -2, hx: -1.5, hy: -1, dm: [-2, -3], dt: [-2, -3], da: 30, lean: -2, capa: 3 },
@@ -258,14 +275,16 @@ function quadros(anim) {
   }
   return [{}];
 }
-const ANIMS = ['idle', 'walk', 'run', 'atk', 'cast', 'hurt', 'empurrao', 'dash', 'morte', 'vit'];
+const ANIMS = ['idle', 'walk', 'run', 'atk', 'cast', 'hurt', 'empurrao', 'dash', 'morte', 'vit', 'esquiva', 'pulo', 'cura', 'levantar'];
 const QUADROS_POR_ANIM = Object.fromEntries(ANIMS.map((a) => [a, quadros(a).length]));
 
 /* ---- montagem de um quadro ---- */
 function montarQuadro(def, P, f) {
   if (f.deitado) return montarDeitado(def, P);
   const camadas = [];
-  const by = f.by || 0, bx = f.bx || 0, lean = f.lean || 0;
+  const Rc = def.ap ? RACAS[def.ap.raca] || {} : {};
+  const baixo = Rc.baixo ? 2 : 0, larg = Rc.largo ? 1 : 0;   // anão: corpo 2 px mais baixo, pernas curtas · ogro: 1 px mais largo de cada lado
+  const by = (f.by || 0) + baixo, bx = f.bx || 0, lean = f.lean || 0;
   const tipoArma = def.golem ? 'punho' : def.arma;
   const poses = POSES[tipoArma] || POSES.espada;
   let pose = poses.idle;
@@ -275,8 +294,8 @@ function montarQuadro(def, P, f) {
   const G = def.golem, k = def.grande ? 1.55 : 1;
   const S = (p) => (k === 1 ? p : [16 + (p[0] - 16) * k, 38 + (p[1] - 38) * k]);
   // esqueleto (facing direita): ombros, quadris e pés
-  const ombroF = S(G ? [22 + bx + lean, 20 + by] : [19.5 + bx + lean, 18 + by]);
-  const ombroT = S(G ? [10 + bx + lean, 20 + by] : [12.5 + bx + lean, 18 + by]);
+  const ombroF = S(G ? [22 + bx + lean, 20 + by] : [19.5 + larg + bx + lean, 18 + by]);
+  const ombroT = S(G ? [10 + bx + lean, 20 + by] : [12.5 - larg + bx + lean, 18 + by]);
   const quadF = S(G ? [19 + bx, 28 + by] : [17.5 + bx, 26 + by]), quadT = S(G ? [13 + bx, 28 + by] : [14.5 + bx, 26 + by]);
   const pf = f.pf || [0, 0], pt = f.pt || [0, 0];
   const peF = S([(G ? 19 : 18) + pf[0] + bx * 0.4, 36 - pf[1]]), peT = S([(G ? 13 : 14) + pt[0] + bx * 0.4, 36 - pt[1]]);
@@ -293,11 +312,11 @@ function montarQuadro(def, P, f) {
   const corManga = def.golem ? [P.M, P.n, P.N] : def.manga === 'metal' ? [P.o, P.M, P.n, P.N] : def.manga === 'pele' ? [P.S, P.s, P.z, P.Q] : def.manga === 'osso' ? [P.O, P.O, P.i] : [P.A, P.a, P.b, escurecer(P.b, 0.3)];
   const corMangaT = corManga.map((c) => escurecer(c, 0.18));
   const corMao = def.golem ? [P.M, P.n, P.N] : def.mao === 'metal' ? [P.o, P.M, P.n] : def.mao === 'osso' ? [P.O, P.O, P.i] : def.mao === 'faixa' ? [P.O, P.i, P.i] : [P.S, P.s, P.z];
-  const espBraco = def.golem ? 4.6 * k : def.mangaGrossa ? 3.4 : def.manga === 'osso' ? 2 : 3;
-  const espPerna = def.golem ? 4.4 * k : def.perna === 'osso' ? 2.2 : 3.6;
+  const espBraco = (def.golem ? 4.6 * k : def.mangaGrossa ? 3.4 : def.manga === 'osso' ? 2 : 3) + larg * 0.8;
+  const espPerna = (def.golem ? 4.4 * k : def.perna === 'osso' ? 2.2 : 3.6) + larg * 0.6;
   const corPerna = def.perna === 'osso' ? [P.O, P.O, P.i] : def.golem ? [P.M, P.n, P.N] : [P.V, P.v, P.u, escurecer(P.u, 0.3)];
   const corBota = def.perna === 'osso' ? [P.O, P.i, P.i] : def.golem ? [P.n, P.N, P.N] : [P.F, P.f, P.k, escurecer(P.k, 0.3)];
-  const lBraco = (G ? 5 : 4.9) * k, lPerna = (G ? 4 : 5.5) * k;
+  const lBraco = (G ? 5 : 4.9) * k, lPerna = (G ? 4 : baixo ? 4.4 : 5.5) * k;
   const capa = f.capa || 0;
 
   // capa (atrás de tudo), com balanço que aumenta para baixo
@@ -309,17 +328,18 @@ function montarQuadro(def, P, f) {
       const xa = 12.5 + bx - t * 4 + sway, xb = 18 + bx - t * 2 + sway * 0.6;
       for (let x = Math.floor(xa); x <= Math.ceil(xb); x++) {
         const borda = x < xa + 1 ? 0 : x > xb - 1.2 ? 2 : 1;
-        ponto(L, x, topo + y, y > alt - 1.5 ? P['6'] : [P['4'], P['5'], P['6']][borda]);
+        ponto(L, x, topo + y, def.evoCor ? (y > alt - 1.5 ? P.d : [P.C, P.c, P.d][borda]) : y > alt - 1.5 ? P['6'] : [P['4'], P['5'], P['6']][borda]);
       }
     }
     camadas.push(L);
   }
   if (def.aljava) { const L = camada(false); carimbar(L, ALJAVA, 8 + bx, 15 + by, P); camadas.push(L); }
-  if (def.cabeloLongo) {
-    const L = camada(false);
-    CABELO_LONGO.rows.forEach((row, j) => { const t = j / CABELO_LONGO.rows.length, off = Math.round(capa * t * t * 0.9); for (let i = 0; i < row.length; i++) if (row[i] !== '.') ponto(L, 10 + bx + (f.hx || 0) + i + off, 4 + by + CABELO_LONGO.y + j + (f.hy || 0), P[row[i]]); });
-    camadas.push(L);
-  }
+  { const pt = cabeloDeTras(def);
+    if (pt) {
+      const L = camada(false);
+      pt.rows.forEach((row, j) => { const t = j / pt.rows.length, off = Math.round(capa * t * t * 0.9) + Math.round(lean * 0.6); for (let i = 0; i < row.length; i++) if (row[i] !== '.') ponto(L, 10 + bx + (f.hx || 0) + pt.x + i + off, 4 + by + pt.y + j + (f.hy || 0), P[row[i]]); });
+      camadas.push(L);
+    } }
   // braço de trás (ombro → cotovelo → mão)
   { const L = camada(true);
     const [cx, cy, hx2, hy2] = articulacao(ombroT[0], ombroT[1], maoT[0], maoT[1], lBraco, lBraco, 1);
@@ -344,21 +364,23 @@ function montarQuadro(def, P, f) {
     else {
       const T = TRONCOS[def.torso] || TRONCOS.tunica;
       // inclinação: linhas de cima deslocam mais que as de baixo
-      T.forEach((row, j) => { const off = Math.round(lean * (1 - j / 10)); for (let i = 0; i < row.length; i++) if (row[i] !== '.') ponto(L, 11 + bx + i + off, 16 + by + j, P[row[i]]); });
-      if (def.ombreiras) carimbar(L, OMBREIRAS.rows, 11 + bx + lean + OMBREIRAS.x, 16 + by + OMBREIRAS.y, P);
+      T.forEach((row, j) => { if (larg) row = row.slice(0, 5) + row.slice(4, 6) + row.slice(5); const off = Math.round(lean * (1 - j / 10)); for (let i = 0; i < row.length; i++) if (row[i] !== '.') ponto(L, 11 - larg + bx + i + off, 16 + by + j, P[row[i]]); });
+      if (def.ombreiras === 'pelo') carimbar(L, OMBREIRAS_PELO.rows, 11 + bx + lean + OMBREIRAS_PELO.x, 16 + by + OMBREIRAS_PELO.y, P);
+      else if (def.ombreiras) carimbar(L, OMBREIRAS.rows, 11 + bx + lean + OMBREIRAS.x, 16 + by + OMBREIRAS.y, P);
       if (def.colar) carimbar(L, COLAR.rows, 11 + bx + lean + COLAR.x, 16 + by + COLAR.y, P);
       // cinto escuro na base do tronco (peso visual)
-      for (let i = 1; i < 9; i++) ponto(L, 11 + bx + i, 25.5 + by, P['6']);
+      for (let i = 1 - larg; i < 9 + larg; i++) ponto(L, 11 + bx + i, 25.5 + by, P['6']);
     }
     camadas.push(L); }
   if (def.saia) {
     const L = camada(true), sd = (f.saia || 0) + capa * 0.4;
-    SAIA.forEach((row, j) => { const off = j >= 2 ? Math.round(sd * (j / 9)) : 0; for (let i = 0; i < row.length; i++) if (row[i] !== '.') ponto(L, 10 + bx + i + off, 26 + by + j, P[row[i]]); });
+    SAIA.forEach((row, j) => { if (j >= SAIA.length - baixo) return; if (larg) row = row.slice(0, 6) + row.slice(5, 7) + row.slice(6); const off = j >= 2 ? Math.round(sd * (j / 9)) : 0; for (let i = 0; i < row.length; i++) if (row[i] !== '.') ponto(L, 10 - larg + bx + i + off, 26 + by + j, P[row[i]]); });
     camadas.push(L);
   }
   // cabeça
   { const L = camada(true), hx = 10 + bx + lean + (f.hx || 0), hy = 4 + by + (f.hy || 0);
     if (def.golem) { const [gx, gy] = S([12 + bx + lean + (f.hx || 0), 9 + by + (f.hy || 0)]); carimbar(L, k > 1 ? CABECA_COLOSSO : CABECA_GOLEM, gx, gy, P); }
+    else if (def.ap) { desenharCabeca34(camadas, L, def, P, hx, hy, f); }
     else {
       carimbar(L, CABECAS[def.cabeca || 'normal'], hx, hy, P);
       if (def.barba) carimbar(L, BARBA.rows, hx + BARBA.x, hy + BARBA.y, P);
@@ -368,7 +390,8 @@ function montarQuadro(def, P, f) {
       if (def.faixa) carimbar(L, ['.55555555555', '6655555555..', '56..........', '6...........'], hx, hy + 3, P);
       if (def.aureola) carimbar(L, AUREOLA.rows, hx + AUREOLA.x, hy + AUREOLA.y + (f.by === 1 ? -1 : 0), P);
     }
-    camadas.push(L); }
+    if (!def.ap || def.golem) camadas.push(L);
+    if (def.ap && def.aureola) { const La = camada(false); carimbar(La, AUREOLA.rows, hx + AUREOLA.x, hy + AUREOLA.y - 2 + (f.by === 1 ? -1 : 0), P); camadas.push(La); } }
   if (def.cachecol) { const L = camada(true); CACHECOL.rows.forEach((row, j) => { const off = Math.round(capa * j * 0.3); for (let i = 0; i < row.length; i++) if (row[i] !== '.') ponto(L, CACHECOL.x + bx + lean + i + off, CACHECOL.y + 3 + by + j, P[row[i]]); }); camadas.push(L); }
   if (def.escudo) { const L = camada(true); carimbar(L, ESCUDO_ARMA, maoT[0] - 7, maoT[1] - 8, P); camadas.push(L); }
   // arma + braço da frente
@@ -388,6 +411,49 @@ function montarDeitado(def, P) {
   const cam = montarQuadro(def, P, { pf: [2, 0], pt: [-1, 0], dm: [-1, -2], dt: [-1, -2], da: 60, hx: -1 });
   cam.deitado = true;
   return cam;
+}
+
+/* ---- cabeça 3/4 (EV2): pele + rosto da raça, cabelo da frente, orelhas por cima do cabelo, chapéu ---- */
+const CABECA_CAVEIRA = ['...OOOOOO...', '..OOOOOOOO..', '.OOOOOOOOOO.', '.OOOOOOOOOOO', 'iOOOOOOOOOOO', 'iOOOOeeOOeeO', 'iOOOOeeOOeeO', 'iiOOOOOOOOOO', '.iiOOOOeOOO.', '.iiiOeOeOeO.', '...iiOOOO...'];
+function cabeloDeTras(def) {
+  if (!def.ap) return def.cabeloLongo ? { x: CABELO_LONGO.x, y: CABELO_LONGO.y, rows: CABELO_LONGO.rows } : null;
+  const ch = def.capacete && CHAPEUS[def.capacete];
+  if (ch && ch.cobre) return null;
+  const pe = PENTEADOS[def.ap.penteado];
+  return pe && pe.t ? pe.t : null;
+}
+function desenharCabeca34(camadas, L, def, P, hx, hy, f = {}) {
+  const ap = def.ap, Rc = RACAS[ap.raca] || RACAS.humano;
+  const ch = def.capacete ? CHAPEUS[def.capacete] : null, cobre = !!(ch && ch.cobre);
+  const tr = (lista, LL = L) => lista.forEach(([x, y, c]) => ponto(LL, hx + x, hy + y, P[c]));
+  if (def.cabeca === 'caveira') carimbar(L, CABECA_CAVEIRA, hx, hy, P);
+  else {
+    carimbar(L, Rc.largo ? CABECA_LARGA : CABECA_BASE, hx, hy, P);
+    if (!Rc.orelha && !cobre) tr(ROSTO.orelha);
+    if (Rc.sobrancelha) tr(ROSTO.sobrancelha);
+    if (def.olho) tr([[6, 6, 'C'], [6, 7, 'c'], [9, 6, 'C'], [9, 7, 'c']]);
+    else if (f.piscar || f.hurtOlhos) tr([[5, 7, 'e'], [6, 7, 'e'], [9, 7, 'e'], [10, 7, 'e']]);   // piscando / careta
+    else tr(Rc.olhoCor ? ROSTO.olhosGato : Rc.presas === 'ogro' ? ROSTO.olhosPequenos : ROSTO.olhos);
+    if (Rc.nariz) tr(ROSTO.nariz);
+    if (def.pintura) tr(PINTURA_GUERRA);
+    if (!def.mascara) {
+      if (Rc.presas === 'orc') tr(ROSTO.presasOrc);
+      else if (Rc.presas === 'ogro') tr(ROSTO.presasOgro);
+      else if (Rc.focinho === 'porco') tr(ROSTO.focinhoPorco);
+      else if (Rc.focinho === 'gato') tr(ROSTO.focinhoGato);
+      else tr(ROSTO.boca);
+      if (!Rc.presas) tr(ROSTO.rubor);
+    }
+    const bb = BARBAS[BARBAS_IDS[ap.barba] || ''];
+    if (bb && !def.mascara) carimbar(L, bb.rows, hx + bb.x, hy + bb.y, P);
+    if (def.mascara) carimbar(L, MASCARA.rows, hx + MASCARA.x, hy + MASCARA.y, P);
+  }
+  camadas.push(L);
+  const pe = PENTEADOS[ap.penteado];
+  if (!cobre && def.cabeca !== 'caveira' && pe && pe.f.length) { const Lh = camada(true); carimbar(Lh, pe.f, hx + pe.x, hy + pe.y, P); camadas.push(Lh); }
+  if (Rc.orelha && !cobre && def.cabeca !== 'caveira' && !(ch && Rc.orelha !== 'elfo' && Rc.orelha !== 'curta')) { const Lo = camada(true); tr(ORELHAS[Rc.orelha], Lo); camadas.push(Lo); }
+  if (ch) { const Lc = camada(true); carimbar(Lc, ch.rows, hx + ch.x, hy + ch.y, P); camadas.push(Lc); }
+  if (def.faixa) { const Lf = camada(true); carimbar(Lf, ['.55555555555', '6655555555..', '56..........', '6...........'], hx, hy + 3, P); camadas.push(Lf); }
 }
 
 /* ---- achatamento: contorno seletivo entre partes + contorno externo ---- */
@@ -442,7 +508,52 @@ function achatar(camadas, branco) {
 }
 
 /* ---- conjunto de sprites de um "look": tipo|pele|cabelo|cor1|cor2 ---- */
-function lookDe(m, cor1, cor2) { return `${m.visual || m.classe}|${m.pele ?? 0}|${m.cabelo ?? 1}|${cor1}|${cor2}`; }
+// Look = tipo|pele|cabelo|cor1|cor2|raca|penteado|barba|roupa|corRoupa|evo (EV2). Pele e cabelo são índices globais.
+function lookDe(m, cor1, cor2) {
+  const tipo = m.visual || m.classe;
+  if (!m.ap && !m.visual && m.id && CLASSES[m.classe]) garantirAparencia(m);
+  const ap = m.ap;
+  if (!ap) return `${tipo}|${m.pele ?? 0}|${m.cabelo ?? 1}|${cor1}|${cor2}||||||${m.evolucao || ''}`;
+  const Rc = RACAS[ap.raca] || RACAS.humano;
+  return `${tipo}|${Rc.peles[ap.pele] ?? Rc.peles[0]}|${ap.cabelo}|${cor1}|${cor2}|${ap.raca}|${ap.penteado}|${ap.barba}|${ap.roupa}|${ap.corRoupa}|${m.evolucao || ''}`;
+}
+// Visual especial (Campeões, Líderes): aparência fixa
+const AP_ESPECIAL = {
+  gorm: { raca: 'anao', penteado: 'careca', barba: 2 }, nayla: { raca: 'elfo', penteado: 'longo', barba: 0 }, okon: { raca: 'humano', penteado: 'careca', barba: 0 },
+  aurelia: { raca: 'humano', penteado: 'longo', barba: 0 }, ravik: { raca: 'humano', penteado: 'franja', barba: 0 }, barao: { raca: 'humano', penteado: 'curto', barba: 3 },
+  corvina: { raca: 'elfo', penteado: 'longo', barba: 0 }, rei: { raca: 'humano', penteado: 'curto', barba: 0 },
+  selene_fogo: { raca: 'elfo', penteado: 'longo', barba: 0 }, selene_gelo: { raca: 'elfo', penteado: 'longo', barba: 0 }, selene_raio: { raca: 'elfo', penteado: 'longo', barba: 0 },
+  esqueleto: { raca: 'humano', penteado: 'careca', barba: 0 },
+};
+const PENTEADO_CLASSE = { guardiao: 'curto', machadeiro: 'espetado', lanceira: 'longo', arqueira: 'rabo', piromante: 'curto', criomante: 'longo', clerica: 'longo', lamina: 'franja', bardo: 'cacheado', invocador: 'franja' };
+function defDoLook(tipo, campos) {
+  const base = BONECOS[tipo] || BONECOS.guardiao;
+  if (base.golem) return base;
+  const [raca, pent, barba, roupa, corRoupa, evo] = campos;
+  let ap;
+  if (raca) ap = { raca, penteado: pent, barba: +barba || 0, evo: evo || '' };
+  else if (AP_ESPECIAL[tipo]) ap = Object.assign({ evo: '' }, AP_ESPECIAL[tipo]);
+  else ap = { raca: 'humano', penteado: PENTEADO_CLASSE[tipo] || 'curto', barba: base.barba ? 1 : 0, evo: evo || '' };
+  const r = raca ? (ROUPAS[tipo] || [])[+roupa || 0] || {} : {};
+  const def = Object.assign({}, base, r, { cores: Object.assign({}, base.cores), ap, barba: false, cabeloLongo: false });
+  if ('capacete' in r) def.capacete = r.capacete;
+  const cr = raca && +corRoupa ? (CORES_ROUPA[tipo] || [])[+corRoupa] : null;
+  if (cr) def.cores.a = cr;
+  const EVv = evoVisual(tipo, evo);
+  if (EVv) {   // evolução: peças novas, olhos/orbe na cor da evolução, metal puxado para ela
+    def.evo = evo; def.evoCor = EVv.cor; def.cores.c = EVv.cor;
+    const pc = EVv.pecas;
+    if (pc.capa) def.capa = true;
+    if (pc.ombreiras && def.ombreiras !== 'pelo') def.ombreiras = true;
+    if (pc.olho) def.olho = true;
+    if (pc.colar) def.colar = true;
+    if (pc.cachecol) def.cachecol = true;
+    if (pc.aureola) def.aureola = true;
+    if (pc.pintura) def.pintura = true;
+    def.metal = (def.metal || METAL_PADRAO).map((m, i) => (i < 2 ? misturar(m, EVv.cor, 0.22) : misturar(m, EVv.cor, 0.12)));
+  }
+  return def;
+}
 const cacheSprites = new Map();
 // Versão branca de um quadro (piscar ao levar dano): mantém o contorno, clareia o resto
 function brancoDe(cv) {
@@ -470,30 +581,27 @@ function spriteSet(look) {
   let set = cacheSprites.get(look);
   if (set) { if (cacheSprites.size > LIMITE_SPRITES / 2) { cacheSprites.delete(look); cacheSprites.set(look, set); } return set; }
   if (cacheSprites.size >= LIMITE_SPRITES) for (const k of [...cacheSprites.keys()]) { if (cacheSprites.size < LIMITE_SPRITES) break; if (!emUsoNaArena(k)) cacheSprites.delete(k); }
-  const [tipo, pele, cabelo, c1, c2] = look.split('|');
-  const def = BONECOS[tipo] || BONECOS.guardiao;
+  const [tipo, pele, cabelo, c1, c2, ...extra] = look.split('|');
+  const def = defDoLook(tipo, extra);
   const P = paletaBoneco(def, +pele, +cabelo, c1, c2);
-  set = { pal: P, vistas: {} };
-  for (const v of VISTAS) {
-    const q = {}, br = {}, vs = { quadros: {}, brancos: {} };
-    const montar = (anim) => (v === 'lado' ? quadros(anim).map((f) => achatar(montarQuadro(def, P, f), false)) : quadrosVista(anim).map((f) => achatar(montarQuadroVista(def, P, f, v === 'costas'), false)));
+  set = { pal: P, def, vistas: {} };
+  { const q = {}, br = {}, vs = { quadros: {}, brancos: {} };
+    const montar = (anim) => quadros(anim).map((f) => achatar(montarQuadro(def, P, f), false));
     for (const anim of ANIMS) {
       Object.defineProperty(vs.quadros, anim, { enumerable: true, get: () => q[anim] || (q[anim] = montar(anim)) });
       Object.defineProperty(vs.brancos, anim, { enumerable: true, get: () => br[anim] || (br[anim] = vs.quadros[anim].map(brancoDe)) });
     }
-    set.vistas[v] = vs;
-  }
+    set.vistas.lado = set.vistas.frente = set.vistas.costas = vs; }
   set.quadros = set.vistas.lado.quadros; set.brancos = set.vistas.lado.brancos;
   Object.defineProperty(set, 'idle0', { enumerable: true, get: () => set.quadros.idle[0] });
   cacheSprites.set(look, set);
   return set;
 }
-const VISTAS = ['lado', 'frente', 'costas'];
+const VISTAS = ['lado'];   // EV2: um só ponto de vista (3/4); 'frente' e 'costas' são apelidos dele
 // Pré-carrega o que aparece logo no início da luta; o resto é montado na primeira vez que for usado
 function precarregar(look) {
   const s = spriteSet(look);
   for (const a of ['idle', 'walk', 'run', 'atk', 'hurt']) { s.vistas.lado.quadros[a]; s.vistas.lado.brancos[a]; }
-  for (const v of ['frente', 'costas']) for (const a of ['idle', 'walk']) s.vistas[v].quadros[a];
   return s;
 }
 // Retrato recortado (interface)

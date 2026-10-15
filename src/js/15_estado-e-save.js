@@ -1,6 +1,6 @@
 /* ============================ ESTADO E SAVE ============================ */
 const SAVE_KEY = 'ligaDasLaminas.save.v1';   // mesma chave da Fase 1: a versão fica dentro do save
-const VERSAO = 14;   // v14 (E5a): m.evolucao (null | 'a' | 'b'), nota das evoluções; v13 (E5a): v13 (E5a): mesmo formato; teto 30 → 60 → 100 vem das Ascensões que o mercenário já tem (nada a migrar) e marca a nota; v12 (E4 e): v12 (E4 e): stats.rodadas (lutas = partidas; rodadas = lutas dentro delas) e a nota da partida melhor de 3; v11 (E4 d): só marcava a nota da câmera nova; v10 (E4 d): formato igual ao v9, só marca a nota da tela de formação; v9 (E4 c): pos (casa na formação 3×3) e postura; v8 só marcava a nota do cérebro novo
+const VERSAO = 15;   // v15 (EV): m.ap = aparência (raça, pele, penteado, cabelo, barba, roupa, corRoupa), só visual; v14 (E5a): m.evolucao (null | 'a' | 'b'), nota das evoluções; v13 (E5a): v13 (E5a): mesmo formato; teto 30 → 60 → 100 vem das Ascensões que o mercenário já tem (nada a migrar) e marca a nota; v12 (E4 e): v12 (E4 e): stats.rodadas (lutas = partidas; rodadas = lutas dentro delas) e a nota da partida melhor de 3; v11 (E4 d): só marcava a nota da câmera nova; v10 (E4 d): formato igual ao v9, só marca a nota da tela de formação; v9 (E4 c): pos (casa na formação 3×3) e postura; v8 só marcava a nota do cérebro novo
 const consumiveisZerados = () => Object.fromEntries(Object.keys(CONSUMIVEIS).map((k) => [k, 0]));
 const criadorPadrao = () => ({ liberado: false, usado: false, sorteMult: 1, tempoMult: 1 });
 const statsPadrao = () => ({
@@ -93,6 +93,14 @@ function normalizarMerc(m) {
   if (!m.tatica) m.tatica = 'auto';
   m.nivel = clamp(m.nivel | 0 || 1, 1, NIVEL_TETO);
   if (m.evolucao !== 'a' && m.evolucao !== 'b') m.evolucao = null;
+  // v15: aparência (só visual). Inválida → refeita a partir do id; quem não tem ganha uma estável (mesma cor de cabelo de antes)
+  if (m.ap && (typeof m.ap !== 'object' || !RACAS[m.ap.raca] || !PENTEADOS[m.ap.penteado])) delete m.ap;
+  if (m.ap) {
+    const A = m.ap, Rc = RACAS[A.raca];
+    A.pele = clamp(A.pele | 0, 0, Rc.peles.length - 1); A.cabelo = clamp(A.cabelo | 0, 0, CABELOS_TODOS.length - 1);
+    A.barba = clamp(A.barba | 0, 0, 3); A.roupa = clamp(A.roupa | 0, 0, 2); A.corRoupa = clamp(A.corRoupa | 0, 0, 3);
+  }
+  garantirAparencia(m);
   m.xp = Math.max(0, +m.xp || 0);
   m.stats = Object.assign(statsMercPadrao(), m.stats || {});
   return m;
@@ -154,6 +162,7 @@ function validarSave(s) {
   if (versaoAntiga < 12 && !nov.includes(12) && st.stats.lutas > 0) nov.push(12);
   if (versaoAntiga < 13 && !nov.includes(13) && st.stats.lutas > 0) nov.push(13);
   if (versaoAntiga < 14 && !nov.includes(14) && st.stats.lutas > 0) nov.push(14);
+  if (versaoAntiga < 15 && !nov.includes(15) && st.stats.lutas > 0) nov.push(15);
   st.novidades = nov.filter((f) => f >= 2 && NOVIDADES[f]).sort((a, b) => a - b);   // só fases com nota (antes: teto fixo que esquecia a nota nova)
   if (versaoAntiga < 12) st.stats.rodadas = st.stats.lutas;   // até o v11 toda partida tinha uma luta só
   if (versaoAntiga < 3 && st.tutorial >= 4) st.tutorial = 99;   // quem já viu o tutorial antigo não o repete

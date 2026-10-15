@@ -103,7 +103,7 @@ async def main():
         await pg.add_init_script("if (!sessionStorage.getItem('v13')) { sessionStorage.setItem('v13', '1'); localStorage.setItem('ligaDasLaminas.save.v1', " + json.dumps(json.dumps(v13)) + "); }")
         await pg.goto(ARQ.as_uri()); await pg.wait_for_timeout(1500)
         st = await pg.evaluate(SAVE)
-        checa(st['versao'] == 14 and all(m['evolucao'] is None for m in st['mercs']), 'save v13 abre como v14 com evolucao = null em todos')
+        checa(st['versao'] == 15 and all(m['evolucao'] is None for m in st['mercs']), 'save v13 abre como v15 com evolucao = null em todos')
         checa(14 in st['novidades'] or await pg.is_visible('[data-act="fechar-novidades"]'), 'mostra a novidade das evoluções')
 
         ov = await pg.evaluate('document.documentElement.scrollWidth - innerWidth')

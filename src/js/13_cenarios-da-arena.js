@@ -38,7 +38,7 @@ function desenharFundo(b, cenario = 'arena') {
     const coresPub = ['#e8743b', '#f0c24b', '#6cc76a', '#5aa7e6', '#d35d8e', '#e9dfc9', '#bd86f5', '#c0392b', '#f4efe2', '#2f8f83'];
     for (let fila = 0; fila < 5; fila++) for (let x = 2 + (fila % 2) * 3; x < W - 3; x += 6) {
       if (R() < 0.1) continue;
-      Arena.publico.push({ x, y: 16 + fila * 7, cor: coresPub[Math.floor(R() * coresPub.length)], pele: PELES[Math.floor(R() * 4)][1], cabelo: CABELOS[Math.floor(R() * 6)], fase: R() * 10 });
+      Arena.publico.push({ x, y: 16 + fila * 7, cor: coresPub[Math.floor(R() * coresPub.length)], pele: PELES_TODAS[Math.floor(R() * PELES_TODAS.length)][1], cabelo: CABELOS_TODOS[Math.floor(R() * CABELOS_TODOS.length)], fase: R() * 10 });
     }
     px(W / 2 - 24, 13, 48, 4, '#7a1f22'); for (let x = W / 2 - 24; x < W / 2 + 24; x += 6) px(x, 13, 3, 4, '#f0c24b');
     px(W / 2 - 22, 17, 44, 1, '#5e1418');

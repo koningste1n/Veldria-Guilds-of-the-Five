@@ -77,6 +77,16 @@ const ACOES = {
   'time-rem': (el) => { STATE.time = STATE.time.filter((x) => x !== +el.dataset.id); ajustarTime(); aposMudanca(); },
   capitao: (el) => { STATE.capitao = +el.dataset.id; toast('Novo capitão definido.', 'ok'); aposMudanca(); },
   linha: (el) => { const m = mercPorId(+el.dataset.id); m.pos = posDe(el.dataset.v === 'frente' ? 0 : 2, posFileira(m.pos)); m.linha = linhaDePos(m.pos); aposMudanca(); },
+  aparencia: (el) => { const m = mercPorId(+el.dataset.id); if (m) abrirModal(htmlAparencia(m), { dados: { aparencia: m.id } }); },
+  'ap-set': (el) => {
+    const m = mercPorId(+el.dataset.id); if (!m) return;
+    garantirAparencia(m);
+    const k = el.dataset.k, v = el.dataset.v;
+    m.ap[k] = k === 'raca' || k === 'penteado' ? v : +v;
+    if (k === 'raca') m.ap.pele = Math.min(m.ap.pele, RACAS[v].peles.length - 1);
+    aposMudanca();
+  },
+  'ap-sortear': (el) => { const m = mercPorId(+el.dataset.id); if (!m) return; m.ap = sortearAparencia(m.classe, m.nome); aposMudanca(); },
   tatica: (el) => { mercPorId(+el.dataset.id).tatica = el.dataset.v; aposMudanca(); },
   postura: (el) => { mercPorId(+el.dataset.id).postura = POSTURAS[el.dataset.v] ? el.dataset.v : 'auto'; aposMudanca(); },
   // grade de formação: 1º toque seleciona o mercenário; 2º toque numa casa move (ou troca de lugar com quem está lá)

@@ -365,6 +365,11 @@ label { font-family: var(--f-display); font-size: 13px; color: var(--muted); tex
 .card.campeao, .slot.campeao { box-shadow: inset 0 0 0 2px var(--ouro-esc); background: linear-gradient(180deg, #3a2d1a, var(--painel2) 60%); }
 .slot.campeao.capitao { box-shadow: inset 0 0 0 2px var(--ouro); }
 .retrato.campeao { box-shadow: inset 0 0 0 2px var(--ouro); }
+.retrato-col { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.ap-prev { display: flex; align-items: center; gap: 12px; margin: 6px 0 4px; }
+.ap-linha { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.ap-cor { width: 44px; height: 44px; border: 0; background: var(--c); clip-path: var(--entalhe); cursor: pointer; box-shadow: inset 0 0 0 3px rgba(0,0,0,.35); }
+.ap-cor.on { box-shadow: inset 0 0 0 3px var(--ouro), inset 0 0 0 5px #000; }
 .estrelas { display: inline-flex; gap: 1px; vertical-align: middle; }
 .tag.exp { background: #1d3550; color: #a8dcff; }
 .chip.perg { background: var(--linha-esc); color: var(--tinta); box-shadow: inset 0 0 0 1px var(--rc); }
@@ -1272,6 +1277,189 @@ const BONECOS = {
 };
 
 
+/* ============================ APARÊNCIA (EV2) ============================
+   Cada mercenário tem raça, pele, penteado, cor de cabelo, barba e uma das roupas da classe.
+   Só visual: nada aqui muda atributos. Vista 3/4 (estilo Eslabong): corpo de lado, rosto com os dois olhos.
+   Look = "tipo|pele|cabelo|cor1|cor2|raca|penteado|barba|roupa|corRoupa|evo" (os 5 primeiros campos são os de antes;
+   looks antigos, com 5 campos, continuam válidos e ganham a aparência padrão). */
+
+const RACAS = {
+  humano: { nome: 'Humano', peles: [0, 1, 2, 3, 4, 5] },
+  elfo: { nome: 'Elfo', peles: [0, 1, 6, 3, 4], orelha: 'elfo' },
+  anao: { nome: 'Anão', peles: [0, 1, 2, 3, 5], baixo: true, nariz: true, barbaChance: 0.85 },
+  orc: { nome: 'Orc', peles: [7, 8, 9], orelha: 'curta', presas: 'orc', sobrancelha: true },
+  ogro: { nome: 'Ogro', peles: [10, 11, 12], orelha: 'curta', presas: 'ogro', largo: true, sobrancelha: true, nariz: true },
+  porcino: { nome: 'Porcino', peles: [13, 14, 15], focinho: 'porco', orelha: 'porco' },
+  felino: { nome: 'Felino', peles: [16, 17, 18, 19], focinho: 'gato', orelha: 'gato', olhoCor: '#e8d84a' },
+};
+const RACAS_IDS = Object.keys(RACAS);
+const PESO_RACA = { humano: 34, elfo: 15, anao: 11, orc: 13, ogro: 7, porcino: 10, felino: 10 };
+// Tons de pele [brilho, base, sombra]. 0–3 são os de antes (saves antigos ficam com a mesma cor)
+const PELES_TODAS = [
+  ['#f6d2ae', '#e6b088', '#bf8562'], ['#e8b88c', '#cf9468', '#a06a48'], ['#b97c54', '#96603e', '#6e4430'], ['#7a4e36', '#5e3a28', '#3e2618'],
+  ['#fbe1c8', '#f0c4a0', '#cf9a78'], ['#5a3a2a', '#45291c', '#2c1a12'], ['#e0c49a', '#c9a676', '#9c7c52'],
+  ['#9fcf6a', '#7aae4a', '#4f7f32'], ['#8bb86e', '#6a9450', '#466a36'], ['#b6c46a', '#93a24a', '#66732f'],     // orc
+  ['#a9b4b8', '#8a969c', '#5e6a72'], ['#b4a888', '#968a6a', '#6a6048'], ['#9aa8c4', '#7a88a6', '#55607c'],     // ogro
+  ['#ffc8c8', '#f2a0a6', '#c8707e'], ['#e8b0a0', '#c98a7a', '#9a5e52'], ['#c49a8a', '#a07464', '#704c40'],     // porcino
+  ['#ffcf8a', '#f0a04a', '#b8702e'], ['#d8d4d0', '#aaa4a0', '#77706c'], ['#5a5260', '#3e3846', '#26222c'], ['#fff4e4', '#ecdcc4', '#c0ac90'],   // felino
+];
+// Cores de cabelo. 0–5 são as de antes
+const CABELOS_TODOS = ['#2b1d16', '#6b4a2b', '#c88b3a', '#d8b25a', '#9a3b2a', '#e3ddd2', '#232a45', '#c4562a', '#b83232', '#8d8f99', '#4a2a5a', '#2f5a4a'];
+const NOMES_FEMININOS = new Set(['Bruna', 'Mirela', 'Kessa', 'Ilsa', 'Nadja', 'Yara', 'Luma', 'Selma', 'Zaira', 'Oriana', 'Lia', 'Mara', 'Nuna', 'Vesna', 'Iris', 'Edda', 'Petra', 'Brisa', 'Fiona', 'Helga', 'Jade', 'Lorena', 'Olga', 'Quitéria', 'Rosa', 'Tereza', 'Valquíria', 'Xica']);
+
+/* ---- cabeças por raça: 12×11, rosto virado para a direita. S brilho · s pele · z sombra ---- */
+const CABECA_BASE = [
+  '...SSSSs....', '..SSSSssss..', '.SSssssssss.', '.Sssssssssss', 'zsssssssssss', 'zsssssssssss',
+  'zsssssssssss', 'zzssssssssss', '.zssssssssss', '.zzssssssss.', '...zzzsss...'];
+const CABECA_LARGA = [
+  '...SSSSs....', '..SSSSssss..', '.SSssssssss.', '.Sssssssssss', 'zsssssssssss', 'zsssssssssss',
+  'zsssssssssss', 'zzsssssssssss', '.zsssssssssss', '.zzsssssssss.', '..zzzzsssss..'];
+// Traços do rosto: [x, y, código] relativos à cabeça
+const ROSTO = {
+  olhos: [[6, 6, 'e'], [6, 7, 'e'], [9, 6, 'e'], [9, 7, 'e']],
+  olhosPequenos: [[6, 6, 'e'], [9, 6, 'e'], [6, 7, 'z'], [9, 7, 'z']],
+  olhosGato: [[6, 6, 'Y'], [6, 7, 'e'], [9, 6, 'Y'], [9, 7, 'e']],
+  boca: [[8, 9, 'm']],
+  rubor: [[5, 8, 'B'], [10, 8, 'B']],
+  orelha: [[2, 6, 'S'], [2, 7, 's'], [3, 7, 'z']],
+  sobrancelha: [[5, 5, 'z'], [6, 5, 'z'], [7, 5, 'z'], [8, 5, 'z'], [9, 5, 'z'], [10, 5, 'z']],
+  nariz: [[11, 6, 'S'], [12, 7, 's'], [11, 7, 's'], [11, 8, 'z']],
+  presasOrc: [[7, 9, 'e'], [8, 9, 'e'], [9, 9, 'e'], [10, 9, 'e'], [7, 8, 'O'], [10, 8, 'O']],
+  presasOgro: [[6, 9, 'e'], [7, 9, 'e'], [8, 9, 'e'], [9, 9, 'e'], [10, 9, 'e'], [11, 9, 'e'], [6, 8, 'O'], [11, 8, 'O'], [7, 10, 's'], [8, 10, 's'], [9, 10, 's'], [10, 10, 's'], [11, 10, 'z']],
+  focinhoPorco: [[10, 7, 'S'], [11, 7, 'S'], [12, 7, 'S'], [10, 8, 's'], [11, 8, 'e'], [12, 8, 's'], [10, 9, 'z'], [11, 9, 'z'], [12, 9, 'z'], [9, 9, 'm']],
+  focinhoGato: [[11, 7, 'B'], [10, 8, 'z'], [11, 8, 'm'], [12, 7, 'O'], [12, 8, 'O'], [13, 6, 'O'], [13, 8, 'O']],
+};
+// Orelhas que ficam POR CIMA do cabelo
+const ORELHAS = {
+  elfo: [[3, 7, 's'], [2, 6, 's'], [2, 7, 'z'], [1, 5, 'S'], [1, 6, 'B'], [0, 4, 'S'], [0, 5, 's'], [-1, 3, 'S']],
+  curta: [[2, 6, 's'], [1, 5, 'S'], [2, 7, 'z'], [1, 6, 'z']],
+  porco: [[1, -1, 'S'], [2, -1, 'S'], [2, 0, 's'], [3, 0, 'B'], [3, 1, 's'], [7, -1, 'S'], [8, -1, 'S'], [8, 0, 'B'], [9, 0, 's'], [9, 1, 'z']],
+  gato: [[1, -3, 'S'], [1, -2, 'S'], [2, -2, 'B'], [1, -1, 's'], [2, -1, 'B'], [3, -1, 's'], [8, -3, 'S'], [8, -2, 'S'], [9, -2, 'B'], [7, -1, 's'], [8, -1, 'B'], [9, -1, 's'], [10, -1, 'z']],
+};
+
+/* ---- penteados: f = frente (por cima da cabeça), t = trás (atrás do corpo). H brilho · h cabelo · j sombra ---- */
+const PENTEADOS = {
+  curto: { nome: 'Curto', x: -1, y: -1, f: [
+    '....hhhhhh....', '..hhHHHhhhh...', '.hhHHhhhhhhhh.', '.hHhhhhhhhhhhh', 'hhhhhhhhhhhhhh', 'hhhhhhjhhjhjhh', 'jhhhj.........', 'jjhh..........', '.jj...........'] },
+  espetado: { nome: 'Espetado', x: -2, y: -4, f: [
+    '.....h...h.....', '....hh..hh..h..', '..h.hHh.hHhhh..', '..hhHHhhHhhhh..', '.hhHHhhhhhhhhhh', 'hhhHhhhhhhhhhhh', '.hhhhhhhhhhhhhh', 'hhhhhhhhhjhhjhh', '.hhhhhhjj.hj.j.', 'hhhhhj.........', '.jhhj..........', '..jj...........'] },
+  franja: { nome: 'Franja', x: -1, y: -3, f: [
+    '.....h..h.....', '...hhhhhhhh...', '.hhHHHhhhhhhh.', 'hhHHhhhhhhhhhh', 'hHhhhhhhhhhhhh', 'hhhhhhhhhhhhhh', 'hhhhhhhhhhhhhh', 'jhhhhjhhhjhhhhh', 'jhhhj......hhhh', 'jjhh.......hhj.', '.jj........hh..', '...........j...'] },
+  longo: { nome: 'Longo', x: -1, y: -1, f: [
+    '....hhhhhh....', '..hhHHHhhhh...', '.hhHHhhhhhhhh.', '.hHhhhhhhhhhhh', 'hhhhhhhhhhhhhh', 'hhhhhhjhhjhjhh', 'hhhhj.......hh', 'hhhh........hj', 'hhhh........hj', 'jhhh.........j', 'jhhj..........', '.jj...........'],
+    t: { x: -2, y: 7, rows: ['hhhhh.', 'hHhhh.', 'hhhhhh', 'hhhhhh', 'hhhhhj', '.hhhhj', '.hhhjj', '..hhj.', '..jj..'] } },
+  cacheado: { nome: 'Cacheado', x: -3, y: -3, f: [
+    '....hh.hhh.hh.....', '..hhhhhhhhhhhhh...', '.hhHHhhjhhhhjhhh..', 'hhHHhhhhhhhhhhhhh.', '.hHhhjhhhhjhhhhhhh', 'hhhhhhhhhhhhhhhjhh', 'hhhjhhhhhhhhhhhhh.', '.hhhhhhhjhhjhhjhhh', 'hhhhhhh........hh.',
+    '.hhjhhh........jh.', 'hhhhhj.........hh.', '.jhhhh..........j.', 'hhhhj.............', '.jhj..............'],
+    t: { x: -4, y: 6, rows: ['.hh.hhh..', 'hhhHhhhh.', 'hHhhjhhhh', 'hhhhhhhhj', 'jhhjhhhjj', '.hhhhhhj.', '.jhhjhhj.', '..jhhj...', '...jj....'] } },
+  rabo: { nome: 'Rabo de cavalo', x: -1, y: -1, f: [
+    '....hhhhhh....', '..hhHHHhhhh...', '.hhHHhhhhhhhh.', '.hHhhhhhhhhhhh', 'hhhhhhhhhhhhhh', 'hhhhhhhjhhhjhh', 'jhhhj.........', 'jjhh..........'],
+    t: { x: -4, y: 2, rows: ['..hh..', '.hHhj.', 'hhhhj.', 'hhhj..', 'hhhj..', '.hhj..', '.hhj..', '..hj..', '..j...'] } },
+  coque: { nome: 'Coque', x: -2, y: -4, f: [
+    '..hhhh.........', '.hHHhhj........', '.hhhhhj........', '..jhhhhhhh.....', '...hHHHhhhh....', '..hhHhhhhhhhh..', '..hHhhhhhhhhhh.', '.hhhhhhhhhhhhhh', '.hhhhhhhjhhjhhh', '.jhhhj.........', '.jjhh..........'] },
+  moicano: { nome: 'Moicano', x: 0, y: -5, f: [
+    '..h...h.....', '..hh.hh.h...', '...hhhhhh...', '..hHhhhhh...', '..hHhhhhj...', '...jhhhj....'] },
+  careca: { nome: 'Careca', x: 0, y: 0, f: [] },
+  tranca: { nome: 'Trança', x: -1, y: -1, f: [
+    '....hhhhhh....', '..hhHHHhhhh...', '.hhHHhhhhhhhh.', '.hHhhhhhhhhhhh', 'hhhhhhhhhhhhhh', 'hhhhhhjhhhjhhh', 'jhhhj.........', 'jhhh..........', '.jhh..........'],
+    t: { x: -1, y: 8, rows: ['hhj', 'jhh', 'hhj', 'jhh', 'hhj', '.h.', 'gyg'] } },
+};
+const PENTEADOS_IDS = Object.keys(PENTEADOS);
+const PENTEADOS_FEM = ['longo', 'cacheado', 'rabo', 'coque', 'tranca', 'franja', 'curto', 'espetado'];
+const PENTEADOS_MASC = ['curto', 'espetado', 'franja', 'moicano', 'careca', 'rabo', 'longo', 'cacheado'];
+const BARBAS = {
+  curta: { x: 4, y: 8, rows: ['hh....hh', 'hhhhhhhh', '.hhhhhh.'] },
+  longa: { x: 3, y: 7, rows: ['h......hh', 'hh.....hhh', 'hhhhhhhhhh', 'hhhhhhhhhh', '.hHhhhhhhj', '..hhhhhhj.', '...hhhhj..', '....jj....'] },
+  bigode: { x: 6, y: 8, rows: ['hhhhhh', 'h....h'] },
+};
+const BARBAS_IDS = ['', 'curta', 'longa', 'bigode'];
+
+/* ---- roupas: 3 por classe. Cada uma troca peças do boneco base (BONECOS da classe) ---- */
+const ROUPAS = {
+  guardiao: [{ nome: 'Placa e elmo' }, { nome: 'Placa e capa', capacete: null }, { nome: 'Cota e tabardo', capacete: 'aro', torso: 'tabardo', ombreiras: false }],
+  machadeiro: [{ nome: 'Couro e chifres' }, { nome: 'Peito nu', capacete: null, torso: 'tiras', ombreiras: 'pelo' }, { nome: 'Bandana', capacete: 'bandana', torso: 'couro' }],
+  lanceira: [{ nome: 'Elmo alado' }, { nome: 'Escamas', capacete: null, capa: true }, { nome: 'Tiara', capacete: 'aro', torso: 'placa', ombreiras: true }],
+  arqueira: [{ nome: 'Capuz' }, { nome: 'Gibão', capacete: 'pena', torso: 'couro' }, { nome: 'Bandana', capacete: 'bandana' }],
+  piromante: [{ nome: 'Chapéu de mago' }, { nome: 'Manto', capacete: null, colar: true }, { nome: 'Diadema', capacete: 'aro' }],
+  criomante: [{ nome: 'Capuz de gelo' }, { nome: 'Diadema', capacete: 'aro' }, { nome: 'Chapéu', capacete: 'chapeu' }],
+  clerica: [{ nome: 'Capuz do sol' }, { nome: 'Auréola', capacete: null }, { nome: 'Coroa do sol', capacete: 'coroaSol' }],
+  lamina: [{ nome: 'Capuz sombrio' }, { nome: 'Rosto à mostra', capacete: null }, { nome: 'Bandana', capacete: 'bandana' }],
+  bardo: [{ nome: 'Boina' }, { nome: 'Chapéu de pena', capacete: 'chapeuPena' }, { nome: 'Sem chapéu', capacete: null }],
+  invocador: [{ nome: 'Capuz de ossos' }, { nome: 'Rosto à mostra', capacete: null }, { nome: 'Capuz', capacete: 'capuzSombra' }],
+};
+// Cor principal da roupa: opções por classe (a primeira é a de sempre)
+const CORES_ROUPA = {
+  guardiao: ['#9aa6b8', '#a8946a', '#7d8aa8', '#8e9c8a'],
+  machadeiro: ['#8c4a2f', '#6a5a3a', '#7a3a4a', '#4a5a3a'],
+  lanceira: ['#e0745a', '#5a8ac0', '#c0a040', '#8a5ab0'],
+  arqueira: ['#5b8c3e', '#8a6a3a', '#3a7a6a', '#6a7a3a'],
+  piromante: ['#c0392b', '#8a2a5a', '#d06a2a', '#4a2a3a'],
+  criomante: ['#3a6fb0', '#4a8aa8', '#6a5ab0', '#2a5a7a'],
+  clerica: ['#f2ede0', '#e8dcc0', '#dfe8f0', '#f0e0e8'],
+  lamina: ['#3b3150', '#2a3a3a', '#4a2a2a', '#2a2a3a'],
+  bardo: ['#2f8f83', '#a03a5a', '#c08a2a', '#3a5aa0'],
+  invocador: ['#2e3240', '#3a2e40', '#2e4032', '#40342e'],
+};
+
+/* ---- peças novas (capacetes e troncos) usadas pelas roupas ---- */
+Object.assign(CHAPEUS, {
+  aro: { x: 0, y: 2, cobre: false, rows: ['..gggggggggg', '.gyyyGcGyyy.'] },
+  bandana: { x: -1, y: 1, cobre: false, rows: ['...44444444..', '..4555555555.', '445555555555.', '56..........', '6...........'] },
+  chapeuPena: { x: -3, y: -6, cobre: false, rows: ['..............O.', '.............Oi.', '....aaaaaa..Oi..', '...aAAAaaaaOi...', '...aAaaaaaaaa...', '...5555555555...', '.aaaaaaaaaaaaab.', 'bbbbbbbbbbbbbbbb'] },
+});
+for (const k of ['elmo', 'elmoCoroa', 'capuz', 'capuzGelo', 'capuzSol', 'capuzSombra', 'capuzOsso', 'capuzLua', 'corvo']) CHAPEUS[k].cobre = true;
+Object.assign(TRONCOS, {
+  tabardo: ['..MMMMMM..', '.Mo4444Mn.', 'MoM4774nnn', 'MMM4774Mnn', 'MMM4444Mnn', 'nMM4444MnN', 'lll4g44lll', 'MMM4444MnN', 'MMM5555nnN', '.nn5555nN.'],
+  tiras: ['..SSSSSS..', '.SSSSSlsz.', 'SSSSSlsszz', 'SSsslsszzz', 'SsslSsszzz', 'sslssssszz', 'llllglllll', 'aaa5555abb', 'aaa5555abb', '.aa5555bb.'],
+});
+const OMBREIRAS_PELO = { x: -2, y: -2, rows: ['.UUUK.....UUK..', 'UUUUKK...UUUKK.', '.KKKK.....KKK..'] };
+
+/* ---- sorteio da aparência ---- */
+function sortearAparencia(cls, nome, R = Math.random) {
+  const ri = (n) => Math.floor(R() * n);
+  const pesos = RACAS_IDS.map((r) => PESO_RACA[r]), tot = pesos.reduce((a, b) => a + b, 0);
+  let x = R() * tot, raca = RACAS_IDS[0];
+  for (let i = 0; i < pesos.length; i++) { x -= pesos[i]; if (x < 0) { raca = RACAS_IDS[i]; break; } }
+  const Rc = RACAS[raca], fem = NOMES_FEMININOS.has(nome);
+  const estilos = fem ? PENTEADOS_FEM : PENTEADOS_MASC;
+  const barbaChance = fem ? 0 : Rc.barbaChance ?? (raca === 'humano' ? 0.35 : raca === 'orc' || raca === 'ogro' ? 0.2 : raca === 'elfo' || raca === 'felino' || raca === 'porcino' ? 0.05 : 0.3);
+  return {
+    raca, pele: ri(Rc.peles.length), cabelo: ri(CABELOS_TODOS.length), penteado: estilos[ri(estilos.length)],
+    barba: R() < barbaChance ? 1 + ri(3) : 0, roupa: ri(3), corRoupa: R() < 0.4 ? 0 : ri(4),
+  };
+}
+// Aparência estável a partir do id (migração do save e lutadores sem aparência salva)
+function aparenciaPadrao(m) {
+  const R = mulberry32(((m.id || 7) * 2654435761) ^ 0x5eed);
+  return sortearAparencia(m.classe, m.nome, R);
+}
+function garantirAparencia(m) {
+  if (m.campeao || m.chefe || m.visual || m.ap) return m;
+  const ap = aparenciaPadrao(m);
+  // quem já existia mantém a cor do cabelo e, se for humano, o tom de pele de antes
+  if (typeof m.cabelo === 'number') ap.cabelo = m.cabelo;
+  if (ap.raca === 'humano' && typeof m.pele === 'number') ap.pele = Math.min(m.pele, RACAS.humano.peles.length - 1);
+  m.ap = ap;
+  return m;
+}
+
+function misturar(a, b2, f) { const x = hexRgb(a), y = hexRgb(b2); return rgbHex(...x.map((v, i) => v + (y[i] - v) * f)); }
+/* ---- EV5: a evolução muda o boneco. cor = tom da evolução (olhos que brilham, orbe, metal da arma e da armadura
+   puxam para ela) · peças = o que o boneco ganha · aura = brilho na luta ---- */
+const EVO_VISUAL = {
+  guardiao: { a: { cor: '#ff6a5a', pecas: { ombreiras: true, capa: true } }, b: { cor: '#ffd23f', pecas: { ombreiras: true, capa: true, aureola: true } } },
+  machadeiro: { a: { cor: '#ff3a2a', pecas: { olho: true, pintura: true } }, b: { cor: '#b03a6a', pecas: { capa: true, olho: true } } },
+  lanceira: { a: { cor: '#ffd23f', pecas: { capa: true, ombreiras: true } }, b: { cor: '#5aa7e6', pecas: { ombreiras: true } } },
+  arqueira: { a: { cor: '#ffd84a', pecas: { capa: true } }, b: { cor: '#6cd07a', pecas: { capa: true, cachecol: true } } },
+  piromante: { a: { cor: '#ff8c1a', pecas: { olho: true } }, b: { cor: '#ff3a2a', pecas: { olho: true, capa: true } } },
+  criomante: { a: { cor: '#7fe6ff', pecas: { ombreiras: true } }, b: { cor: '#e8f4ff', pecas: { capa: true, olho: true } } },
+  clerica: { a: { cor: '#ffe48a', pecas: { capa: true } }, b: { cor: '#ff7a4a', pecas: { ombreiras: true, olho: true } } },
+  lamina: { a: { cor: '#ff3a4a', pecas: { olho: true } }, b: { cor: '#a06aff', pecas: { capa: true, olho: true } } },
+  bardo: { a: { cor: '#ffd23f', pecas: { capa: true } }, b: { cor: '#a06aff', pecas: { olho: true, capa: true } } },
+  invocador: { a: { cor: '#7dff9a', pecas: { olho: true, colar: true } }, b: { cor: '#b06cff', pecas: { capa: true, ombreiras: true, olho: true } } },
+};
+const evoVisual = (cls, evo) => (EVO_VISUAL[cls] && evo && EVO_VISUAL[cls][evo]) || null;
+const PINTURA_GUERRA = [[5, 6, 'X'], [5, 7, 'X'], [10, 6, 'X'], [10, 8, 'X'], [7, 8, 'X'], [8, 8, 'X']];
 /* ============================ MOTOR DE BONECOS v3 (32×40) ============================
    Esqueleto 2D: cabeça, tronco, braços e pernas com cotovelo e joelho (cinemática inversa),
    mãos e botas desenhadas, capa, cabelo e saia com movimento secundário.
@@ -1279,9 +1467,11 @@ const BONECOS = {
 
 function paletaBoneco(def, pele, cabelo, c1, c2) {
   const P = {};
-  const pl = PELES[pele] || PELES[0];
+  const pl = PELES_TODAS[pele] || PELES_TODAS[0];
   P.S = pl[0]; P.s = pl[1]; P.z = pl[2]; P.Q = escurecer(pl[2], 0.3); P.e = '#1a1020';
-  [P.H, P.h, P.j] = rampa(def.cabeloCor || CABELOS[cabelo] || CABELOS[1]);
+  P.B = def.cabeca === 'caveira' ? '#bdb3a0' : rgbHex(...hexRgb(pl[1]).map((v, i) => v * 0.75 + [255, 120, 130][i] * 0.25));   // rubor / parte de dentro da orelha
+  P.m = escurecer(pl[2], 0.45); P.Y = (def.ap && RACAS[def.ap.raca] && RACAS[def.ap.raca].olhoCor) || '#e8d84a';
+  [P.H, P.h, P.j] = rampa(def.cabeloCor || CABELOS_TODOS[cabelo] || CABELOS_TODOS[1]);
   [P.A, P.a, P.b] = rampa(def.cores.a);
   [P['1'], P['2'], P['3']] = rampa(def.cores.b || def.cores.a);
   [P['4'], P['5'], P['6']] = rampa(c1); P['7'] = c2;
@@ -1497,7 +1687,22 @@ const POSES = {
 function quadros(anim) {
   switch (anim) {
     case 'idle': return [
-      { by: 0 }, { by: 0, dmy: 0.5, capa: 0.3 }, { by: 1, dmy: 1, capa: 0.6 }, { by: 1, dmy: 1, hy: 0.5, capa: 0.4 }, { by: 1, dmy: 0.5, capa: 0 }, { by: 0, capa: -0.3 }];
+      { by: 0 }, { by: 0, dmy: 0.5, capa: 0.3 }, { by: 1, dmy: 1, capa: 0.6 }, { by: 1, dmy: 1, hy: 0.5, capa: 0.4, piscar: true }, { by: 1, dmy: 0.5, capa: 0 }, { by: 0, capa: -0.3 }];
+    // EV3: esquiva (inclina para trás e recua), pulo (agacha, sobe encolhido, desce), cura (as duas mãos para cima),
+    // levantar (do chão depois do atordoamento)
+    case 'esquiva': return [
+      { bx: -3, by: 1, lean: -3, pf: [2, 0], pt: [-4, 0], dm: [-2, -2], dt: [-2, -1], da: 20, hx: -1.5, capa: 3, piscar: true },
+      { bx: -2, by: 0, lean: -1.5, pf: [1, 0], pt: [-2, 0], dm: [-1, -1], da: 10, hx: -0.5, capa: 1.5 }];
+    case 'pulo': return [
+      { by: 2, lean: 1, pf: [1, 0], pt: [-1, 0], dm: [-1, 1], dt: [1, 1], capa: 1 },
+      { by: -3, lean: 2, pf: [2, 4], pt: [-3, 3], dm: [-1, -3], dt: [-2, -3], capa: -3 },
+      { by: -4, lean: 1, pf: [3, 5], pt: [-1, 5], dm: [1, -2], dt: [-1, -2], capa: -2 },
+      { by: 1, lean: 1, pf: [2, 0], pt: [-2, 0], dm: [0, 1], dt: [0, 1], capa: 1.5 }];
+    case 'cura': return [
+      { by: 0, cast: true, dt: [1, -6], capa: 0.5 }, { by: -1, cast: true, dt: [1, -9], hy: -0.5, capa: 1 }, { by: -1, cast: true, dt: [1, -9.5], hy: -1, capa: 1.5 }];
+    case 'levantar': return [
+      { by: 6, bx: -1, joelhos: true, pf: [3, 2], pt: [-2, 2], dm: [2, 4], dt: [0, 4], da: 50, lean: 3, piscar: true },
+      { by: 3, joelhos: true, pf: [2, 1], pt: [-1, 1], dm: [1, 2], dt: [0, 2], da: 30, lean: 2 }];
     case 'walk': return [
       { by: 0, pf: [3, 0], pt: [-3, 0], dm: [-2, 0], dt: [2, 0], saia: 1, capa: -1.5 },
       { by: -1, pf: [1.5, 1.5], pt: [-1.5, 0], dm: [-1, 0], dt: [1, 0], saia: 0.5, capa: -2 },
@@ -1516,8 +1721,8 @@ function quadros(anim) {
     case 'cast': return [
       { by: 0, cast: true, dt: [0, -5], capa: 0.5 }, { by: -1, cast: true, dt: [0, -8], hy: -0.5, capa: 1 },
       { by: -1, cast: true, dt: [0, -8.5], hy: -0.5, capa: 1.5 }, { by: 0, cast: true, dt: [1, -6], capa: 0.5 }];
-    case 'hurt': return [{ bx: -2, hx: -1, hy: -0.5, dm: [-1, -1], da: 15, dt: [-1, -1], lean: -1, capa: 3 }, { bx: -1, hx: -0.5, dm: [-0.5, -0.5], da: 8, lean: -0.5, capa: 1.5 }];
-    case 'empurrao': return [{ bx: -3, by: -1, hx: -1.5, hy: -1, pf: [4, 1], pt: [2, 2], dm: [-3, -4], dt: [-2, -4], da: 40, lean: -3, capa: 4 }, { bx: -2, hx: -1, pf: [3, 0], pt: [1, 1], dm: [-2, -2], dt: [-1, -2], da: 25, lean: -2, capa: 3 }];
+    case 'hurt': return [{ hurtOlhos: true, bx: -2, hx: -1, hy: -0.5, dm: [-1, -1], da: 15, dt: [-1, -1], lean: -1, capa: 3 }, { bx: -1, hx: -0.5, dm: [-0.5, -0.5], da: 8, lean: -0.5, capa: 1.5 }];
+    case 'empurrao': return [{ hurtOlhos: true, bx: -3, by: -1, hx: -1.5, hy: -1, pf: [4, 1], pt: [2, 2], dm: [-3, -4], dt: [-2, -4], da: 40, lean: -3, capa: 4 }, { bx: -2, hx: -1, pf: [3, 0], pt: [1, 1], dm: [-2, -2], dt: [-1, -2], da: 25, lean: -2, capa: 3 }];
     case 'dash': return [{ bx: 3, lean: 4, pf: [3, 1], pt: [-6, 2], dm: [-3, -2], dt: [-4, -1], capa: -6, hx: 1 }, { bx: 2, lean: 3, pf: [4, 0], pt: [-4, 1], dm: [-2, -1], dt: [-3, 0], capa: -5, hx: 1 }];
     case 'morte': return [
       { bx: -2, hx: -1.5, hy: -1, dm: [-2, -3], dt: [-2, -3], da: 30, lean: -2, capa: 3 },
@@ -1532,14 +1737,16 @@ function quadros(anim) {
   }
   return [{}];
 }
-const ANIMS = ['idle', 'walk', 'run', 'atk', 'cast', 'hurt', 'empurrao', 'dash', 'morte', 'vit'];
+const ANIMS = ['idle', 'walk', 'run', 'atk', 'cast', 'hurt', 'empurrao', 'dash', 'morte', 'vit', 'esquiva', 'pulo', 'cura', 'levantar'];
 const QUADROS_POR_ANIM = Object.fromEntries(ANIMS.map((a) => [a, quadros(a).length]));
 
 /* ---- montagem de um quadro ---- */
 function montarQuadro(def, P, f) {
   if (f.deitado) return montarDeitado(def, P);
   const camadas = [];
-  const by = f.by || 0, bx = f.bx || 0, lean = f.lean || 0;
+  const Rc = def.ap ? RACAS[def.ap.raca] || {} : {};
+  const baixo = Rc.baixo ? 2 : 0, larg = Rc.largo ? 1 : 0;   // anão: corpo 2 px mais baixo, pernas curtas · ogro: 1 px mais largo de cada lado
+  const by = (f.by || 0) + baixo, bx = f.bx || 0, lean = f.lean || 0;
   const tipoArma = def.golem ? 'punho' : def.arma;
   const poses = POSES[tipoArma] || POSES.espada;
   let pose = poses.idle;
@@ -1549,8 +1756,8 @@ function montarQuadro(def, P, f) {
   const G = def.golem, k = def.grande ? 1.55 : 1;
   const S = (p) => (k === 1 ? p : [16 + (p[0] - 16) * k, 38 + (p[1] - 38) * k]);
   // esqueleto (facing direita): ombros, quadris e pés
-  const ombroF = S(G ? [22 + bx + lean, 20 + by] : [19.5 + bx + lean, 18 + by]);
-  const ombroT = S(G ? [10 + bx + lean, 20 + by] : [12.5 + bx + lean, 18 + by]);
+  const ombroF = S(G ? [22 + bx + lean, 20 + by] : [19.5 + larg + bx + lean, 18 + by]);
+  const ombroT = S(G ? [10 + bx + lean, 20 + by] : [12.5 - larg + bx + lean, 18 + by]);
   const quadF = S(G ? [19 + bx, 28 + by] : [17.5 + bx, 26 + by]), quadT = S(G ? [13 + bx, 28 + by] : [14.5 + bx, 26 + by]);
   const pf = f.pf || [0, 0], pt = f.pt || [0, 0];
   const peF = S([(G ? 19 : 18) + pf[0] + bx * 0.4, 36 - pf[1]]), peT = S([(G ? 13 : 14) + pt[0] + bx * 0.4, 36 - pt[1]]);
@@ -1567,11 +1774,11 @@ function montarQuadro(def, P, f) {
   const corManga = def.golem ? [P.M, P.n, P.N] : def.manga === 'metal' ? [P.o, P.M, P.n, P.N] : def.manga === 'pele' ? [P.S, P.s, P.z, P.Q] : def.manga === 'osso' ? [P.O, P.O, P.i] : [P.A, P.a, P.b, escurecer(P.b, 0.3)];
   const corMangaT = corManga.map((c) => escurecer(c, 0.18));
   const corMao = def.golem ? [P.M, P.n, P.N] : def.mao === 'metal' ? [P.o, P.M, P.n] : def.mao === 'osso' ? [P.O, P.O, P.i] : def.mao === 'faixa' ? [P.O, P.i, P.i] : [P.S, P.s, P.z];
-  const espBraco = def.golem ? 4.6 * k : def.mangaGrossa ? 3.4 : def.manga === 'osso' ? 2 : 3;
-  const espPerna = def.golem ? 4.4 * k : def.perna === 'osso' ? 2.2 : 3.6;
+  const espBraco = (def.golem ? 4.6 * k : def.mangaGrossa ? 3.4 : def.manga === 'osso' ? 2 : 3) + larg * 0.8;
+  const espPerna = (def.golem ? 4.4 * k : def.perna === 'osso' ? 2.2 : 3.6) + larg * 0.6;
   const corPerna = def.perna === 'osso' ? [P.O, P.O, P.i] : def.golem ? [P.M, P.n, P.N] : [P.V, P.v, P.u, escurecer(P.u, 0.3)];
   const corBota = def.perna === 'osso' ? [P.O, P.i, P.i] : def.golem ? [P.n, P.N, P.N] : [P.F, P.f, P.k, escurecer(P.k, 0.3)];
-  const lBraco = (G ? 5 : 4.9) * k, lPerna = (G ? 4 : 5.5) * k;
+  const lBraco = (G ? 5 : 4.9) * k, lPerna = (G ? 4 : baixo ? 4.4 : 5.5) * k;
   const capa = f.capa || 0;
 
   // capa (atrás de tudo), com balanço que aumenta para baixo
@@ -1583,17 +1790,18 @@ function montarQuadro(def, P, f) {
       const xa = 12.5 + bx - t * 4 + sway, xb = 18 + bx - t * 2 + sway * 0.6;
       for (let x = Math.floor(xa); x <= Math.ceil(xb); x++) {
         const borda = x < xa + 1 ? 0 : x > xb - 1.2 ? 2 : 1;
-        ponto(L, x, topo + y, y > alt - 1.5 ? P['6'] : [P['4'], P['5'], P['6']][borda]);
+        ponto(L, x, topo + y, def.evoCor ? (y > alt - 1.5 ? P.d : [P.C, P.c, P.d][borda]) : y > alt - 1.5 ? P['6'] : [P['4'], P['5'], P['6']][borda]);
       }
     }
     camadas.push(L);
   }
   if (def.aljava) { const L = camada(false); carimbar(L, ALJAVA, 8 + bx, 15 + by, P); camadas.push(L); }
-  if (def.cabeloLongo) {
-    const L = camada(false);
-    CABELO_LONGO.rows.forEach((row, j) => { const t = j / CABELO_LONGO.rows.length, off = Math.round(capa * t * t * 0.9); for (let i = 0; i < row.length; i++) if (row[i] !== '.') ponto(L, 10 + bx + (f.hx || 0) + i + off, 4 + by + CABELO_LONGO.y + j + (f.hy || 0), P[row[i]]); });
-    camadas.push(L);
-  }
+  { const pt = cabeloDeTras(def);
+    if (pt) {
+      const L = camada(false);
+      pt.rows.forEach((row, j) => { const t = j / pt.rows.length, off = Math.round(capa * t * t * 0.9) + Math.round(lean * 0.6); for (let i = 0; i < row.length; i++) if (row[i] !== '.') ponto(L, 10 + bx + (f.hx || 0) + pt.x + i + off, 4 + by + pt.y + j + (f.hy || 0), P[row[i]]); });
+      camadas.push(L);
+    } }
   // braço de trás (ombro → cotovelo → mão)
   { const L = camada(true);
     const [cx, cy, hx2, hy2] = articulacao(ombroT[0], ombroT[1], maoT[0], maoT[1], lBraco, lBraco, 1);
@@ -1618,21 +1826,23 @@ function montarQuadro(def, P, f) {
     else {
       const T = TRONCOS[def.torso] || TRONCOS.tunica;
       // inclinação: linhas de cima deslocam mais que as de baixo
-      T.forEach((row, j) => { const off = Math.round(lean * (1 - j / 10)); for (let i = 0; i < row.length; i++) if (row[i] !== '.') ponto(L, 11 + bx + i + off, 16 + by + j, P[row[i]]); });
-      if (def.ombreiras) carimbar(L, OMBREIRAS.rows, 11 + bx + lean + OMBREIRAS.x, 16 + by + OMBREIRAS.y, P);
+      T.forEach((row, j) => { if (larg) row = row.slice(0, 5) + row.slice(4, 6) + row.slice(5); const off = Math.round(lean * (1 - j / 10)); for (let i = 0; i < row.length; i++) if (row[i] !== '.') ponto(L, 11 - larg + bx + i + off, 16 + by + j, P[row[i]]); });
+      if (def.ombreiras === 'pelo') carimbar(L, OMBREIRAS_PELO.rows, 11 + bx + lean + OMBREIRAS_PELO.x, 16 + by + OMBREIRAS_PELO.y, P);
+      else if (def.ombreiras) carimbar(L, OMBREIRAS.rows, 11 + bx + lean + OMBREIRAS.x, 16 + by + OMBREIRAS.y, P);
       if (def.colar) carimbar(L, COLAR.rows, 11 + bx + lean + COLAR.x, 16 + by + COLAR.y, P);
       // cinto escuro na base do tronco (peso visual)
-      for (let i = 1; i < 9; i++) ponto(L, 11 + bx + i, 25.5 + by, P['6']);
+      for (let i = 1 - larg; i < 9 + larg; i++) ponto(L, 11 + bx + i, 25.5 + by, P['6']);
     }
     camadas.push(L); }
   if (def.saia) {
     const L = camada(true), sd = (f.saia || 0) + capa * 0.4;
-    SAIA.forEach((row, j) => { const off = j >= 2 ? Math.round(sd * (j / 9)) : 0; for (let i = 0; i < row.length; i++) if (row[i] !== '.') ponto(L, 10 + bx + i + off, 26 + by + j, P[row[i]]); });
+    SAIA.forEach((row, j) => { if (j >= SAIA.length - baixo) return; if (larg) row = row.slice(0, 6) + row.slice(5, 7) + row.slice(6); const off = j >= 2 ? Math.round(sd * (j / 9)) : 0; for (let i = 0; i < row.length; i++) if (row[i] !== '.') ponto(L, 10 - larg + bx + i + off, 26 + by + j, P[row[i]]); });
     camadas.push(L);
   }
   // cabeça
   { const L = camada(true), hx = 10 + bx + lean + (f.hx || 0), hy = 4 + by + (f.hy || 0);
     if (def.golem) { const [gx, gy] = S([12 + bx + lean + (f.hx || 0), 9 + by + (f.hy || 0)]); carimbar(L, k > 1 ? CABECA_COLOSSO : CABECA_GOLEM, gx, gy, P); }
+    else if (def.ap) { desenharCabeca34(camadas, L, def, P, hx, hy, f); }
     else {
       carimbar(L, CABECAS[def.cabeca || 'normal'], hx, hy, P);
       if (def.barba) carimbar(L, BARBA.rows, hx + BARBA.x, hy + BARBA.y, P);
@@ -1642,7 +1852,8 @@ function montarQuadro(def, P, f) {
       if (def.faixa) carimbar(L, ['.55555555555', '6655555555..', '56..........', '6...........'], hx, hy + 3, P);
       if (def.aureola) carimbar(L, AUREOLA.rows, hx + AUREOLA.x, hy + AUREOLA.y + (f.by === 1 ? -1 : 0), P);
     }
-    camadas.push(L); }
+    if (!def.ap || def.golem) camadas.push(L);
+    if (def.ap && def.aureola) { const La = camada(false); carimbar(La, AUREOLA.rows, hx + AUREOLA.x, hy + AUREOLA.y - 2 + (f.by === 1 ? -1 : 0), P); camadas.push(La); } }
   if (def.cachecol) { const L = camada(true); CACHECOL.rows.forEach((row, j) => { const off = Math.round(capa * j * 0.3); for (let i = 0; i < row.length; i++) if (row[i] !== '.') ponto(L, CACHECOL.x + bx + lean + i + off, CACHECOL.y + 3 + by + j, P[row[i]]); }); camadas.push(L); }
   if (def.escudo) { const L = camada(true); carimbar(L, ESCUDO_ARMA, maoT[0] - 7, maoT[1] - 8, P); camadas.push(L); }
   // arma + braço da frente
@@ -1662,6 +1873,49 @@ function montarDeitado(def, P) {
   const cam = montarQuadro(def, P, { pf: [2, 0], pt: [-1, 0], dm: [-1, -2], dt: [-1, -2], da: 60, hx: -1 });
   cam.deitado = true;
   return cam;
+}
+
+/* ---- cabeça 3/4 (EV2): pele + rosto da raça, cabelo da frente, orelhas por cima do cabelo, chapéu ---- */
+const CABECA_CAVEIRA = ['...OOOOOO...', '..OOOOOOOO..', '.OOOOOOOOOO.', '.OOOOOOOOOOO', 'iOOOOOOOOOOO', 'iOOOOeeOOeeO', 'iOOOOeeOOeeO', 'iiOOOOOOOOOO', '.iiOOOOeOOO.', '.iiiOeOeOeO.', '...iiOOOO...'];
+function cabeloDeTras(def) {
+  if (!def.ap) return def.cabeloLongo ? { x: CABELO_LONGO.x, y: CABELO_LONGO.y, rows: CABELO_LONGO.rows } : null;
+  const ch = def.capacete && CHAPEUS[def.capacete];
+  if (ch && ch.cobre) return null;
+  const pe = PENTEADOS[def.ap.penteado];
+  return pe && pe.t ? pe.t : null;
+}
+function desenharCabeca34(camadas, L, def, P, hx, hy, f = {}) {
+  const ap = def.ap, Rc = RACAS[ap.raca] || RACAS.humano;
+  const ch = def.capacete ? CHAPEUS[def.capacete] : null, cobre = !!(ch && ch.cobre);
+  const tr = (lista, LL = L) => lista.forEach(([x, y, c]) => ponto(LL, hx + x, hy + y, P[c]));
+  if (def.cabeca === 'caveira') carimbar(L, CABECA_CAVEIRA, hx, hy, P);
+  else {
+    carimbar(L, Rc.largo ? CABECA_LARGA : CABECA_BASE, hx, hy, P);
+    if (!Rc.orelha && !cobre) tr(ROSTO.orelha);
+    if (Rc.sobrancelha) tr(ROSTO.sobrancelha);
+    if (def.olho) tr([[6, 6, 'C'], [6, 7, 'c'], [9, 6, 'C'], [9, 7, 'c']]);
+    else if (f.piscar || f.hurtOlhos) tr([[5, 7, 'e'], [6, 7, 'e'], [9, 7, 'e'], [10, 7, 'e']]);   // piscando / careta
+    else tr(Rc.olhoCor ? ROSTO.olhosGato : Rc.presas === 'ogro' ? ROSTO.olhosPequenos : ROSTO.olhos);
+    if (Rc.nariz) tr(ROSTO.nariz);
+    if (def.pintura) tr(PINTURA_GUERRA);
+    if (!def.mascara) {
+      if (Rc.presas === 'orc') tr(ROSTO.presasOrc);
+      else if (Rc.presas === 'ogro') tr(ROSTO.presasOgro);
+      else if (Rc.focinho === 'porco') tr(ROSTO.focinhoPorco);
+      else if (Rc.focinho === 'gato') tr(ROSTO.focinhoGato);
+      else tr(ROSTO.boca);
+      if (!Rc.presas) tr(ROSTO.rubor);
+    }
+    const bb = BARBAS[BARBAS_IDS[ap.barba] || ''];
+    if (bb && !def.mascara) carimbar(L, bb.rows, hx + bb.x, hy + bb.y, P);
+    if (def.mascara) carimbar(L, MASCARA.rows, hx + MASCARA.x, hy + MASCARA.y, P);
+  }
+  camadas.push(L);
+  const pe = PENTEADOS[ap.penteado];
+  if (!cobre && def.cabeca !== 'caveira' && pe && pe.f.length) { const Lh = camada(true); carimbar(Lh, pe.f, hx + pe.x, hy + pe.y, P); camadas.push(Lh); }
+  if (Rc.orelha && !cobre && def.cabeca !== 'caveira' && !(ch && Rc.orelha !== 'elfo' && Rc.orelha !== 'curta')) { const Lo = camada(true); tr(ORELHAS[Rc.orelha], Lo); camadas.push(Lo); }
+  if (ch) { const Lc = camada(true); carimbar(Lc, ch.rows, hx + ch.x, hy + ch.y, P); camadas.push(Lc); }
+  if (def.faixa) { const Lf = camada(true); carimbar(Lf, ['.55555555555', '6655555555..', '56..........', '6...........'], hx, hy + 3, P); camadas.push(Lf); }
 }
 
 /* ---- achatamento: contorno seletivo entre partes + contorno externo ---- */
@@ -1716,7 +1970,52 @@ function achatar(camadas, branco) {
 }
 
 /* ---- conjunto de sprites de um "look": tipo|pele|cabelo|cor1|cor2 ---- */
-function lookDe(m, cor1, cor2) { return `${m.visual || m.classe}|${m.pele ?? 0}|${m.cabelo ?? 1}|${cor1}|${cor2}`; }
+// Look = tipo|pele|cabelo|cor1|cor2|raca|penteado|barba|roupa|corRoupa|evo (EV2). Pele e cabelo são índices globais.
+function lookDe(m, cor1, cor2) {
+  const tipo = m.visual || m.classe;
+  if (!m.ap && !m.visual && m.id && CLASSES[m.classe]) garantirAparencia(m);
+  const ap = m.ap;
+  if (!ap) return `${tipo}|${m.pele ?? 0}|${m.cabelo ?? 1}|${cor1}|${cor2}||||||${m.evolucao || ''}`;
+  const Rc = RACAS[ap.raca] || RACAS.humano;
+  return `${tipo}|${Rc.peles[ap.pele] ?? Rc.peles[0]}|${ap.cabelo}|${cor1}|${cor2}|${ap.raca}|${ap.penteado}|${ap.barba}|${ap.roupa}|${ap.corRoupa}|${m.evolucao || ''}`;
+}
+// Visual especial (Campeões, Líderes): aparência fixa
+const AP_ESPECIAL = {
+  gorm: { raca: 'anao', penteado: 'careca', barba: 2 }, nayla: { raca: 'elfo', penteado: 'longo', barba: 0 }, okon: { raca: 'humano', penteado: 'careca', barba: 0 },
+  aurelia: { raca: 'humano', penteado: 'longo', barba: 0 }, ravik: { raca: 'humano', penteado: 'franja', barba: 0 }, barao: { raca: 'humano', penteado: 'curto', barba: 3 },
+  corvina: { raca: 'elfo', penteado: 'longo', barba: 0 }, rei: { raca: 'humano', penteado: 'curto', barba: 0 },
+  selene_fogo: { raca: 'elfo', penteado: 'longo', barba: 0 }, selene_gelo: { raca: 'elfo', penteado: 'longo', barba: 0 }, selene_raio: { raca: 'elfo', penteado: 'longo', barba: 0 },
+  esqueleto: { raca: 'humano', penteado: 'careca', barba: 0 },
+};
+const PENTEADO_CLASSE = { guardiao: 'curto', machadeiro: 'espetado', lanceira: 'longo', arqueira: 'rabo', piromante: 'curto', criomante: 'longo', clerica: 'longo', lamina: 'franja', bardo: 'cacheado', invocador: 'franja' };
+function defDoLook(tipo, campos) {
+  const base = BONECOS[tipo] || BONECOS.guardiao;
+  if (base.golem) return base;
+  const [raca, pent, barba, roupa, corRoupa, evo] = campos;
+  let ap;
+  if (raca) ap = { raca, penteado: pent, barba: +barba || 0, evo: evo || '' };
+  else if (AP_ESPECIAL[tipo]) ap = Object.assign({ evo: '' }, AP_ESPECIAL[tipo]);
+  else ap = { raca: 'humano', penteado: PENTEADO_CLASSE[tipo] || 'curto', barba: base.barba ? 1 : 0, evo: evo || '' };
+  const r = raca ? (ROUPAS[tipo] || [])[+roupa || 0] || {} : {};
+  const def = Object.assign({}, base, r, { cores: Object.assign({}, base.cores), ap, barba: false, cabeloLongo: false });
+  if ('capacete' in r) def.capacete = r.capacete;
+  const cr = raca && +corRoupa ? (CORES_ROUPA[tipo] || [])[+corRoupa] : null;
+  if (cr) def.cores.a = cr;
+  const EVv = evoVisual(tipo, evo);
+  if (EVv) {   // evolução: peças novas, olhos/orbe na cor da evolução, metal puxado para ela
+    def.evo = evo; def.evoCor = EVv.cor; def.cores.c = EVv.cor;
+    const pc = EVv.pecas;
+    if (pc.capa) def.capa = true;
+    if (pc.ombreiras && def.ombreiras !== 'pelo') def.ombreiras = true;
+    if (pc.olho) def.olho = true;
+    if (pc.colar) def.colar = true;
+    if (pc.cachecol) def.cachecol = true;
+    if (pc.aureola) def.aureola = true;
+    if (pc.pintura) def.pintura = true;
+    def.metal = (def.metal || METAL_PADRAO).map((m, i) => (i < 2 ? misturar(m, EVv.cor, 0.22) : misturar(m, EVv.cor, 0.12)));
+  }
+  return def;
+}
 const cacheSprites = new Map();
 // Versão branca de um quadro (piscar ao levar dano): mantém o contorno, clareia o resto
 function brancoDe(cv) {
@@ -1744,30 +2043,27 @@ function spriteSet(look) {
   let set = cacheSprites.get(look);
   if (set) { if (cacheSprites.size > LIMITE_SPRITES / 2) { cacheSprites.delete(look); cacheSprites.set(look, set); } return set; }
   if (cacheSprites.size >= LIMITE_SPRITES) for (const k of [...cacheSprites.keys()]) { if (cacheSprites.size < LIMITE_SPRITES) break; if (!emUsoNaArena(k)) cacheSprites.delete(k); }
-  const [tipo, pele, cabelo, c1, c2] = look.split('|');
-  const def = BONECOS[tipo] || BONECOS.guardiao;
+  const [tipo, pele, cabelo, c1, c2, ...extra] = look.split('|');
+  const def = defDoLook(tipo, extra);
   const P = paletaBoneco(def, +pele, +cabelo, c1, c2);
-  set = { pal: P, vistas: {} };
-  for (const v of VISTAS) {
-    const q = {}, br = {}, vs = { quadros: {}, brancos: {} };
-    const montar = (anim) => (v === 'lado' ? quadros(anim).map((f) => achatar(montarQuadro(def, P, f), false)) : quadrosVista(anim).map((f) => achatar(montarQuadroVista(def, P, f, v === 'costas'), false)));
+  set = { pal: P, def, vistas: {} };
+  { const q = {}, br = {}, vs = { quadros: {}, brancos: {} };
+    const montar = (anim) => quadros(anim).map((f) => achatar(montarQuadro(def, P, f), false));
     for (const anim of ANIMS) {
       Object.defineProperty(vs.quadros, anim, { enumerable: true, get: () => q[anim] || (q[anim] = montar(anim)) });
       Object.defineProperty(vs.brancos, anim, { enumerable: true, get: () => br[anim] || (br[anim] = vs.quadros[anim].map(brancoDe)) });
     }
-    set.vistas[v] = vs;
-  }
+    set.vistas.lado = set.vistas.frente = set.vistas.costas = vs; }
   set.quadros = set.vistas.lado.quadros; set.brancos = set.vistas.lado.brancos;
   Object.defineProperty(set, 'idle0', { enumerable: true, get: () => set.quadros.idle[0] });
   cacheSprites.set(look, set);
   return set;
 }
-const VISTAS = ['lado', 'frente', 'costas'];
+const VISTAS = ['lado'];   // EV2: um só ponto de vista (3/4); 'frente' e 'costas' são apelidos dele
 // Pré-carrega o que aparece logo no início da luta; o resto é montado na primeira vez que for usado
 function precarregar(look) {
   const s = spriteSet(look);
   for (const a of ['idle', 'walk', 'run', 'atk', 'hurt']) { s.vistas.lado.quadros[a]; s.vistas.lado.brancos[a]; }
-  for (const v of ['frente', 'costas']) for (const a of ['idle', 'walk']) s.vistas[v].quadros[a];
   return s;
 }
 // Retrato recortado (interface)
@@ -1828,208 +2124,6 @@ const ICONE_CORES = {
   pergaminho: { y: '#f0e2b8', r: '#a8744a' },
 };
 
-/* ============================ VISTAS DE FRENTE E DE COSTAS ============================
-   O mesmo esqueleto, visto de frente (andando para baixo) e de costas (andando para cima).
-   As grades de frente são simétricas; a vista de costas usa grades próprias (sem rosto,
-   capa por cima do tronco) e é espelhada para a arma ficar do lado certo. */
-
-// Espelha a metade esquerda de cada linha (desenha-se só 7 colunas de 14 ou 6 de 12)
-const simetrico = (rows) => rows.map((r) => r + r.split('').reverse().join(''));
-const CABECAS_F = {
-  normal: ['...hhhhhh...', '..hHHHhhhh..', '.hHHhhhhhhh.', '.hhhhhhhhhh.', 'hhhHhhhhhhhh', 'hhSSSSSSSShh', 'hSSSeSSSeSSh', 'jSSSSSSSSSSj', '.sSSSSSSSSs.', '.ssSSsSSSss.', '..zzsssszz..'],
-  careca: ['...SSSSSS...', '..SSSSSSSs..', '.SSSSSSSSss.', '.SSSSSSSSss.', 'SSSSSSSSSSsz', 'SSSSSSSSSSsz', 'SSSSeSSSeSsz', 'zSSSSSSSSSsz', '.sSSSSSSSSs.', '.ssSSsSSSss.', '..zzsssszz..'],
-  caveira: ['...OOOOOO...', '..OOOOOOOO..', '.OOOOOOOOOO.', '.OOOOOOOOOO.', 'OOOOOOOOOOOi', 'OOeeOOOOeeOi', 'OOeeOOOOeeOi', 'iOOOOeeOOOOi', '.iOOOOOOOOi.', '.iOeOeOeOei.', '..iiOOOOii..'],
-};
-const CABECAS_B = {
-  normal: ['...hhhhhh...', '..hHHHhhhh..', '.hHHhhhhhhh.', '.hhhhhhhhhh.', 'hhhhhhhhhhhj', 'hhhhhhhhhhhj', 'hhhhhhhhhhjj', 'hhhhhhhhhjjj', '.hhhhhhhhjj.', '.jhhhhhhhjj.', '..jjzzzzjj..'],
-  careca: ['...SSSSSS...', '..SSSSSSSs..', '.SSSSSSSSss.', '.SSSSSSSSss.', 'SSSSSSSSSssz', 'SSSSSSSSSssz', 'SSSSSSSSSssz', 'zSSSSSSSSssz', '.sSSSSSSSss.', '.ssSSSSSSss.', '..zzsssszz..'],
-  caveira: ['...OOOOOO...', '..OOOOOOOO..', '.OOOOOOOOOO.', '.OOOOOOOOOO.', 'OOOOOOOOOOOi', 'OOOOOOOOOOOi', 'OOOOOOOOOOii', 'iOOOOOOOOOii', '.iOOOOOOOOi.', '.iiOOOOOOii.', '..iiOOOOii..'],
-};
-// Chapéus de frente (f) e de costas (b), relativos à origem da cabeça
-const CHAPEUS_F = {
-  elmo: { x: -1, y: -2, f: ['......55......', '.....455......', '....nMMMMn....', '...nMooMMMn...', '..nMoMMMMMMn..', '..nMMMMMMMMn..', '..nMMMMMMMMn..', '..nNeeeeeeNn..', '..nMMMMMMMMn..', '..nnMMMMMMnn..', '...nMMMMMMn...', '....nnnnnn....'], b: ['......55......', '.....455......', '....nMMMMn....', '...nMooMMMn...', '..nMoMMMMMMn..', '..nMMMMMMMMn..', '..nMMMMMMMMn..', '..nMMMMMMMMn..', '..nMMMMMMMMn..', '..nnMMMMMMnn..', '...nMMMMMMn...', '....nnnnnn....'] },
-  elmoCoroa: { x: -1, y: -4, f: ['...g..gg..g...', '...gyggyyggy..', '...yyyyyyyyy..', '....NNNNNN....', '...NnnnnnnN...', '..NnnNNNnnnN..', '..NnnnnnnnnnN.', '..NnnnnnnnnnN.', '..NNccccccNN..', '..NnnnnnnnnnN.', '..NNnnnnnnnnN.', '...NnnnnnnnN..', '....NNNNNNN...'], b: ['...g..gg..g...', '...gyggyyggy..', '...yyyyyyyyy..', '....NNNNNN....', '...NnnnnnnN...', '..NnnNNNnnnN..', '..NnnnnnnnnnN.', '..NnnnnnnnnnN.', '..NnnnnnnnnnN.', '..NnnnnnnnnnN.', '..NNnnnnnnnnN.', '...NnnnnnnnN..', '....NNNNNNN...'] },
-  chifres: { x: -1, y: -1, f: ['O............O', 'Oi...nnnn...iO', '.Oi.nMooMn.iO.', '..OinMMMMMniO.', '...nMMMMMMMn..', '...NNNNNNNNN..'] },
-  asas: { x: -1, y: -2, f: ['.OO........OO.', 'OOOi.nnnnn.iOO', '.OOinMooMMniOO', '..OinMMMMMMiO.', '...nMMMMMMMMn.', '...ggggggggg..'] },
-  capuz: { x: -1, y: -2, f: ['....aaaaa.....', '...aAAAaaaa...', '..aAAaaaaaaa..', '.aAAaaaaaaaab.', '.aAa.......ab.', '.aaa.......ab.', 'aaa.........ab', 'aaa.........ab', 'aab.........ab', '.ab.........b.'], b: ['....aaaaa.....', '...aAAAaaaa...', '..aAAaaaaaaa..', '.aAAaaaaaaaab.', '.aAaaaaaaaaab.', '.aaaaaaaaaaab.', 'aaaaaaaaaaaaab', 'aaaaaaaaaaaaab', 'aabaaaaaaaaaab', '.abbbbbbbbbbb.'] },
-  chapeu: { x: -2, y: -8, f: ['......bb......', '......ab......', '.....aAab.....', '.....aAab.....', '....aAAaab....', '....aAaaab....', '...aAaaaaab...', '...gGggggy....', '..aaaaaaaaab..', '.bbbbbbbbbbbb.', 'bbbbbbbbbbbbbb'] },
-  boina: { x: -1, y: -2, f: ['.....rrrrr....', '...rRRRrrrrr..', '..rRRrrrrrrrr.', '..rrrrrrrrrrrX', '...XXXXXXXXX..'] },
-  pena: { x: -1, y: -1, f: ['.............O', '............Oi', '...........Oi.', '..........Oi..', '...ggggggggg..'] },
-  coroaSol: { x: 0, y: -4, f: ['..G..G..G...', '..gG.gG.gG..', '..gggggggg..', '..yyyyyyyy..'] },
-  corvo: { x: -1, y: -2, f: ['....aaaaa.....', '...aAAAaaaa...', '..aAAaaaaaaa..', '.aAAaaaaaaaaa.', '.aAaaaNNNaaaa.', '.aaa.NNCNN.ab.', 'aaa...NNN...ab', 'aaa.........ab', 'aab.........ab', '.ab.........b.'], b: ['....aaaaa.....', '...aAAAaaaa...', '..aAAaaaaaaa..', '.aAAaaaaaaaab.', '.aAaaaaaaaaab.', '.aaaaaaaaaaab.', 'aaaaaaaaaaaaab', 'aaaaaaaaaaaaab', 'aabaaaaaaaaaab', '.abbbbbbbbbbb.'] },
-};
-for (const k of ['capuzGelo', 'capuzSol', 'capuzSombra', 'capuzOsso', 'capuzLua']) CHAPEUS_F[k] = { x: -1, y: -2, f: CHAPEUS_F.capuz.f, b: CHAPEUS_F.capuz.b };
-CHAPEUS_F.capuzGelo.f = ['.......C......', '......CcC.....', '....aaacaaa...', '...aAAAaaaa...', '..aAAaaaaaaa..', '.aAAaaaaaaaab.', '.aAa.......ab.', '.aaa.......ab.', 'aaa.........ab', 'aaa.........ab', 'aab.........ab', '.ab.........b.'];
-CHAPEUS_F.capuzGelo.y = -4; CHAPEUS_F.capuzGelo.b = ['.......C......', '......CcC.....', '....aaacaaa...', '...aAAAaaaa...', '..aAAaaaaaaa..', '.aAAaaaaaaaab.', '.aAaaaaaaaaab.', '.aaaaaaaaaaab.', 'aaaaaaaaaaaaab', 'aaaaaaaaaaaaab', 'aabaaaaaaaaaab', '.abbbbbbbbbbb.'];
-CHAPEUS_F.capuzSol.f = ['....aaaaa.....', '...aAAAaaaa...', '..aAAagaaaaa..', '.aAAagGGgaaab.', '.aAa.gGg...ab.', '.aaa..g....ab.', 'aaa.........ab', 'aaa.........ab', 'aab.........ab', '.ab.........b.'];
-CHAPEUS_F.capuzOsso.f = ['.....OOOO.....', '....OeOOeO....', '....aOOOOa....', '...aAAAaaaa...', '..aAAaaaaaaa..', '.aAAaaaaaaaab.', '.aAa.......ab.', '.aaa.......ab.', 'aaa.........ab', 'aaa.........ab', 'aab.........ab', '.ab.........b.']; CHAPEUS_F.capuzOsso.y = -3;
-CHAPEUS_F.capuzLua.f = ['......CC......', '.....C..C.....', '....aaaCaaa...', '...aAAAaaaa...', '..aAAaaaaaaa..', '.aAAaaaaaaaab.', '.aAa.......ab.', '.aaa.......ab.', 'aaa.........ab', 'aaa.........ab', 'aab.........ab', '.ab.........b.']; CHAPEUS_F.capuzLua.y = -3;
-const BARBA_F = { x: 1, y: 7, rows: ['hHhhhhhhhh', 'hhhhhhhhhh', '.hhhhhhhh.', '..hhhhhh..', '...hhhh...'] };
-const CABELO_LONGO_F = { x: -1, y: 4, rows: ['hh..........hh', 'hh..........hh', 'hh..........hh', 'hh..........hj', 'hh..........hj', '.h..........j.', '.j..........j.'] };
-const CABELO_LONGO_B = { x: 0, y: 7, rows: ['hhhhhhhhhhhh', 'hHhhhhhhhhhj', 'hhhhhhhhhhhj', '.hhhhhhhhhj.', '.hhhhhhhhjj.', '..hhhhhhjj..', '..hhhhhhj...', '...hhhhj....'] };
-const MASCARA_F = { x: 1, y: 7, rows: ['3333333333', '2222222222', '.22222222.'] };
-const OLHO_BRILHO_F = { x: 4, y: 6, rows: ['C...C', 'c...c'] };
-const CACHECOL_F = { x: 3, y: 15, rows: ['.44555554..', '45555555554', '.5566.6655.', '..66...66..'] };
-const CACHECOL_B = { x: 3, y: 15, rows: ['.44555554..', '45555555554', '..5555555..', '...66666...', '....666....'] };
-const ESCUDO_F = ['.NnnnnnN.', 'NnMMMMMnN', 'nM44744Mn', 'nM47774Mn', 'nM44744Mn', 'nM44744Mn', 'nM45555Mn', '.nM555Mn.', '.nnM5Mnn.', '..nnMnn..', '...NNN...'];
-const ALJAVA_B = ['.O.O', '.rOr', '.WWW', '.xww', '.xww', '.xww', '.xww', '.xww', '..x.'];
-const AUREOLA_F = { x: 1, y: -6, rows: ['..gGGGGg..', '.g......g.', '..gggggg..'] };
-// Tronco de costas: sem fivela, sem brasão, sem detalhes do peito
-function troncoCostas(rows) { return rows.map((r) => r.replace(/g/g, 'l').replace(/[57]/g, 'a').replace(/[46]/g, 'a').replace(/K/g, 'U').replace(/c/g, 'M')); }
-const CABECA_GOLEM_F = ['.NnnnnN.', 'NnMMMMnN', 'NMCnnCMN', 'NnMMMMnN', '.NnccnN.', '..NNNN..'];
-const CABECA_GOLEM_B = ['.NnnnnN.', 'NnMMMMnN', 'NMMMMMMN', 'NnMMMMnN', '.NnnnnN.', '..NNNN..'];
-
-/* ---- poses de frente: m = mão da arma relativa ao ombro direito (lado da arma), a = ângulo ---- */
-const POSES_F = {
-  espada: { idle: { m: [2, 8.5], a: -75 }, atk: [{ m: [2.5, 1], a: -110 }, { m: [3, -1], a: -125 }, { m: [-7, 5], a: 150 }, { m: [-7, 7.5], a: 165 }, { m: [-1, 8.5], a: -75 }], cast: { m: [1, -3], a: -90 }, vit: { m: [0, -6], a: -90 } },
-  espadao: { idle: { m: [2, 8.5], a: -80 }, atk: [{ m: [2.5, 0], a: -115 }, { m: [3, -2], a: -130 }, { m: [-7.5, 5], a: 150 }, { m: [-7.5, 8], a: 165 }, { m: [-1, 8.5], a: -80 }], cast: { m: [1, -3], a: -90 }, vit: { m: [0, -6], a: -90 }, duas: true },
-  machado: { idle: { m: [2, 8.5], a: -80 }, atk: [{ m: [2.5, 0], a: -115 }, { m: [3, -2], a: -130 }, { m: [-7.5, 5], a: 150 }, { m: [-7.5, 8], a: 165 }, { m: [-1, 8.5], a: -80 }], cast: { m: [1, -3], a: -90 }, vit: { m: [0, -6], a: -90 }, duas: true },
-  martelo: { idle: { m: [2, 8.5], a: -80 }, atk: [{ m: [2.5, 0], a: -115 }, { m: [3, -2], a: -130 }, { m: [-7.5, 5], a: 150 }, { m: [-7.5, 8], a: 165 }, { m: [-1, 8.5], a: -80 }], cast: { m: [1, -3], a: -90 }, vit: { m: [0, -6], a: -90 }, duas: true },
-  lanca: { idle: { m: [2, 8], a: -90 }, atk: [{ m: [2, 3], a: -100 }, { m: [2, 1], a: -105 }, { m: [-4, 8], a: 120 }, { m: [-3, 8], a: 110 }, { m: [1, 8], a: -90 }], cast: { m: [1, -2], a: -90 }, vit: { m: [1, -5], a: -90 } },
-  arco: { idle: { m: [2.5, 8], a: -90 }, atk: [{ m: [-3, 4], a: -90, puxar: 1 }, { m: [-3, 4], a: -90, puxar: 1 }, { m: [-3, 4], a: -90 }, { m: [-1, 6], a: -90 }, { m: [2.5, 8], a: -90 }], cast: { m: [1, -1], a: -90, puxar: 1 }, vit: { m: [2, -3], a: -90 } },
-  cajado: { idle: { m: [2.5, 8], a: -80 }, atk: [{ m: [2, 2], a: -100 }, { m: [2, 0], a: -105 }, { m: [-5, 6], a: 140, brilho: 1 }, { m: [-4, 7], a: 150, brilho: 1 }, { m: [0, 8], a: -80 }], cast: { m: [1, -3.5], a: -90, brilho: 1 }, vit: { m: [0, -5], a: -90, brilho: 1 } },
-  adagas: { idle: { m: [2, 8.5], a: 110 }, atk: [{ m: [2.5, 2], a: -120 }, { m: [3, 0], a: -135 }, { m: [-6, 5], a: 150 }, { m: [-6, 7], a: 165 }, { m: [-1, 8.5], a: 110 }], cast: { m: [1, -1], a: -80 }, vit: { m: [0, -5], a: -90 }, tras: true },
-  alaude: { idle: { m: [-3, 8], a: -20 }, atk: [{ m: [-4, 7.5], a: -25 }, { m: [-4, 7], a: -28 }, { m: [-2, 6.5], a: -15 }, { m: [-3, 7], a: -20 }, { m: [-3.5, 8], a: -22 }], cast: { m: [-2, 5], a: -30 }, vit: { m: [0, 1], a: -40 } },
-  punho: { idle: { m: [2.5, 8], a: 0 }, atk: [{ m: [-1, 4], a: 0 }, { m: [-1.5, 3], a: 0 }, { m: [-1, 7.5], a: 0, soco: 1 }, { m: [-1, 7], a: 0, soco: 1 }, { m: [2, 8], a: 0 }], cast: { m: [2, -3], a: 0 }, vit: { m: [1, -6], a: 0 } },
-};
-// Quadros de frente/costas (reaproveitam os parâmetros das animações laterais: lift dos pés, mãos, corpo)
-function quadrosVista(anim) {
-  switch (anim) {
-    case 'idle': return [{ by: 0 }, { by: 0, dmy: 0.5 }, { by: 1, dmy: 1 }, { by: 1, dmy: 1, hy: 0.5 }, { by: 1, dmy: 0.5 }, { by: 0 }];
-    case 'walk': return [
-      { by: 0, pl: 0, pr: 0, sx: 0.5, dm: [0, 0], dt: [0, 0] }, { by: -1, pl: 2, pr: 0, sx: 0.3, dm: [-1, -1.5], dt: [1, 1] }, { by: -1, pl: 2.5, pr: 0, sx: 0, dm: [-1, -2], dt: [1, 1.5] },
-      { by: 0, pl: 0, pr: 0, sx: -0.5, dm: [0, 0], dt: [0, 0] }, { by: -1, pl: 0, pr: 2, sx: -0.3, dm: [1, 1], dt: [-1, -1.5] }, { by: -1, pl: 0, pr: 2.5, sx: 0, dm: [1, 1.5], dt: [-1, -2] }];
-    case 'run': return [
-      { by: 0, pl: 1, pr: 0, sx: 1, dm: [-2, -3], dt: [2, 2] }, { by: -2, pl: 3.5, pr: 0.5, sx: 0.5, dm: [-2, -3], dt: [2, 2] },
-      { by: 0, pl: 0, pr: 1, sx: -1, dm: [2, 2], dt: [-2, -3] }, { by: -2, pl: 0.5, pr: 3.5, sx: -0.5, dm: [2, 2], dt: [-2, -3] }];
-    case 'atk': return [{ by: 0, atk: 0, dt: [0, -1] }, { by: -1, atk: 1, dt: [0, -2], hy: -0.5 }, { by: 1, atk: 2, dt: [1, 1], hy: 0.5 }, { by: 1, atk: 3, dt: [1, 1] }, { by: 0, atk: 4 }];
-    case 'cast': return [{ by: 0, cast: true, dt: [-1, -5] }, { by: -1, cast: true, dt: [-1, -8], hy: -0.5 }, { by: -1, cast: true, dt: [-1, -8.5], hy: -0.5 }, { by: 0, cast: true, dt: [-1, -6] }];
-    case 'hurt': return [{ by: -1, hy: -1, dm: [1, -2], dt: [-1, -2], da: -15, pl: 0, pr: 0, sx: 0.5 }, { by: 0, hy: -0.5, dm: [0.5, -1], dt: [-0.5, -1] }];
-    case 'empurrao': return [{ by: -2, hy: -2, dm: [2, -5], dt: [-2, -5], da: -40, sx: 1 }, { by: -1, hy: -1, dm: [1.5, -3], dt: [-1.5, -3], da: -25, sx: 0.5 }];
-    case 'dash': return [{ by: -1, pl: 2, pr: 0, sx: 1, dm: [-3, -4], dt: [3, -4] }, { by: 0, pl: 0, pr: 2, sx: 1, dm: [-3, -3], dt: [3, -3] }];
-    case 'morte': return [
-      { by: 0, hy: -1, dm: [2, -4], dt: [-2, -4], da: -30 },
-      { by: 4, hy: 1, dm: [1, 2], dt: [-1, 2], da: 40, joelhos: true },
-      { by: 7, hy: 2.5, dm: [2, 4], dt: [-2, 4], da: 60, joelhos: true },
-      { deitado: true }];
-    case 'vit': return [
-      { by: 2, vit: true, dt: [0, 0], dm: [0, 0], joelhos: true }, { by: -5, vit: true, dt: [-1, -8], dm: [1, -8], pl: 3, pr: 3 },
-      { by: -7, vit: true, dt: [-2, -9], dm: [2, -9], pl: 3, pr: 3, hy: -0.5 }, { by: -1, vit: true, dt: [-1, -8], dm: [1, -8] }];
-  }
-  return [{}];
-}
-
-/* ---- montagem de um quadro de frente (costas = mesma composição com grades de trás, espelhada) ---- */
-function montarQuadroVista(def, P, f, costas) {
-  if (f.deitado) return montarDeitado(def, P);
-  const camadas = [];
-  const by = f.by || 0, bx = f.bx || 0, sx = f.sx || 0;
-  const tipoArma = def.golem ? 'punho' : def.arma;
-  const poses = POSES_F[tipoArma] || POSES_F.espada;
-  let pose = poses.idle;
-  if (f.atk !== undefined) pose = poses.atk[f.atk];
-  else if (f.cast) pose = poses.cast;
-  else if (f.vit) pose = poses.vit;
-  const G = def.golem, k = def.grande ? 1.55 : 1;
-  const S = (p) => (k === 1 ? p : [16 + (p[0] - 16) * k, 38 + (p[1] - 38) * k]);
-  // esqueleto de frente: ombro esquerdo (tela) e direito (arma)
-  const ombroL = S(G ? [9.5 + bx, 20 + by] : [11.5 + bx, 18 + by]), ombroR = S(G ? [22.5 + bx, 20 + by] : [20.5 + bx, 18 + by]);
-  const quadL = S(G ? [13 + bx, 28 + by] : [14 + bx, 26 + by]), quadR = S(G ? [19 + bx, 28 + by] : [18 + bx, 26 + by]);
-  const pl = f.pl || 0, pr = f.pr || 0;
-  const peL = S([(G ? 12.5 : 13.5) + bx + sx, 36 - pl]), peR = S([(G ? 19.5 : 18.5) + bx - sx, 36 - pr]);
-  const dm = f.dm || [0, 0], dt = f.dt || [0, 0], dmy = f.dmy || 0;
-  // mão da arma (direita) e mão livre (esquerda)
-  const maoR = [ombroR[0] + (pose.m[0] + dm[0]) * k, ombroR[1] + (pose.m[1] + dm[1] + dmy) * k];
-  let maoL = [ombroL[0] - 1 + dt[0], ombroL[1] + 8.5 + dt[1] + dmy];
-  const ang = pose.a + (f.da || 0);
-  const [adx, ady] = dirAng(ang);
-  if (poses.duas && !f.vit && !f.cast && f.joelhos === undefined) maoL = [maoR[0] - adx * 3, maoR[1] - ady * 3];
-  if (tipoArma === 'punho') maoL = [ombroL[0] - (2 + dt[0]) * k, ombroL[1] + (7 + dt[1] + dmy) * k];
-  if (def.escudo) maoL = [ombroL[0] - 1.5 + dt[0] * 0.3, ombroL[1] + 7 + (dt[1] < 0 ? -2 : 0) + dmy];
-  if (f.cast || f.vit) maoL = [ombroL[0] - 2 + dt[0], ombroL[1] + 8 + dt[1]];
-
-  const corManga = def.golem ? [P.M, P.n, P.N] : def.manga === 'metal' ? [P.o, P.M, P.n, P.N] : def.manga === 'pele' ? [P.S, P.s, P.z, P.Q] : def.manga === 'osso' ? [P.O, P.O, P.i] : [P.A, P.a, P.b, escurecer(P.b, 0.3)];
-  const corMao = def.golem ? [P.M, P.n, P.N] : def.mao === 'metal' ? [P.o, P.M, P.n] : def.mao === 'osso' ? [P.O, P.O, P.i] : def.mao === 'faixa' ? [P.O, P.i, P.i] : [P.S, P.s, P.z];
-  const espBraco = def.golem ? 4.6 * k : def.mangaGrossa ? 3.4 : def.manga === 'osso' ? 2 : 3;
-  const espPerna = def.golem ? 4.4 * k : def.perna === 'osso' ? 2.2 : 3.6;
-  const corPerna = def.perna === 'osso' ? [P.O, P.O, P.i] : def.golem ? [P.M, P.n, P.N] : [P.V, P.v, P.u, escurecer(P.u, 0.3)];
-  const corBota = def.perna === 'osso' ? [P.O, P.i, P.i] : def.golem ? [P.n, P.N, P.N] : [P.F, P.f, P.k, escurecer(P.k, 0.3)];
-  const lBraco = (G ? 5 : 4.9) * k, lPerna = (G ? 4 : 5.5) * k;
-  const botaF = (L, x, y, cores) => { for (let i = -1; i <= 1; i++) { ponto(L, x + i, y, i < 0 ? cores[0] : cores[1]); ponto(L, x + i, y + 1, cores[2]); } ponto(L, x - 2, y + 1, cores[1]); ponto(L, x + 2, y + 1, cores[2]); ponto(L, x - 2, y, cores[0]); ponto(L, x + 2, y, cores[1]); };
-
-  // capa: de frente aparece atrás, nas laterais; de costas cobre o tronco (desenhada depois dele)
-  const capa = (L) => {
-    const topo = 17 + by, alt = 16;
-    for (let y = 0; y <= alt; y++) {
-      const t = y / alt, w = 5.5 + t * 2;
-      for (let x = Math.floor(16 + bx - w); x <= Math.ceil(16 + bx + w); x++) ponto(L, x, topo + y, y > alt - 1.5 ? P['6'] : x < 16 + bx - w + 1.5 ? P['4'] : x > 16 + bx + w - 1.5 ? P['6'] : P['5']);
-    }
-  };
-  if (def.capa && !costas) { const L = camada(false); capa(L); camadas.push(L); }
-  if (def.aljava && costas) { const L = camada(false); carimbar(L, ALJAVA_B, 11 + bx, 15 + by, P); camadas.push(L); }
-  if (def.cabeloLongo && costas) { const L = camada(false); carimbar(L, CABELO_LONGO_B.rows, 10 + bx + CABELO_LONGO_B.x, 4 + by + CABELO_LONGO_B.y + (f.hy || 0), P); camadas.push(L); }
-  // pernas (retas de frente; o passo encurta a perna e levanta o pé)
-  for (const [q, pe, cores, cb] of [[quadL, peL, corPerna.map((c) => escurecer(c, 0.08)), corBota.map((c) => escurecer(c, 0.08))], [quadR, peR, corPerna, corBota]]) {
-    const L = camada(true);
-    let fx = pe[0], fy = pe[1] - 1.5 * k;
-    if (f.joelhos) fy = q[1] + 5;
-    membro(L, q[0], q[1], fx, fy, espPerna, cores);
-    botaF(L, fx, fy + 1.5, cb);
-    camadas.push(L);
-  }
-  // tronco
-  { const L = camada(true);
-    if (def.golem) { const [tx, ty] = S([9 + bx, 16 + by]); carimbar(L, k > 1 ? TRONCO_COLOSSO : TRONCO_GOLEM, tx, ty, P); }
-    else {
-      const T = TRONCOS[def.torso] || TRONCOS.tunica;
-      carimbar(L, costas ? troncoCostas(T) : T, 11 + bx, 16 + by, P);
-      if (def.ombreiras) carimbar(L, OMBREIRAS.rows, 11 + bx + OMBREIRAS.x, 16 + by + OMBREIRAS.y, P);
-      if (def.colar && !costas) carimbar(L, COLAR.rows, 11 + bx + COLAR.x, 16 + by + COLAR.y, P);
-      for (let i = 1; i < 9; i++) ponto(L, 11 + bx + i, 25.5 + by, P['6']);
-    }
-    camadas.push(L); }
-  if (def.saia) {
-    const L = camada(true);
-    SAIA.forEach((row, j) => { const off = j >= 3 ? Math.round(sx * (j / 9)) : 0; for (let i = 0; i < row.length; i++) if (row[i] !== '.') ponto(L, 10 + bx + i + off, 26 + by + j, P[row[i]]); });
-    camadas.push(L);
-  }
-  if (def.capa && costas) { const L = camada(true); capa(L); camadas.push(L); }
-  if (def.cabeloLongo && !costas) { const L = camada(true); carimbar(L, CABELO_LONGO_F.rows, 10 + bx + CABELO_LONGO_F.x, 4 + by + CABELO_LONGO_F.y + (f.hy || 0), P); camadas.push(L); }
-  // cabeça
-  { const L = camada(true), hx = 10 + bx, hy = 4 + by + (f.hy || 0);
-    if (def.golem) { const [gx, gy] = S([12 + bx, 9 + by + (f.hy || 0)]); carimbar(L, costas ? CABECA_GOLEM_B : k > 1 ? CABECA_COLOSSO : CABECA_GOLEM_F, gx, gy, P); }
-    else {
-      carimbar(L, (costas ? CABECAS_B : CABECAS_F)[def.cabeca || 'normal'], hx, hy, P);
-      if (def.barba && !costas) carimbar(L, BARBA_F.rows, hx + BARBA_F.x, hy + BARBA_F.y, P);
-      if (def.mascara && !costas) carimbar(L, MASCARA_F.rows, hx + MASCARA_F.x, hy + MASCARA_F.y, P);
-      if (def.capacete) { const c = CHAPEUS_F[def.capacete] || CHAPEUS_F.elmo; carimbar(L, costas ? (c.b || c.f) : c.f, hx + c.x, hy + c.y, P); }
-      if (def.olho && !costas) carimbar(L, OLHO_BRILHO_F.rows, hx + OLHO_BRILHO_F.x, hy + OLHO_BRILHO_F.y, P);
-      if (def.faixa) carimbar(L, ['555555555555', '655555555556'], hx, hy + 3, P);
-      if (def.aureola) carimbar(L, AUREOLA_F.rows, hx + AUREOLA_F.x, hy + AUREOLA_F.y + (f.by === 1 ? -1 : 0), P);
-    }
-    camadas.push(L); }
-  if (def.cachecol) { const L = camada(true); const C = costas ? CACHECOL_B : CACHECOL_F; carimbar(L, C.rows, C.x + bx, C.y + by, P); camadas.push(L); }
-  // braço livre (esquerdo na tela) + escudo
-  { const L = camada(true);
-    const [cx, cy, hx2, hy2] = articulacao(ombroL[0], ombroL[1], maoL[0], maoL[1], lBraco, lBraco, 1);
-    membro(L, ombroL[0], ombroL[1], cx, cy, espBraco, corManga); membro(L, cx, cy, hx2, hy2, espBraco * 0.9, corManga);
-    if (def.golem) disco(L, hx2, hy2, 2.2 * k, corMao); else mao(L, hx2, hy2, corMao, f.cast || f.vit);
-    if (POSES_F[tipoArma] && POSES_F[tipoArma].tras) armaAdaga(L, hx2, hy2, (f.atk === 2 ? 30 : 70), P);
-    camadas.push(L);
-    if (def.escudo) { const Le = camada(true); carimbar(Le, ESCUDO_F, hx2 - 4, hy2 - 6, P); camadas.push(Le); } }
-  // arma + braço da arma (direito na tela)
-  const camArma = camada(true);
-  if (tipoArma !== 'punho') desenharArma(camArma, tipoArma, maoR[0], maoR[1], ang, P, def, pose);
-  const camBraco = camada(true);
-  { const [cx, cy, hx2, hy2] = articulacao(ombroR[0], ombroR[1], maoR[0], maoR[1], lBraco, lBraco, -1);
-    membro(camBraco, ombroR[0], ombroR[1], cx, cy, espBraco, corManga); membro(camBraco, cx, cy, hx2, hy2, espBraco * 0.9, corManga);
-    if (def.golem) disco(camBraco, hx2, hy2, (pose.soco ? 3.2 : 2.6) * k, corMao); else if (pose.soco) disco(camBraco, hx2, hy2, 2.3, corMao); else mao(camBraco, hx2, hy2, corMao, f.cast || f.vit);
-  }
-  if (tipoArma === 'alaude') camadas.push(camBraco, camArma); else camadas.push(camArma, camBraco);
-  camadas.espelhar = !!costas;
-  return camadas;
-}
-
 /* ===================== MERCENÁRIOS E ITENS ===================== */
 let STATE = null;
 function novoId() { STATE.nextId = (STATE.nextId || 1) + 1; return STATE.nextId; }
@@ -2055,12 +2149,15 @@ function rolarCresc(cls, pot) {
   return CLASSES[cls].cresc.map(([lo, hi]) => Math.round((lo + (hi - lo) * rnd(faixa[0], faixa[1])) * 100) / 100);
 }
 function gerarMerc(cls, nivel, pot, evitar = []) {
-  return {
+  const m = {
     id: novoId(), nome: nomeLivre(evitar), classe: cls, nivel, xp: 0, pot, cresc: rolarCresc(cls, pot), tracos: rolarTracos(pot),
     equip: { arma: null, armadura: null, amuleto: null }, pergaminhos: [], ascensoes: 0, evolucao: null,
     linha: CLASSES_FRENTE.includes(cls) ? 'frente' : 'tras', pos: CLASSES_FRENTE.includes(cls) ? 1 : 7, postura: 'auto', tatica: 'auto',
     pele: rint(0, 3), cabelo: CABELO_PADRAO[cls] != null && Math.random() < 0.5 ? CABELO_PADRAO[cls] : rint(0, 5),
   };
+  // EV2: aparência estável pelo id (não usa Math.random: o simulador, que não carrega a parte visual, gera os mesmos mercenários)
+  if (typeof garantirAparencia === 'function') garantirAparencia(m);
+  return m;
 }
 // Campeão Lendário: base 25% maior, potencial mínimo A e habilidade própria
 function gerarCampeao(id, nivel) {
@@ -3680,7 +3777,7 @@ function prepararArena(cv, b, cenario = 'arena') {
   Arena.lenta = 0; Arena.lentaTotal = 0; Arena.zoomFoco = null; Arena.ultimaMorte = null; Arena.camFoco = null; Arena.cutin = null; Arena.lua = null; Arena.soco = 0; Arena.janela = null; timersArena.length = 0;
   Arena.cenario = cenario; Arena.cam = { x: 0, y: 0, zoom: 1, pronta: false }; Arena.camModo = 'formacao'; Arena.camEntrada = 0;
   for (const u of b.units) u.camQuente = 0;
-  Arena.b = b; Arena.t = 0; Arena.part = []; Arena.nums = []; Arena.fx = [];
+  Arena.b = b; Arena.t = 0; Arena.part = []; Arena.nums = []; Arena.fx = []; Arena.vx = [];
   Arena.tremor = 0; Arena.flash = 0; Arena.pausa = 0; Arena.festa = 0;
   Arena.fundo = desenharFundo(b, cenario);
   atualizarCamera(1);
@@ -3727,15 +3824,15 @@ function fumaca(x, y, n, cores) {
 }
 // Números de dano/cura e rótulos: posição presa ao mundo, tamanho fixo na tela (não crescem com o zoom).
 // esc 1 = rótulo pequeno · 2 = número normal · 3 = crítico. Números do mesmo alvo empilham para não se cobrirem.
-function numero(x, y, txt, cor, esc = 2, dono = null) {
+function numero(x, y, txt, cor, esc = 2, dono = null, rotulo = false) {
   const pilha = Arena.nums.filter((n) => n.dono && n.dono === dono && n.max - n.vida < 0.35).length;
-  Arena.nums.push({ x, y, txt: String(txt), cor, esc, vida: esc === 3 ? 1.0 : 0.85, max: esc === 3 ? 1.0 : 0.85, dono, pilha, jx: rnd(-7, 7) });
+  Arena.nums.push({ x, y, txt: String(txt), cor, esc, vida: esc === 3 ? 1.0 : 0.85, max: esc === 3 ? 1.0 : 0.85, dono, pilha, jx: rnd(-7, 7), rotulo });
   if (Arena.nums.length > 40) Arena.nums.shift();
 }
 const TAM_NUM = { 1: 11, 2: 14, 3: 19 };   // px CSS
 function efeito(tipo, props) { Arena.fx.push(Object.assign({ tipo, t: 0 }, props)); }
 function tremer(dur, amp) { Arena.tremorAmp = Arena.tremor > 0 ? Math.max(amp, Arena.tremorAmp) : amp; Arena.tremor = Math.max(Arena.tremor, dur); }
-const cab = (u) => u.y - 52;
+const cab = (u) => u.y - 47;   // altura da barra de vida: os números nascem logo acima dela
 
 function processarEventos(b) {
   for (const ev of b.eventos) {
@@ -3755,84 +3852,146 @@ function iniciarCameraLenta() {
   Arena.flash = 0.18; Arena.flashCor = '255,255,255'; Arena.festa = 2.5;
   somTocar('lenta'); vibrar([30, 40, 30], true);
 }
+// Cor do golpe de quem bate (arma ou projétil)
+const COR_PROJ = { flecha: '#ffffff', fagulha: '#ff8c1a', gelinho: '#9fe6ff', luzinha: '#ffe48a', osso: '#7dff9a', nota: '#5fe0c8', veneno: '#8be05a' };
+function corGolpe(src) {
+  if (!src) return '#ffffff';
+  if (src.proj) return COR_PROJ[src.proj] || '#ffffff';
+  const def = spriteSet(src.look).def || {};
+  return COR_ARMA[def.golem ? 'punho' : def.arma] || '#ffffff';
+}
+// Habilidade lançada que ainda vai acertar (projétil): o acerto ganha o efeito próprio dela
+function marcarPendente(u, id, alvo) { vis(u).pend = { id, alvo, t: Arena.t }; }
+function acertoDeHabilidade(ev) {
+  const src = ev.src, V = src && src.vis, P = V && V.pend;
+  if (!P || P.alvo !== ev.alvo || Arena.t - P.t > 2.5) return false;
+  V.pend = null;
+  const a = ev.alvo;
+  switch (P.id) {
+    case 'tiro':   // Atiradora de Elite: Tiro Certeiro
+      vx('faisca', { x: a.x, y: a.y - 18, r: 24, n: 10, rot: 0.2, cor: '#ffd84a', dur: 0.32 });
+      vx('anel', { x: a.x, y: a.y - 18, r0: 4, r1: 40, esp: 3, cor: '#ffd84a', ach: 0.8, dur: 0.36 });
+      vx('anelChao', { x: a.x, y: a.y, r0: 4, r1: 30, esp: 2, cor: '#fff4c2', dur: 0.4 });
+      vx('linhas', { x: a.x, y: a.y - 18, cor: '#ffe9a8', n: 18, dur: 0.35 });
+      recuar(a, Math.sign(a.x - src.x) || 1, 11);
+      Arena.pausa = Math.max(Arena.pausa, 0.12); tremer(0.22, 3); socar(0.1); Arena.flash = Math.max(Arena.flash, 0.1); Arena.flashCor = '255,236,170';
+      numero(a.x, cab(a) - 22, 'CERTEIRO!', '#ffd84a', 1, a);
+      faiscas(a.x, a.y - 18, 14, ['#ffffff', '#ffd84a', '#ffb36b'], 110);
+      return true;
+    case 'pira':   // Piromante Pira: coluna de fogo no alvo
+      vx('chama', { alvo: a, h: 46, larg: 9, dur: 0.7 });
+      vx('anelChao', { x: a.x, y: a.y, r0: 4, r1: 26, esp: 2.4, cor: '#ff8c1a', dur: 0.4 });
+      vx('faisca', { x: a.x, y: a.y - 18, r: 18, n: 8, rot: 0, cor: '#ff8c1a', dur: 0.3 });
+      Arena.pausa = Math.max(Arena.pausa, 0.08); tremer(0.2, 2.5); socar(0.07);
+      fumaca(a.x, a.y - 6, 8, ['#5d5868', '#3e3a46', '#ff8c1a']);
+      return true;
+  }
+  return false;
+}
 function vfxEvento(ev) {
   switch (ev.tipo) {
     case 'dano': {
-      const a = ev.alvo;
+      const a = ev.alvo, forca = clamp(ev.valor / Math.max(1, a.vidaMax * 0.08), 0.6, 3);
+      recuar(a, ev.src && ev.src !== a ? Math.sign(a.x - ev.src.x) || -a.face : -a.face, ev.crit ? 6 : forca > 1.6 ? 4.5 : 2.5);
+      const especial = acertoDeHabilidade(ev);
       if (ev.crit) {
         numero(a.x, cab(a) - 6, ev.valor + '!', '#ffd84a', 3, a);
-        faiscas(a.x, a.y - 15, 9, ['#ffffff', '#ffd84a', '#ffb36b'], 75);
-        fxImpacto(a.x, a.y - 18, '#ffd84a', 8, 13); socar(0.035);
-        tremer(0.14, 2); Arena.pausa = Math.max(Arena.pausa, 0.05); Arena.festa = Math.max(Arena.festa, 0.6);
+        if (!especial) { vxImpacto(a, '#ffd84a', 2, true); faiscas(a.x, a.y - 15, 8, ['#ffffff', '#ffd84a', '#ffb36b'], 80); }
+        socar(0.04); tremer(0.14, 2); Arena.pausa = Math.max(Arena.pausa, 0.06); Arena.festa = Math.max(Arena.festa, 0.6);
       } else {
         numero(a.x, cab(a), String(ev.valor), ev.escudo ? '#cfe8ff' : '#ffffff', 2, a);
-        faiscas(a.x, a.y - 15, 4, ev.escudo ? ['#cfe8ff', '#9fd3ff'] : ['#ffffff', '#e9dfc9'], 50);
+        if (!especial) vxImpacto(a, ev.escudo ? '#9fd3ff' : corGolpe(ev.src), forca, false);
+        if (forca > 1.6) { Arena.pausa = Math.max(Arena.pausa, 0.035); faiscas(a.x, a.y - 15, 5, ['#ffffff', '#e9dfc9'], 60); }
       }
       break;
     }
     case 'dot': numero(ev.alvo.x, cab(ev.alvo) + 4, String(ev.valor), COR_DOT[ev.dot] || '#ff9a3c', 2, ev.alvo); break;
-    case 'esquiva': numero(ev.alvo.x, cab(ev.alvo), 'ESQUIVA', '#b8b0c4', 1, ev.alvo); break;
+    case 'esquiva': { const V = vis(ev.alvo); V.esq = 0.34; V.esqDir = -ev.alvo.face; numero(ev.alvo.x, cab(ev.alvo), 'ESQUIVA', '#cfd6ff', 1, ev.alvo); vx('linhas', { x: ev.alvo.x, y: ev.alvo.y - 18, cor: '#cfe0ff', n: 6, dur: 0.2 }); break; }
     case 'cura': {
       const a = ev.alvo;
-      if (!ev.pequeno || ev.valor >= 12) numero(a.x, cab(a), '+' + ev.valor, '#7dff8a', 2, a);
+      if (!ev.pequeno || ev.valor >= 12) { numero(a.x, cab(a), '+' + ev.valor, '#7dff8a', 2, a); vx('brilho', { alvo: a, r: 14, cor: '#7dff8a', a: 0.6, dur: 0.5 }); }
       for (let i = 0; i < (ev.pequeno ? 1 : 4); i++) particula(a.x + rnd(-9, 9), a.y - rnd(6, 24), 0, -22, 0.7, '#7dff8a', { tipo: 'cruz' });
       break;
     }
     case 'corte':
-      fxCorte(ev.u, ev.alvo, ev.forte);
-      if (ev.forte) { Arena.pausa = Math.max(Arena.pausa, 0.045); tremer(0.1, 1.5); socar(0.05); faiscas(ev.alvo.x, ev.alvo.y - 18, 6, ['#ffffff', '#ffe9a8'], 70); }
+      vxCorte(ev.u, ev.alvo, ev.forte);
+      if (ev.forte) { Arena.pausa = Math.max(Arena.pausa, 0.05); tremer(0.1, 1.5); socar(0.05); faiscas(ev.alvo.x, ev.alvo.y - 18, 6, ['#ffffff', '#ffe9a8'], 70); }
       break;
-    case 'congelar': faiscas(ev.alvo.x, ev.alvo.y - 15, 10, ['#e8fbff', '#7fd6ff'], 40); numero(ev.alvo.x, cab(ev.alvo) - 8, 'GELO', '#9fe6ff', 2, ev.alvo); break;
-    case 'atordoar': faiscas(ev.alvo.x, ev.alvo.y - 30, 7, ['#ffe48a', '#ffffff'], 35); break;
+    case 'congelar':
+      vx('gelo', { x: ev.alvo.x, y: ev.alvo.y + 2, r: 9, n: 7, dur: 1.2 }); vx('brilho', { alvo: ev.alvo, r: 16, cor: '#7fd6ff', a: 0.7, dur: 0.4 });
+      faiscas(ev.alvo.x, ev.alvo.y - 15, 8, ['#e8fbff', '#7fd6ff'], 40); numero(ev.alvo.x, cab(ev.alvo) - 8, 'CONGELOU', '#9fe6ff', 1, ev.alvo); break;
+    case 'atordoar':
+      vx('faisca', { x: ev.alvo.x, y: ev.alvo.y - 30, r: 9, n: 5, rot: 0.3, cor: '#ffe48a', dur: 0.22 });
+      vx('anel', { x: ev.alvo.x, y: ev.alvo.y - 30, r0: 2, r1: 12, esp: 1.2, cor: '#ffe48a', ach: 0.5, dur: 0.3 });
+      numero(ev.alvo.x, cab(ev.alvo) - 8, 'ATORDOADO', '#ffe48a', 1, ev.alvo); break;
     case 'ritmo': particula(ev.u.x + rnd(-6, 6), ev.u.y - 34, rnd(-8, 8), -20, 0.8, '#f0c24b', { tipo: 'nota' }); break;
-    case 'colheita': faiscas(ev.u.x, ev.u.y - 18, 6, ['#7dff9a', '#d6ffe0'], 30); break;
-    case 'invocar': efeito('circulo', { x: ev.u.x, y: ev.u.y, cor: ev.u.cls === 'golem' ? '#ff8a3c' : '#7dff9a', dur: 0.6 }); fumaca(ev.u.x, ev.u.y - 8, 10, ['#8a8496', '#5d5868', ev.u.cls === 'golem' ? '#ff8a3c' : '#7dff9a']); break;
+    case 'colheita': faiscas(ev.u.x, ev.u.y - 18, 6, ['#7dff9a', '#d6ffe0'], 30); vx('brilho', { alvo: ev.u, r: 12, cor: '#7dff9a', a: 0.5, dur: 0.4 }); break;
+    case 'invocar': {
+      const cor = ev.u.cls === 'golem' ? '#ff8a3c' : '#7dff9a';
+      vx('circuloMagico', { x: ev.u.x, y: ev.u.y, r: 13, cor, dur: 0.7, giro: 4 }); vx('brilho', { x: ev.u.x, y: ev.u.y - 12, r: 16, cor, a: 0.8, ach: 1.4, dur: 0.45 });
+      fumaca(ev.u.x, ev.u.y - 8, 8, ['#8a8496', '#5d5868', cor]); break;
+    }
     case 'expirou': fumaca(ev.u.x, ev.u.y - 10, 10, ['#8a8496', '#5d5868']); break;
-    case 'morte': Arena.festa = Math.max(Arena.festa, 0.8); break;
+    case 'morte': Arena.festa = Math.max(Arena.festa, 0.8); if (!ev.u.invocacao) { vx('anel', { x: ev.u.x, y: ev.u.y - 14, r0: 4, r1: 18, esp: 1.6, cor: '#ffffff', ach: 0.6, dur: 0.3 }); vx('faisca', { x: ev.u.x, y: ev.u.y - 16, r: 16, n: 8, rot: 0, cor: '#ffe9c2', dur: 0.28 }); } break;
     case 'explosao': {
-      const met = ev.cor === 'meteoro';
-      efeito('explosaoG', { x: ev.x, y: ev.y, r: ev.raio * (met ? 0.6 : 0.5), cor: met ? '#ff8c1a' : '#ffb33c', cor2: met ? '#c4351c' : '#ff5a1f', dur: met ? 0.6 : 0.42 });
-      efeito('anel', { x: ev.x, y: ev.y + (met ? 6 : 12), r0: 4, r1: ev.raio, cor: met ? '#ff6a3c' : '#ffb33c', cor2: met ? '#7d2219' : '#ff5a1f', dur: 0.32 });
-      if (met) efeito('coluna', { x: ev.x, y: ev.y + 6, w: 16, h: 70, cores: ['#fff4c2', '#ffd23f', '#ff8c1a', '#ff5a1f'], dur: 0.55 });
-      Arena.pausa = Math.max(Arena.pausa, met ? 0.08 : 0.04); socar(met ? 0.11 : 0.06);
-      faiscas(ev.x, ev.y, met ? 26 : 16, ['#ffd23f', '#ff8c1a', '#ff5a1f', '#ffffff'], met ? 110 : 80);
-      if (met) fumaca(ev.x, ev.y, 14, ['#5d5868', '#3e3a46', '#ff8c1a']);
-      tremer(met ? 0.3 : 0.12, met ? 3 : 1.5);
+      const met = ev.cor === 'meteoro', inc = ev.raio > 30;
+      vx('explosao', { x: ev.x, y: ev.y, r: ev.raio * (met ? 0.75 : 0.7) + 6, cor: '#ffb33c', cor2: met ? '#c4351c' : '#ff5a1f', dur: met ? 0.6 : 0.45 });
+      vx('anelChao', { x: ev.x, y: ev.y + 12, r0: 4, r1: ev.raio + 4, esp: 2.6, cor: '#ffb33c', dur: 0.38 });
+      vx('faisca', { x: ev.x, y: ev.y, r: 14 + ev.raio * 0.3, n: 8, rot: 0.4, cor: '#ffd23f', dur: 0.24 });
+      if (met || inc) { vx('chama', { x: ev.x, y: ev.y + 12, h: 54, larg: 12, dur: 0.6 }); vx('linhas', { x: ev.x, y: ev.y, cor: '#ffb33c', n: 16, dur: 0.35 }); }
+      Arena.pausa = Math.max(Arena.pausa, met ? 0.09 : 0.05); socar(met ? 0.11 : 0.07);
+      faiscas(ev.x, ev.y, met ? 22 : 14, ['#ffd23f', '#ff8c1a', '#ff5a1f', '#ffffff'], met ? 110 : 85);
+      fumaca(ev.x, ev.y, met ? 14 : 6, ['#5d5868', '#3e3a46', '#ff8c1a']);
+      tremer(met ? 0.3 : 0.14, met ? 3 : 2);
       break;
     }
-    case 'estilhaco': faiscas(ev.x, ev.y, ev.sup ? 18 : 11, ['#e8fbff', '#7fd6ff', '#3a9fd6'], 65); efeito('cristais', { x: ev.x, y: ev.y + 12, r: ev.sup ? 16 : 9, n: ev.sup ? 9 : 5, dur: 0.7 }); fxImpacto(ev.x, ev.y, '#9fe6ff', 6, 11); if (ev.sup) efeito('anel', { x: ev.x, y: ev.y, r0: 4, r1: 24, cor: '#9fe6ff', cor2: '#3a9fd6', dur: 0.3 }); break;
+    case 'estilhaco':
+      vx('gelo', { x: ev.x, y: ev.y + 12, r: ev.sup ? 16 : 10, n: ev.sup ? 9 : 6, dur: 0.75 });
+      vx('faisca', { x: ev.x, y: ev.y, r: ev.sup ? 18 : 12, n: 6, rot: 0.5, cor: '#9fe6ff', dur: 0.22 });
+      vx('anel', { x: ev.x, y: ev.y, r0: 3, r1: ev.sup ? 28 : 18, esp: 1.8, cor: '#bfefff', ach: 0.7, dur: 0.3 });
+      faiscas(ev.x, ev.y, ev.sup ? 16 : 9, ['#e8fbff', '#7fd6ff', '#3a9fd6'], 65); socar(0.04);
+      break;
     case 'flechada': {
-      for (let i = 0; i < 7; i++) {
-        const tx = ev.tx + rnd(-ev.raio, ev.raio) * 0.8, ty = ev.ty + rnd(-ev.raio, ev.raio) * 0.4;
+      const bate = Arena.b && Arena.b.units.some((o) => o.vivo && o.cls === 'arqueira' && o.evo === 'b' && Math.abs(o.alvo ? o.alvo.x - ev.tx : 99) < 30);
+      for (let i = 0; i < 6; i++) {
+        const tx = ev.tx + rnd(-ev.raio, ev.raio) * 0.8, ty = ev.ty + rnd(-ev.raio, ev.raio) * 0.4, atraso = i * 0.03;
+        vx('rastroArco', { x0: tx - 22, y0: ty - 70, x1: tx, y1: ty - 4, cor: bate ? '#9fe0a0' : '#fff4dc', larg: 0.9, dur: 0.16, atraso });
+        vx('anelChao', { x: tx, y: ty, r0: 1, r1: 6, esp: 1, cor: bate ? '#9fe0a0' : '#e9dfc9', dur: 0.2, atraso: atraso + 0.12 });
         particula(tx - 20, ty - 48, 100, 240, 0.2, '#f4efe2', { tipo: 'flecha', fimY: ty });
       }
-      setTimeoutArena(0.2, () => fumaca(ev.tx, ev.ty, 6, ['#c49c68', '#a07a4c']));
+      setTimeoutArena(0.2, () => fumaca(ev.tx, ev.ty, 5, ['#c49c68', '#a07a4c']));
       break;
     }
-    case 'flechaCai': { const a = ev.alvo; particula(a.x - 20, a.y - 60, 100, 290, 0.2, '#f4efe2', { tipo: 'flecha', fimY: a.y - 8 }); break; }
+    case 'flechaCai': { const a = ev.alvo; vx('rastroArco', { x0: a.x - 24, y0: a.y - 90, x1: a.x, y1: a.y - 10, cor: '#9ff0e8', larg: 1.1, dur: 0.18 }); particula(a.x - 20, a.y - 60, 100, 290, 0.2, '#f4efe2', { tipo: 'flecha', fimY: a.y - 8 }); break; }
     case 'adagaCai': { const a = ev.alvo; particula(a.x + rnd(-30, 30), a.y - 50, 0, 300, 0.15, '#d2d9e0', { tipo: 'adaga', fimY: a.y - 12 }); break; }
-    case 'raio': efeito('raioG', { de: ev.de, para: ev.para, dur: 0.2, cor: '#ffffff', cor2: '#ffe14a' }); fxImpacto(ev.para.x, ev.para.y - 18, '#fff7a8', 6, 9); break;
-    case 'raioCeu': efeito('raioG', { alvo: ev.alvo, dur: 0.24, cor: '#ffffff', cor2: '#9fc8ff' }); fxImpacto(ev.alvo.x, ev.alvo.y - 10, '#cfe0ff', 8, 12); tremer(0.1, 1.5); Arena.flash = Math.max(Arena.flash, 0.08); Arena.flashCor = '200,220,255'; break;
-    case 'execucao': socar(0.1); numero(ev.alvo.x, cab(ev.alvo) - 10, 'EXECUTADO', '#d4a6ff', 2, ev.alvo); faiscas(ev.alvo.x, ev.alvo.y - 15, 14, ['#c48bff', '#3b3150', '#ffffff'], 70); break;
-    case 'renascer': efeito('pilar', { alvo: ev.u, dur: 0.7, cor: '#fff4c2', cor2: '#ffb33c' }); numero(ev.u.x, cab(ev.u) - 6, 'RENASCEU', '#ffe48a', 2, ev.u); faiscas(ev.u.x, ev.u.y - 16, 16, ['#ffd23f', '#ff8c1a', '#fff4c2'], 70); break;
+    case 'raio': vx('raioV', { de: ev.de, para: ev.para, cor: ev.de && ev.de.cls === 'clerica' ? '#ffe48a' : '#fff07a', dur: 0.24 }); vxImpacto(ev.para, '#fff7a8', 1.5); break;
+    case 'raioCeu': vx('raioV', { de: { x: ev.alvo.x + rnd(-6, 6), y: ev.alvo.y - 120 }, para: ev.alvo, cor: '#9fc8ff', dur: 0.26 }); vxImpacto(ev.alvo, '#cfe0ff', 2); tremer(0.1, 1.5); Arena.flash = Math.max(Arena.flash, 0.08); Arena.flashCor = '200,220,255'; break;
+    case 'execucao': socar(0.1); numero(ev.alvo.x, cab(ev.alvo) - 10, 'EXECUTADO', '#d4a6ff', 2, ev.alvo);
+      vx('corte', { x: ev.alvo.x, y: ev.alvo.y - 18, ang: -0.8, r: 18, abre: Math.PI * 0.9, esp: 4, sentido: 1, cor: '#c48bff', achata: 0.8, dur: 0.3 });
+      vx('corte', { x: ev.alvo.x, y: ev.alvo.y - 18, ang: 0.8 + Math.PI, r: 18, abre: Math.PI * 0.9, esp: 4, sentido: -1, cor: '#c48bff', achata: 0.8, dur: 0.3, atraso: 0.06 });
+      faiscas(ev.alvo.x, ev.alvo.y - 15, 14, ['#c48bff', '#3b3150', '#ffffff'], 70); break;
+    case 'renascer': vx('pilar', { alvo: ev.u, larg: 9, cor: '#ffd23f', dur: 0.8 }); numero(ev.u.x, cab(ev.u) - 6, 'RENASCEU', '#ffe48a', 2, ev.u); faiscas(ev.u.x, ev.u.y - 16, 16, ['#ffd23f', '#ff8c1a', '#fff4c2'], 70); break;
     case 'bomba': {
       Arena.flash = 0.2; Arena.flashCor = '255,200,120'; tremer(0.35, 3);
-      for (const u of Arena.b.units) if (u.vivo && u.team !== ev.team) { efeito('anel', { x: u.x, y: u.y - 10, r0: 3, r1: 18, cor: '#ffb33c', cor2: '#ff5a1f', dur: 0.3 }); faiscas(u.x, u.y - 10, 10, ['#ffd23f', '#ff8c1a', '#5d5868'], 70); }
+      for (const u of Arena.b.units) if (u.vivo && u.team !== ev.team) { vx('explosao', { x: u.x, y: u.y - 10, r: 14, cor: '#ffb33c', cor2: '#ff5a1f', dur: 0.4 }); faiscas(u.x, u.y - 10, 10, ['#ffd23f', '#ff8c1a', '#5d5868'], 70); }
       break;
     }
-    case 'copia': numero(ev.u.x, cab(ev.u) - 14, 'COPIOU ' + semAcento(nomeHabilidade(ev.id)).toUpperCase(), '#d4a6ff', 1, ev.u); efeito('raioG', { de: ev.alvo, para: ev.u, dur: 0.4, cor: '#efdcff', cor2: '#7a4fc0' }); break;
+    case 'copia': numero(ev.u.x, cab(ev.u) - 14, 'COPIOU ' + semAcento(nomeHabilidade(ev.id)).toUpperCase(), '#d4a6ff', 1, ev.u); vx('raioV', { de: ev.alvo, para: ev.u, cor: '#bd86f5', dur: 0.4 }); break;
     case 'elemento': {
       const cor = ev.el === 'fogo' ? '#ff8c1a' : ev.el === 'gelo' ? '#7fd6ff' : '#ffe14a';
-      efeito('anel', { x: ev.u.x, y: ev.u.y - 14, r0: 4, r1: 30, cor, cor2: '#ffffff', dur: 0.4 });
+      vx('anel', { x: ev.u.x, y: ev.u.y - 14, r0: 4, r1: 30, esp: 2, cor, ach: 0.6, dur: 0.4 }); vx('circuloMagico', { x: ev.u.x, y: ev.u.y, r: 16, cor, dur: 0.6 });
       numero(ev.u.x, cab(ev.u) - 14, ev.el.toUpperCase(), cor, 2, ev.u);
       break;
     }
-    case 'golens': numero(ev.u.x, cab(ev.u) - 14, 'GOLENS!', '#ff8a3c', 2, ev.u); tremer(0.3, 2.5); break;
-    case 'furiaGemea': numero(ev.u.x, cab(ev.u) - 14, 'FURIA!', '#ff5a4f', 3, ev.u); faiscas(ev.u.x, ev.u.y - 18, 16, ['#ff5a4f', '#7d2219'], 70); break;
+    case 'golens': numero(ev.u.x, cab(ev.u) - 14, 'GOLENS!', '#ff8a3c', 2, ev.u); tremer(0.3, 2.5); vx('anelChao', { x: ev.u.x, y: ev.u.y, r0: 6, r1: 50, esp: 3, cor: '#ff8a3c', dur: 0.5 }); break;
+    case 'furiaGemea': numero(ev.u.x, cab(ev.u) - 14, 'FÚRIA!', '#ff5a4f', 3, ev.u); faiscas(ev.u.x, ev.u.y - 18, 16, ['#ff5a4f', '#7d2219'], 70); vx('brilho', { alvo: ev.u, r: 22, cor: '#ff5a4f', a: 0.8, dur: 0.6 }); break;
     case 'skill': vfxSkill(ev); break;
     case 'supremo': {
       Arena.flash = 0.25; Arena.flashCor = '255,248,220'; tremer(0.35, 3.5); Arena.pausa = Math.max(Arena.pausa, 0.55); Arena.festa = 1.5;
       Arena.cutin = { u: ev.u, t: 0, dur: 1.1 }; focarCamera(ev.u.x, ev.u.y, 1.7, 1.3);
+      vx('linhas', { x: ev.u.x, y: ev.u.y - 18, cor: '#ffe48a', n: 26, dur: 0.8 });
+      vx('anel', { x: ev.u.x, y: ev.u.y - 18, r0: 6, r1: 48, esp: 3, cor: '#ffd84a', ach: 0.7, dur: 0.5 });
+      vx('circuloMagico', { x: ev.u.x, y: ev.u.y, r: 22, cor: '#ffd84a', dur: 1.1, giro: 5 });
       faiscas(ev.u.x, ev.u.y - 18, 22, ['#ffd84a', '#ffffff', '#f0c24b'], 90);
       if (Arena.aoSupremo) Arena.aoSupremo(ev.u);
       break;
@@ -3842,85 +4001,140 @@ function vfxEvento(ev) {
 const timersArena = [];
 function setTimeoutArena(t, fn) { timersArena.push({ t, fn }); }
 
+/* ---- habilidades: cada uma (e cada evolução) com assinatura visual própria ---- */
 function vfxSkill(ev) {
-  const u = ev.u, cor = COR_SKILL[ev.id] || '#ffffff', sup = ev.sup;
+  const u = ev.u, cor = COR_SKILL[ev.id] || '#ffffff', sup = ev.sup, evo = u.evo;
+  if ((ev.id === 'investida' && evo !== 'b') || ev.id === 'passo') saltar(u, ev.x0, ev.y0, ev.id === 'passo' ? 0.2 : 0.26, ev.id === 'passo' ? 6 : 16);
+  if (ev.id === 'luz' || ev.id === 'bencaoMenor' || ev.id === 'primeirosSocorros' || ev.id === 'juramento') vis(u).cura = 0.45;
   switch (ev.id) {
-    case 'muralha':
-      efeito('cupula', { x: u.x, y: u.y, r: sup ? 20 : 16, cor: '#cfe8ff', cor2: '#5aa7e6', dur: 0.7 });
-      efeito('anel', { x: u.x, y: u.y, r0: 5, r1: (sup ? 60 : 43), cor: '#9fd3ff', cor2: '#5aa7e6', dur: 0.4 });
-      fumaca(u.x, u.y, 6, ['#c49c68', '#a07a4c']); tremer(0.12, 1.5);
-      break;
-    case 'redemoinho':
-      efeito('marca', { x: u.x, y: u.y, r: ev.raio, cor: '#ffe9a8', cor2: 'rgba(224,87,79,0.22)', dur: 0.16 });
-      setTimeoutArena(0.16, () => { efeito('giro', { u, r: ev.raio, dur: 0.4 }); efeito('anel', { x: u.x, y: u.y, r0: 6, r1: ev.raio + 6, cor: '#ffffff', cor2: '#d2d9e0', dur: 0.25 }); fumaca(u.x, u.y, 9, ['#c49c68', '#a07a4c']); tremer(0.15, 2); });
-      break;
-    case 'investida': {
-      fumaca(ev.x0, ev.y0, 6, ['#c49c68', '#a07a4c']);
-      fxRastro(u, ev.x0, ev.y0, '#ffe9c2');
-      fumaca(u.x, u.y, 7, ['#c49c68', '#a07a4c']); tremer(0.18, 2.5); socar(0.07);
+    case 'muralha': {
+      const r = sup ? 20 : 16;
+      vx('cupula', { alvo: u, r, cor: evo === 'a' ? '#ff9a7a' : '#7fc8ff', dur: 0.85 });
+      vx('anelChao', { x: u.x, y: u.y, r0: 5, r1: evo === 'a' ? 64 : sup ? 60 : 43, esp: 3, cor: evo === 'a' ? '#ff6a5a' : '#9fd3ff', dur: 0.45 });
+      if (evo === 'a') vx('anelChao', { x: u.x, y: u.y, r0: 5, r1: 64, esp: 2, cor: '#ff6a5a', dur: 0.45, atraso: 0.2 });
+      if (evo === 'b') { const al = aliadosDeArena(u).filter((o) => o !== u && o.st.shield).sort((p, q) => p.vida / p.vidaMax - q.vida / q.vidaMax)[0]; if (al) { vx('cupula', { alvo: al, r: 14, cor: '#ffd23f', dur: 0.8 }); vx('raioV', { de: u, para: al, cor: '#ffe48a', dur: 0.3 }); } }
+      vx('faisca', { x: u.x, y: u.y - 20, r: 12, n: 6, rot: 0, cor: '#9fd3ff', dur: 0.2 });
+      fumaca(u.x, u.y, 6, ['#c49c68', '#a07a4c']); tremer(0.14, 1.8); socar(0.04);
       break;
     }
-    case 'chuva': case 'meteoro': efeito('marca', { x: ev.tx, y: ev.ty, r: ev.raio, cor: ev.id === 'meteoro' ? '#ff8c1a' : '#e0574f', cor2: ev.id === 'meteoro' ? 'rgba(255,140,26,0.22)' : 'rgba(224,87,79,0.22)', dur: ev.dur });
-      if (ev.id === 'meteoro') setTimeoutArena(0.15, () => particula(ev.tx - 50, ev.ty - 110, 110, 230, 0.45, '#ff8c1a', { tipo: 'meteoro', fimY: ev.ty - 6 }));
+    case 'redemoinho': {
+      const ceif = evo === 'b', c1 = ceif ? '#ff5a6a' : '#ffe9c2';
+      vx('marcaV', { x: u.x, y: u.y, r: ev.raio, cor: ceif ? '#ff5a6a' : '#ffb36b', dur: 0.18 });
+      vx('corte', { x: u.x, y: u.y - 14, ang: 0, r: ev.raio * 0.9, abre: Math.PI * 2, esp: 5, sentido: 1, cor: c1, achata: 0.5, dur: 0.32, atraso: 0.14, duplo: true });
+      vx('corte', { x: u.x, y: u.y - 10, ang: Math.PI, r: ev.raio * 0.75, abre: Math.PI * 2, esp: 3.5, sentido: 1, cor: c1, achata: 0.5, dur: 0.3, atraso: 0.2 });
+      vx('anelChao', { x: u.x, y: u.y, r0: 6, r1: ev.raio + 8, esp: 3, cor: c1, dur: 0.3, atraso: 0.16 });
+      if (ceif) vx('linhas', { x: u.x, y: u.y - 14, cor: '#ff5a6a', n: 14, dur: 0.35 });
+      setTimeoutArena(0.16, () => { fumaca(u.x, u.y, 9, ['#c49c68', '#a07a4c']); tremer(0.16, 2.2); socar(0.06); });
       break;
-    case 'bolaFogo': case 'lancaGelo': {
-      const [dx, dy] = dirDe(ev.ang), fogo = ev.id === 'bolaFogo';
-      efeito('circulo', { x: u.x, y: u.y, cor: fogo ? '#ff8c1a' : '#7fd6ff', dur: 0.4 });
-      faiscas(u.x + dx * 11, u.y - 20 + dy * 6, sup ? 12 : 7, fogo ? ['#ffd23f', '#ff8c1a', '#fff4c2'] : ['#e8fbff', '#7fd6ff', '#ffffff'], 35);
+    }
+    case 'investida': {
+      const a = u.alvo;
+      if (evo === 'b') {   // Sentinela: varre quem chegou perto
+        vx('corte', { x: u.x + u.face * 8, y: u.y - 16, ang: u.face > 0 ? 0 : Math.PI, r: 18, abre: Math.PI * 1.1, esp: 5, sentido: u.face, cor: '#ffd27a', achata: 0.6, dur: 0.26, duplo: true });
+        vx('anelChao', { x: u.x, y: u.y, r0: 4, r1: 32, esp: 2.5, cor: '#ffd27a', dur: 0.35 });
+        tremer(0.15, 2); socar(0.06); break;
+      }
+      vx('feixe', { x0: ev.x0, y0: ev.y0 - 18, x1: u.x + u.face * 26, y1: u.y - 18, larg: sup ? 4 : 3, cor: '#ffb36b', dur: 0.3 });
+      vx('anelChao', { x: u.x + u.face * 10, y: u.y, r0: 4, r1: 34, esp: 3, cor: '#ffd27a', dur: 0.4 });
+      vx('linhas', { x: u.x + u.face * 14, y: u.y - 18, cor: '#ffe9c2', n: 14, dur: 0.3 });
+      if (a) vx('faisca', { x: a.x, y: a.y - 18, r: 18, n: 8, rot: 0, cor: '#ffd27a', dur: 0.26 });
+      fumaca(ev.x0, ev.y0, 6, ['#c49c68', '#a07a4c']); fumaca(u.x, u.y, 7, ['#c49c68', '#a07a4c']);
+      tremer(0.2, 2.6); socar(0.08); Arena.pausa = Math.max(Arena.pausa, 0.07);
+      break;
+    }
+    case 'chuva': case 'meteoro': {
+      if (ev.tiro) {   // Atiradora de Elite: carrega, mira e dispara
+        vx('juntar', { u, cor: '#ffd84a', dur: 0.22 }); vx('mira', { u, alvo: ev.alvo || u.alvo, cor: '#ffd84a', dur: 0.4 });
+        vx('anel', { x: u.x + u.face * 10, y: u.y - 19, r0: 2, r1: 14, esp: 1.6, cor: '#ffd84a', ach: 1, dur: 0.25, atraso: 0.08 });
+        const p = Arena.b.projs.filter((q) => q.src === u).pop(); if (p) p.vis = 'tiro';
+        marcarPendente(u, 'tiro', p ? p.alvo : u.alvo);
+        break;
+      }
+      const met = ev.id === 'meteoro';
+      vx('marcaV', { x: ev.tx, y: ev.ty, r: ev.raio, cor: met ? '#ff8c1a' : evo === 'b' ? '#7fd08a' : '#ff6a5a', dur: ev.dur });
+      if (met) setTimeoutArena(0.15, () => particula(ev.tx - 50, ev.ty - 110, 110, 230, 0.45, '#ff8c1a', { tipo: 'meteoro', fimY: ev.ty - 6 }));
+      vx('anel', { x: u.x + u.face * 6, y: u.y - 26, r0: 2, r1: 10, esp: 1.2, cor: '#c8e6a0', ach: 1, dur: 0.22 });
+      break;
+    }
+    case 'bolaFogo': {
+      vx('circuloMagico', { x: u.x, y: u.y, r: sup ? 18 : 13, cor: '#ff8c1a', dur: 0.55, giro: 4 });
+      vx('juntar', { u, cor: '#ffb33c', dx: 8, dy: 30, dur: 0.18 });
+      faiscas(u.x + u.face * 11, u.y - 20, sup ? 12 : 7, ['#ffd23f', '#ff8c1a', '#fff4c2'], 35);
+      if (evo === 'b') marcarPendente(u, 'pira', u.alvo);
+      break;
+    }
+    case 'lancaGelo': {
+      vx('circuloMagico', { x: u.x, y: u.y, r: sup ? 18 : 13, cor: '#7fd6ff', dur: 0.55, giro: -4 });
+      vx('juntar', { u, cor: '#bfefff', dx: 8, dy: 30, dur: 0.18 });
+      if (evo === 'b' && u.alvo) { const a = u.alvo, ang = Math.atan2(a.y - u.y, a.x - u.x); vx('feixe', { x0: u.x + u.face * 8, y0: u.y - 20, x1: a.x + Math.cos(ang) * 70, y1: a.y - 18 + Math.sin(ang) * 70, larg: 2.4, cor: '#9fe6ff', dur: 0.45, atraso: 0.18 }); }
+      faiscas(u.x + u.face * 11, u.y - 20, sup ? 12 : 7, ['#e8fbff', '#7fd6ff', '#ffffff'], 35);
       break;
     }
     case 'luz': {
-      const a = ev.alvo;
-      efeito('pilar', { alvo: a, dur: 0.6, cor: '#fff4c2', cor2: '#ffd23f' });
-      if (sup) aliadosDeArena(u).forEach((o) => o !== a && efeito('pilar', { alvo: o, dur: 0.6, cor: '#fff4c2', cor2: '#ffd23f' }));
+      const a = ev.alvo, todos = evo === 'a' || sup;
+      vx('circuloMagico', { x: u.x, y: u.y, r: 14, cor: '#ffd23f', dur: 0.6 });
+      vx('pilar', { alvo: a, larg: 8, cor: '#ffd23f', dur: 0.7 });
+      if (todos) aliadosDeArena(u).forEach((o) => o !== a && vx('pilar', { alvo: o, larg: 6, cor: '#ffe48a', dur: 0.6, atraso: 0.08 }));
+      vx('brilho', { alvo: a, r: 18, cor: '#fff4c2', a: 0.8, dur: 0.5 });
       break;
     }
-    case 'bencaoMenor': case 'primeirosSocorros': efeito('feixe', { alvo: ev.alvo, dur: 0.45, cor: '#fff4c2', cor2: '#ffd23f' }); break;
-    case 'barreiraArcana': efeito('anel', { x: ev.alvo.x, y: ev.alvo.y - 14, r0: 20, r1: 6, cor: '#bd86f5', cor2: '#efdcff', dur: 0.4 }); break;
-    case 'egideDivina': for (const o of ev.aliados || []) efeito('cupula', { x: o.x, y: o.y, r: 15, cor: '#fff4c2', cor2: '#ffd23f', dur: 0.6 }); break;
+    case 'bencaoMenor': case 'primeirosSocorros': vx('pilar', { alvo: ev.alvo, larg: 5, cor: '#7dff8a', dur: 0.5 }); break;
+    case 'barreiraArcana': vx('cupula', { alvo: ev.alvo, r: 13, cor: '#bd86f5', dur: 0.6 }); break;
+    case 'egideDivina': for (const o of ev.aliados || []) vx('cupula', { alvo: o, r: 14, cor: '#ffd23f', dur: 0.7 }); break;
     case 'passo': {
+      const a = ev.alvo || u.alvo;
       fumaca(ev.x0, ev.y0 - 10, 12, ['#3b3150', '#6b4fa0', '#c48bff']);
-      fxRastro(u, ev.x0, ev.y0, '#c48bff');
-      fumaca(u.x, u.y - 10, 12, ['#3b3150', '#6b4fa0', '#c48bff']);
+      vx('rastroArco', { x0: ev.x0, y0: ev.y0 - 18, x1: u.x, y1: u.y - 18, cor: '#c48bff', larg: 2, dur: 0.3 });
+      if (a) {
+        vx('corte', { x: a.x, y: a.y - 18, ang: -0.7, r: 15, abre: Math.PI * 0.9, esp: 3.5, sentido: 1, cor: '#c48bff', achata: 0.85, dur: 0.24, atraso: 0.04 });
+        vx('corte', { x: a.x, y: a.y - 18, ang: 0.7 + Math.PI, r: 15, abre: Math.PI * 0.9, esp: 3.5, sentido: -1, cor: '#c48bff', achata: 0.85, dur: 0.24, atraso: 0.1 });
+      }
+      if (evo === 'b') vx('brilho', { alvo: u, r: 16, cor: '#7a4fc0', a: 0.6, dur: 2 });
+      fumaca(u.x, u.y - 10, 10, ['#3b3150', '#6b4fa0', '#c48bff']); tremer(0.12, 1.8); socar(0.05);
       break;
     }
     case 'hino': case 'gritoGuerra': {
+      const mal = ev.maldicao, c1 = mal ? '#bd86f5' : '#5fe0c8';
+      vx('notas', { x: u.x, y: u.y - 18, r: 46, cor: c1, dur: 0.8 });
+      vx('circuloMagico', { x: u.x, y: u.y, r: 16, cor: c1, dur: 0.7 });
       for (const o of ev.aliados || []) {
-        for (let i = 0; i < 2; i++) particula(o.x + rnd(-8, 8), o.y - rnd(16, 28), rnd(-8, 8), -22, 0.9, '#f0c24b', { tipo: 'nota' });
-        particula(o.x, o.y - 40, 0, -14, 0.7, '#ffe48a', { tipo: 'seta' });
+        vx('brilho', { alvo: o, r: 14, cor: mal ? '#7a4fc0' : '#ffe48a', a: 0.7, dur: 0.6, atraso: 0.1 });
+        for (let i = 0; i < 2; i++) particula(o.x + rnd(-8, 8), o.y - rnd(16, 28), rnd(-8, 8), -22, 0.9, mal ? '#bd86f5' : '#f0c24b', { tipo: 'nota' });
+        particula(o.x, o.y - 40, 0, mal ? 14 : -14, 0.7, mal ? '#bd86f5' : '#ffe48a', { tipo: 'seta' });
       }
       break;
     }
-    case 'gritoIntimidador': efeito('anel', { x: u.x, y: u.y - 14, r0: 5, r1: 70, cor: '#e0574f', cor2: '#7d2219', dur: 0.4 }); fxImpacto(u.x, u.y - 34, '#ff8a7a', 8, 12); tremer(0.15, 1.5); break;
-    case 'esqueletos': efeito('circulo', { x: u.x, y: u.y, cor: '#7dff9a', dur: 0.5 }); break;
+    case 'gritoIntimidador': vx('anel', { x: u.x, y: u.y - 14, r0: 5, r1: 70, esp: 3, cor: '#e0574f', ach: 0.6, dur: 0.4 }); vx('linhas', { x: u.x, y: u.y - 20, cor: '#ff8a7a', n: 14, dur: 0.3 }); tremer(0.15, 1.5); break;
+    case 'esqueletos': vx('circuloMagico', { x: u.x, y: u.y, r: evo === 'b' ? 22 : 18, cor: '#7dff9a', dur: 0.8, giro: 3 }); vx('juntar', { u, cor: '#7dff9a', dx: 8, dy: 30, dur: 0.25 }); break;
     case 'terremoto':
-      efeito('marca', { x: u.x, y: u.y, r: 30, cor: '#ffb33c', cor2: 'rgba(255,179,60,0.2)', dur: 0.25 });
+      vx('marcaV', { x: u.x, y: u.y, r: 30, cor: '#ffb33c', dur: 0.25 });
       setTimeoutArena(0.25, () => {
         tremer(0.6, 4); Arena.flash = 0.15; Arena.flashCor = '232,200,138'; Arena.pausa = Math.max(Arena.pausa, 0.06); socar(0.12);
+        vx('anelChao', { x: u.x, y: u.y, r0: 6, r1: 150, esp: 4, cor: '#ffb33c', dur: 0.6 }); vx('anelChao', { x: u.x, y: u.y, r0: 6, r1: 100, esp: 3, cor: '#fff4c2', dur: 0.5, atraso: 0.1 });
         efeito('rachadura', { x: u.x, y: u.y, alc: 140, n: 7, fase: rnd(0, 6), dur: 1.1 });
         for (let i = 0; i < 30; i++) particula(rnd(0, ARENA.w), rnd(ARENA.chao, ARENA.fundo), rnd(-10, 10), rnd(-50, -20), 0.6, pick(['#c49c68', '#8f6c45', '#a07a4c']), { g: 120, tam: 3 });
       });
       break;
-    case 'juramento': Arena.flash = 0.2; Arena.flashCor = '255,244,194'; for (const o of aliadosDeArena(u)) efeito('pilar', { alvo: o, dur: 0.7, cor: '#ffffff', cor2: '#ffe48a' }); break;
+    case 'juramento': Arena.flash = 0.2; Arena.flashCor = '255,244,194'; for (const o of aliadosDeArena(u)) vx('pilar', { alvo: o, larg: 9, cor: '#ffe48a', dur: 0.8 }); break;
     case 'eclipse': Arena.festa = 1; Arena.lua = { t: 0, dur: 1.5 }; setTimeoutArena(0.45, () => { Arena.flash = 0.2; Arena.flashCor = '196,139,255'; tremer(0.2, 2.5); }); break;
     case 'furiaDragao': {
       const [dx, dy] = dirDe(ev.ang);
       efeito('cone', { x: u.x + dx * 8, y: u.y - 18 + dy * 4, ang: ev.ang, alc: 70 * E, abre: 30, cores: ['#fff4c2', '#ffd23f', '#ff8c1a', '#ff5a1f'], dur: 0.6 });
-      for (let i = 0; i < 26; i++) { const a = ev.ang + rnd(-0.45, 0.45), v = rnd(80, 200); particula(u.x + dx * 12, u.y - 18 + dy * 6, Math.cos(a) * v, Math.sin(a) * v * 0.7, rnd(0.3, 0.55), pick(['#ffd23f', '#ff8c1a', '#ff5a1f', '#fff4c2']), { tam: 3 }); }
+      for (let i = 0; i < 4; i++) vx('explosao', { x: u.x + dx * (20 + i * 14), y: u.y - 18 + dy * (10 + i * 7), r: 8 + i * 2, cor: '#ffb33c', cor2: '#ff5a1f', dur: 0.5, atraso: i * 0.06 });
       tremer(0.35, 2.5);
       break;
     }
     case 'olhoTempestade': Arena.flash = 0.1; Arena.flashCor = '200,220,255'; break;
     case 'chuvaLaminas': faiscas(u.x, u.y - 30, 8, ['#d2d9e0', '#ffffff'], 40); break;
   }
-  numero(u.x, u.y - 60, nomeHabilidade(ev.id), cor, 1, u);
+  numero(u.x, u.y, nomeHabilidade(ev.id), cor, 1, null, true);   // nome da habilidade: legenda sob os pés, sem disputar espaço com os números
 }
 function aliadosDeArena(u) { return Arena.b ? Arena.b.units.filter((o) => o.vivo && o.team === u.team) : []; }
 
 /* ---- atualização dos efeitos (tempo real × velocidade) ---- */
 function atualizarVfx(dt) {
   Arena.t += dt;
-  atualizarCamera(dt); climaArena(dt);
+  atualizarCamera(dt); climaArena(dt); atualizarVx(dt);
   if (Arena.cutin) { Arena.cutin.t += dt; if (Arena.cutin.t >= Arena.cutin.dur) Arena.cutin = null; }
   if (Arena.lua) { Arena.lua.t += dt; if (Arena.lua.t >= Arena.lua.dur) Arena.lua = null; }
   Arena.soco = (Arena.soco || 0) * Math.exp(-dt * 9); if (Arena.soco < 0.003) Arena.soco = 0;
@@ -3944,6 +4158,8 @@ function atualizarVfx(dt) {
     else if (p.tipo === 'luzinha' || p.tipo === 'osso') { if (Math.random() < 0.4) particula(p.x, p.y, 0, 0, 0.2, p.tipo === 'osso' ? '#7dff9a' : '#ffe48a'); }
   }
   if (Arena.b) for (const u of Arena.b.units) {
+    atualizarVis(u, dt);
+    if (u.evo && u.vivo && Math.random() < dt * 5) { const cor = corEvo(u); if (cor) particula(u.x + rnd(-8, 8), u.y - rnd(0, 26), rnd(-3, 3), rnd(-22, -10), rnd(0.4, 0.7), Math.random() < 0.3 ? '#ffffff' : cor, { tam: 1 }); }
     if (u.chefe && u.vivo && Math.random() < 0.25) particula(u.x + rnd(-9, 9), u.y - rnd(0, 6), rnd(-3, 3), rnd(-18, -8), 0.6, u.chefe === 'colosso' ? '#ff8a3c' : '#c48bff', { tam: 2 });
     if (u.campeao && u.vivo && Math.random() < 0.12) particula(u.x + rnd(-8, 8), u.y - rnd(4, 30), 0, -10, 0.5, '#ffe48a', { tam: 1 });
     if (!u.vivo && u.anim.morteT > 0 && u.anim.morteT < 2) {
@@ -4017,6 +4233,7 @@ function desenharMundo(c, b) {
     if (f.tipo === 'circulo') { const k = f.t / f.dur; desenharElipse(c, f.x, f.y, 5 + k * 14, 2 + k * 6, f.cor); desenharElipse(c, f.x, f.y, 3 + k * 9, 1 + k * 4, '#ffffff'); }
     if (FX_CHAO.has(f.tipo)) desenharFx2(c, f, f.t / f.dur);
   }
+  desenharVxChao(c);
   for (const u of b.units) {
     if (!u.vivo && u.anim.morteT > 1.3) continue;
     const x = Math.round(u.x), y = Math.round(u.y), w = u.cls === 'golem' || u.chefe === 'colosso' ? 9 : 7;
@@ -4029,6 +4246,7 @@ function desenharMundo(c, b) {
   for (const p of b.projs) desenharProjetil(c, p);
   for (const f of Arena.fx) desenharFx(c, f);
   for (const p of Arena.part) desenharParticula(c, p);
+  desenharVxAr(c);
   if (b.focoCapitao && b.focoCapitao.vivo && Math.floor(Arena.t * 4) % 2) {
     const f = b.focoCapitao, x = Math.round(f.x), y = Math.round(f.y) - 58;
     c.fillStyle = CONTORNO; c.fillRect(x - 4, y - 1, 9, 6);
@@ -4042,13 +4260,14 @@ function desenharNumerosTela(v) {
   for (const n of Arena.nums) {
     const idade = n.max - n.vida, t = idade / n.max;
     const [sx, sy0] = naTela(n.x, n.y);
-    const sobe = (1 - Math.pow(1 - Math.min(1, t * 1.6), 2)) * 22 + n.pilha * 13;
+    const sobe = (1 - Math.pow(1 - Math.min(1, t * 1.6), 2)) * 16 + n.pilha * 12;
     const pulo = idade < 0.12 ? 1 + (n.esc === 3 ? 0.7 : 0.4) * (1 - idade / 0.12) : 1;
     const tam = TAM_NUM[n.esc] * dpr * pulo;
-    const sy = sy0 - (sobe + 4) * dpr;
+    const sy = n.rotulo ? sy0 + 13 * dpr : sy0 - (sobe + 7) * dpr;
     v.globalAlpha = t > 0.7 ? 1 - (t - 0.7) / 0.3 : 1;
     v.font = `${Math.round(tam)}px 'Lilita One', 'Nunito', sans-serif`;
-    const x = clamp(sx + n.jx * dpr, 20 * dpr, Arena.cv.width - 20 * dpr);
+    const meia = v.measureText(n.txt).width / 2 + 4 * dpr;
+    const x = clamp(sx + (n.esc === 1 ? 0 : n.jx * dpr), meia, Arena.cv.width - meia);
     v.lineWidth = Math.max(2, tam * 0.2); v.strokeStyle = '#140a1c'; v.strokeText(n.txt, x, sy);
     v.fillStyle = n.cor; v.fillText(n.txt, x, sy);
     if (n.esc === 3) { v.globalAlpha *= 0.55; v.fillStyle = '#ffffff'; v.fillText(n.txt, x, sy - tam * 0.06); v.globalAlpha = 1; v.fillStyle = n.cor; v.save(); v.beginPath(); v.rect(x - 200, sy - tam * 0.45, 400, tam); v.clip(); v.fillText(n.txt, x, sy); v.restore(); }
@@ -4079,22 +4298,40 @@ function desenharBarrasTela(v, b) {
       const ic = iconeCanvas('coroa'), e = 2 * dpr; v.imageSmoothingEnabled = false;
       v.drawImage(ic, Math.round(sx - (ic.width * e) / 2), Math.round(y - ic.height * e - dpr), ic.width * e, ic.height * e);
     }
+    if (u.evo && !u.chefe && !u.campeao) { const cor = corEvo(u); if (cor) { const r = 3.2 * dpr, cx = x - r - 2 * dpr, cy = y + h / 2; v.fillStyle = '#140a1c'; v.beginPath(); v.moveTo(cx, cy - r - dpr); v.lineTo(cx + r + dpr, cy); v.lineTo(cx, cy + r + dpr); v.lineTo(cx - r - dpr, cy); v.fill(); v.fillStyle = cor; v.beginPath(); v.moveTo(cx, cy - r); v.lineTo(cx + r, cy); v.lineTo(cx, cy + r); v.lineTo(cx - r, cy); v.fill(); } }
     if (u.chefe || u.campeao) { const ic = iconeCanvas(u.chefe ? 'caveira' : 'estrela'), e = 1.5 * dpr; v.imageSmoothingEnabled = false; v.drawImage(ic, Math.round(x - ic.width * e - dpr), Math.round(y + h / 2 - (ic.height * e) / 2), ic.width * e, ic.height * e); }
   }
 }
-// SUPREMO: escurece a janela e mostra o retrato do capitão entrando pela lateral
+// SUPREMO: escurece a janela, uma faixa diagonal na cor do time cruza a tela com o retrato e o nome do golpe
 function desenharCutin(v, ci) {
-  const u = ci.u, k = ci.t / ci.dur, lado = u.team === 0 ? -1 : 1;
-  const entra = Math.min(1, ci.t / 0.18), sai = Math.max(0, (ci.t - (ci.dur - 0.22)) / 0.22);
-  v.fillStyle = `rgba(10,6,20,${0.5 * (1 - sai)})`; v.fillRect(0, 0, VISTA.w, VISTA.h);
-  const px = u.team === 0 ? -80 + 86 * entra - 90 * sai : VISTA.w - 6 - 86 * entra + 90 * sai;
-  const ret = retrato(u.look, 0, 'frente');
-  v.fillStyle = u.team === 0 ? 'rgba(108,199,106,0.25)' : 'rgba(224,87,79,0.25)'; v.fillRect(px - 6, 30, 100, 110);
-  v.drawImage(ret, px, 36, ret.width * 2, ret.height * 2);
-  const nome = semAcento(u.nome).toUpperCase(), sk = semAcento(nomeHabilidade(u.skill.id)).toUpperCase();
-  const tx = u.team === 0 ? px + 2 : px - 4 - larguraTexto(sk, 2);
-  textoPixel(v, 'SUPREMO', tx, 128, '#ffe48a', 2); textoPixel(v, nome, tx, 140, '#ffffff', 1); textoPixel(v, sk, tx, 150, '#f0c24b', 2);
-  if (k > 0.2 && k < 0.9 && Math.floor(ci.t * 20) % 2) { v.fillStyle = 'rgba(255,244,194,0.08)'; v.fillRect(0, 0, VISTA.w, VISTA.h); }
+  const u = ci.u, esq = u.team === 0, W = VISTA.w, H = VISTA.h;
+  const entra = easeOut(Math.min(1, ci.t / 0.2)), sai = Math.max(0, (ci.t - (ci.dur - 0.22)) / 0.22), vis1 = entra * (1 - sai);
+  v.save();
+  v.fillStyle = `rgba(8,4,16,${0.55 * (1 - sai)})`; v.fillRect(0, 0, W, H);
+  // faixa
+  const cy = H * 0.52, alt = 62, inc = 26, desl = (esq ? -1 : 1) * (1 - entra) * W + (esq ? 1 : -1) * sai * W;
+  v.translate(desl, 0);
+  const g = v.createLinearGradient(0, cy - alt / 2, 0, cy + alt / 2);
+  const cor = esq ? ['#1e5a2e', '#6cc76a'] : ['#5a1e22', '#e0574f'];
+  g.addColorStop(0, cor[0]); g.addColorStop(0.5, cor[1]); g.addColorStop(1, cor[0]);
+  v.fillStyle = g; v.beginPath(); v.moveTo(-20, cy - alt / 2 + inc); v.lineTo(W + 20, cy - alt / 2 - inc); v.lineTo(W + 20, cy + alt / 2 - inc); v.lineTo(-20, cy + alt / 2 + inc); v.closePath(); v.fill();
+  v.strokeStyle = '#ffe48a'; v.lineWidth = 1.5; v.stroke();
+  // linhas de velocidade dentro da faixa
+  v.save(); v.clip(); v.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 14; i++) { const yy = cy - alt / 2 + ((i * 37 + ci.t * 900) % alt) - inc * 0.2, xx = ((i * 71 + ci.t * 600 * (esq ? 1 : -1)) % (W + 80)) - 40; v.fillStyle = 'rgba(255,255,255,0.18)'; v.fillRect(xx, yy, 40, 1); }
+  v.restore();
+  // retrato
+  const ret = retrato(u.look, 0), e = 2.2, rx = esq ? 14 : W - 14 - ret.width * e, ry = cy - ret.height * e * 0.62;
+  v.imageSmoothingEnabled = false; v.drawImage(ret, rx, ry, ret.width * e, ret.height * e);
+  // textos
+  const tx = esq ? rx + ret.width * e + 8 : rx - 8;
+  v.textAlign = esq ? 'left' : 'right'; v.textBaseline = 'alphabetic'; v.lineJoin = 'round';
+  const txt = (t, x, y, tam, corT) => { v.font = `${tam}px 'Lilita One', sans-serif`; v.lineWidth = tam * 0.22; v.strokeStyle = '#140a1c'; v.strokeText(t, x, y); v.fillStyle = corT; v.fillText(t, x, y); };
+  txt('SUPREMO!', tx, cy - 8 - (esq ? 6 : -6), 18, '#ffe48a');
+  txt(nomeHabilidade(u.skill.id), tx, cy + 10 - (esq ? 6 : -6), 12, '#ffffff');
+  v.font = `600 9px 'Nunito', sans-serif`; v.fillStyle = 'rgba(255,255,255,.85)'; v.fillText(u.nome, tx, cy + 21 - (esq ? 6 : -6));
+  v.restore();
+  if (vis1 > 0.9 && Math.floor(ci.t * 20) % 2) { v.fillStyle = 'rgba(255,244,194,0.06)'; v.fillRect(0, 0, W, H); }
 }
 function anelTime(c, x, y, rx, ry, cor) {
   c.fillStyle = cor;
@@ -4111,27 +4348,66 @@ function desenharElipse(c, x, y, rx, ry, cor) {
   const n = Math.max(14, Math.round(rx * 1.8));
   for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2; c.fillRect(Math.round(x + Math.cos(a) * rx), Math.round(y + Math.sin(a) * ry), 1, 1); }
 }
+/* ---- EV3: animação e deslocamentos SÓ VISUAIS (u.vis). A simulação não lê nada disto: reproduções continuam idênticas ----
+   kb = recuo ao apanhar (empurra e volta) · esq = esquiva (recua e volta, com imagem fantasma) · salto = pulo/arrancada
+   entre dois pontos (investida, passo) · caido = atordoado no chão, depois levanta */
+function vis(u) { return u.vis || (u.vis = { kb: 0, kbT: 9, esq: 0, esqDir: -1, salto: null, caido: 0, levantar: 0, cura: 0, fantasmas: [] }); }
+function recuar(u, dir, amp) { const V = vis(u); V.kb = dir * Math.max(Math.abs(V.kbT < 0.15 ? V.kb : 0), amp); V.kbT = 0; }
+function saltar(u, x0, y0, dur, alto) { const V = vis(u); V.salto = { t: 0, dur, dx: x0 - u.x, dy: y0 - u.y, alto }; }
+function atualizarVis(u, dt) {
+  const V = vis(u);
+  V.kbT += dt; if (V.esq > 0) V.esq = Math.max(0, V.esq - dt);
+  if (V.salto) { V.salto.t += dt; if (V.salto.t >= V.salto.dur) V.salto = null; }
+  if (V.cura > 0) V.cura = Math.max(0, V.cura - dt);
+  const atord = u.vivo && u.st.stun > 0 && !(u.st.freeze > 0);
+  if (atord) V.caido += dt; else if (V.caido > 0) { V.caido = 0; V.levantar = 0.26; }
+  if (V.levantar > 0) V.levantar = Math.max(0, V.levantar - dt);
+  for (let i = V.fantasmas.length - 1; i >= 0; i--) { V.fantasmas[i].t += dt; if (V.fantasmas[i].t > V.fantasmas[i].dur) V.fantasmas.splice(i, 1); }
+}
+// Deslocamento visual do sprite (x, y) e altura do pulo (z, o sprite sobe e a sombra fica)
+function deslocVis(u) {
+  const V = vis(u); let x = 0, y = 0, z = 0;
+  if (V.kbT < 0.4) { const t = V.kbT; x += V.kb * (t < 0.05 ? t / 0.05 : Math.exp(-(t - 0.05) * 11)); }
+  if (V.esq > 0) { const k = 1 - V.esq / 0.34; x += V.esqDir * 7 * Math.sin(Math.min(1, k * 1.4) * Math.PI) ; }
+  if (V.salto) { const k = Math.min(1, V.salto.t / V.salto.dur), e = 1 - Math.pow(1 - k, 2); x += V.salto.dx * (1 - e); y += V.salto.dy * (1 - e); z = Math.sin(k * Math.PI) * V.salto.alto; }
+  if (Arena.pausa > 0 && V.kbT < 0.14) x += (Math.floor(Arena.t * 60) % 2 ? 1 : -1) * 0.7;   // treme durante o congelamento do golpe
+  return [x, y, z];
+}
 function quadroDe(u) {
-  const a = u.anim, b = Arena.b;
+  const a = u.anim, b = Arena.b, V = vis(u);
   if (!u.vivo) { if (u.reviver > 0) return ['morte', 3]; const f = Math.min(3, Math.floor(a.morteT / 0.14)); return ['morte', f]; }
   if (b.fim && u.team === b.vencedor) { const k = Math.floor(Arena.t * 5 + a.fase) % 8; return ['vit', k < 1 ? 0 : k < 3 ? 1 : k < 5 ? 2 : 3]; }
+  if (V.salto) { const k = V.salto.t / V.salto.dur; return ['pulo', k < 0.15 ? 0 : k < 0.5 ? 1 : k < 0.85 ? 2 : 3]; }
+  if (u.st.stun > 0 && !(u.st.freeze > 0)) {   // atordoado: é jogado ao chão e fica deitado até passar
+    if (a.empurrao > 0.3) return ['empurrao', 0];
+    return V.caido < 0.12 ? ['morte', 1] : V.caido < 0.22 ? ['morte', 2] : ['morte', 3];
+  }
+  if (V.levantar > 0) return ['levantar', V.levantar > 0.13 ? 0 : 1];
+  if (V.esq > 0) return ['esquiva', V.esq > 0.16 ? 0 : 1];
   if (a.empurrao > 0) return ['empurrao', a.empurrao > 0.18 ? 0 : 1];
   if (a.dash > 0) return ['dash', Math.floor(Arena.t * 12) % 2];
   if (a.atk > 0) { const f = 1 - a.atk / 0.32; return ['atk', f < 0.18 ? 0 : f < 0.34 ? 1 : f < 0.52 ? 2 : f < 0.76 ? 3 : 4]; }
-  if (a.cast > 0) { const f = 1 - a.cast / 0.4; return ['cast', f < 0.2 ? 0 : f < 0.5 ? 1 : f < 0.8 ? 2 : 3]; }
+  if (a.cast > 0) { const f = 1 - a.cast / 0.4; if (V.cura > 0) return ['cura', f < 0.25 ? 0 : f < 0.6 ? 1 : 2]; return ['cast', f < 0.2 ? 0 : f < 0.5 ? 1 : f < 0.8 ? 2 : 3]; }
   if (a.hurt > 0) return ['hurt', a.hurt > 0.08 ? 0 : 1];
   if (a.moveu) return u.agi >= 45 && !u.st.slow ? ['run', Math.floor(Arena.t * 10 + a.fase) % 4] : ['walk', Math.floor(Arena.t * 11 + a.fase) % 6];
   return ['idle', Math.floor(Arena.t * 4.5 + a.fase) % 6];
 }
 function desenharUnidade(c, u) {
-  const set = spriteSet(u.look), [anim, i] = quadroDe(u);
-  const vista = (!u.vivo || u.anim.dash > 0) ? 'lado' : (u.vista || 'lado');
-  const vs = set.vistas[vista] || set.vistas.lado;
+  const set = spriteSet(u.look), [anim, i] = quadroDe(u), V = vis(u);
+  const vs = set.vistas.lado;
   let fr = (u.vivo && u.anim.flash > 0 ? vs.brancos : vs.quadros)[anim][i];
-  const virar = vista === 'lado' && u.face < 0;
+  const virar = u.face < 0;
   if (u.vivo && u.st.freeze > 0) fr = tingir(fr, '#7fd6ff', 0.55);
-  const x = gradeK(u.x), y = gradeK(u.y);
-  if (u.chefe && u.vivo) desenharElipse(c, x, y + 1, u.chefe === 'colosso' ? 17 : 12, u.chefe === 'colosso' ? 5 : 4, Math.floor(Arena.t * 6) % 2 ? '#ff5a2a' : '#ffb02a');
+  const [ox, oy, oz] = deslocVis(u);
+  const x = gradeK(u.x + ox), y = gradeK(u.y + oy - oz);
+  // imagens fantasma (esquiva, arrancada, passo sombrio)
+  for (const g of V.fantasmas) {
+    c.save(); c.globalAlpha = 0.45 * (1 - g.t / g.dur); c.translate(gradeK(g.x), gradeK(g.y)); if (g.face < 0) c.scale(-1, 1);
+    c.drawImage(tingir(g.fr, g.cor, 0.85), -ANCORA.x - (g.fr.ox || 0), -ANCORA.y - (g.fr.oy || 0)); c.restore();
+  }
+  if (u.vivo && (V.esq > 0 || V.salto || u.anim.dash > 0) && Math.floor(Arena.t * 30) % 3 === 0 && V.fantasmas.length < 6)
+    V.fantasmas.push({ x: u.x + ox, y: u.y + oy - oz, fr, face: u.face, t: 0, dur: 0.22, cor: V.esq > 0 ? '#cfe0ff' : (COR_SKILL[u.skill && u.skill.id] || '#ffffff') });
+  if (u.chefe && u.vivo) desenharElipse(c, Math.round(u.x), Math.round(u.y) + 1, u.chefe === 'colosso' ? 17 : 12, u.chefe === 'colosso' ? 5 : 4, Math.floor(Arena.t * 6) % 2 ? '#ff5a2a' : '#ffb02a');
   c.save();
   c.translate(x, y);
   if (!u.vivo) {
@@ -4145,7 +4421,7 @@ function desenharUnidade(c, u) {
       const pulso = 0.5 + 0.5 * Math.sin(Arena.t * 5 + u.anim.fase);
       const sil = tingir(fr, pulso > 0.5 ? '#ffb02a' : '#ff4a2a', 1);
       c.globalAlpha = 0.55 + 0.4 * pulso;
-      for (const [ox, oy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [2, 0], [-2, 0], [0, -2]]) c.drawImage(sil, -ANCORA.x - (fr.ox || 0) + ox, -ANCORA.y - (fr.oy || 0) + oy);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [2, 0], [-2, 0], [0, -2]]) c.drawImage(sil, -ANCORA.x - (fr.ox || 0) + dx, -ANCORA.y - (fr.oy || 0) + dy);
       c.globalAlpha = 1;
     }
     c.drawImage(fr, -ANCORA.x - (fr.ox || 0), -ANCORA.y - (fr.oy || 0));
@@ -4153,11 +4429,11 @@ function desenharUnidade(c, u) {
   c.restore();
   if (!u.vivo) return;
   const st = u.st;
-  if (st.shield) desenharElipse(c, x, y - 19, 15, 22, Math.floor(Arena.t * 8) % 2 ? '#cfe8ff' : '#7fbcf0');
   for (const d of st.dots) if (Math.random() < 0.7) { c.fillStyle = d.tipo === 'veneno' ? pick(['#8be05a', '#3d6129']) : d.tipo === 'sangrar' ? pick(['#ff5a6a', '#7d2219']) : pick(['#ffd23f', '#ff8c1a', '#ff5a1f']); c.fillRect(x + rint(-6, 6), y - rint(6, 34), 1, 2); }
   if (st.slow > 0 && Math.floor(Arena.t * 4 + u.anim.fase) % 3 === 0) { c.fillStyle = '#7fd6ff'; c.fillRect(x + rint(-6, 6), y - rint(2, 14), 1, 2); }
   if (st.stun > 0 || st.freeze > 0) {
-    for (let k = 0; k < 3; k++) { const ang = Arena.t * 8 + (k * Math.PI * 2) / 3; c.fillStyle = st.freeze > 0 ? '#e8fbff' : '#ffe48a'; c.fillRect(Math.round(x + Math.cos(ang) * 8), Math.round(y - 42 + Math.sin(ang) * 2), 2, 2); }
+    const deitado = st.freeze > 0 ? false : vis(u).caido > 0.2, cx = deitado ? x - u.face * 22 : x, cy = deitado ? y - 14 : y - 44;
+    for (let k = 0; k < 3; k++) { const ang = Arena.t * 8 + (k * Math.PI * 2) / 3; c.fillStyle = st.freeze > 0 ? '#e8fbff' : '#ffe48a'; c.fillRect(Math.round(cx + Math.cos(ang) * 8), Math.round(cy + Math.sin(ang) * 2), 2, 2); }
   }
   if (st.taunt) { c.fillStyle = '#ff5a4f'; c.fillRect(x + 9, y - 44, 2, 5); c.fillRect(x + 9, y - 38, 2, 2); }
   if (st.debuffs.length && Math.floor(Arena.t * 3) % 2) { c.fillStyle = '#bd86f5'; c.fillRect(x - 11, y - 32, 1, 3); c.fillRect(x - 12, y - 30, 3, 1); }
@@ -4465,7 +4741,7 @@ function desenharFundo(b, cenario = 'arena') {
     const coresPub = ['#e8743b', '#f0c24b', '#6cc76a', '#5aa7e6', '#d35d8e', '#e9dfc9', '#bd86f5', '#c0392b', '#f4efe2', '#2f8f83'];
     for (let fila = 0; fila < 5; fila++) for (let x = 2 + (fila % 2) * 3; x < W - 3; x += 6) {
       if (R() < 0.1) continue;
-      Arena.publico.push({ x, y: 16 + fila * 7, cor: coresPub[Math.floor(R() * coresPub.length)], pele: PELES[Math.floor(R() * 4)][1], cabelo: CABELOS[Math.floor(R() * 6)], fase: R() * 10 });
+      Arena.publico.push({ x, y: 16 + fila * 7, cor: coresPub[Math.floor(R() * coresPub.length)], pele: PELES_TODAS[Math.floor(R() * PELES_TODAS.length)][1], cabelo: CABELOS_TODOS[Math.floor(R() * CABELOS_TODOS.length)], fase: R() * 10 });
     }
     px(W / 2 - 24, 13, 48, 4, '#7a1f22'); for (let x = W / 2 - 24; x < W / 2 + 24; x += 6) px(x, 13, 3, 4, '#f0c24b');
     px(W / 2 - 22, 17, 44, 1, '#5e1418');
@@ -4732,9 +5008,271 @@ function desenharFx2(c, f, k) {
 }
 function fxPonta(c, x, y, cor) { for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; linhaPixel(c, x, y, x + Math.cos(a) * 7, y + Math.sin(a) * 5, cor); } }
 
+/* ============================ VFX VETORIAIS (EV4) ============================
+   Efeitos lisos (não pixelados), desenhados na camada de alta resolução por cima/por baixo dos bonecos:
+   cortes de luz em meia-lua, faíscas de impacto, ondas de choque, feixes, rastros de flecha, pilares de luz,
+   círculos mágicos, explosões, raios e cúpulas. Referência: os cortes brancos do Super Smash Flash 2 e os
+   impactos constantes do Eslabong — tudo curto (0,1–0,6 s), claro no centro e colorido na borda.
+   Coordenadas no mundo (1 = 1 pixel da arena); o chão é achatado (elipses com ry = 0,45 × rx). */
+
+const VX_CHAO = new Set(['circuloMagico', 'marcaV', 'anelChao', 'rachaduraV', 'sombraV']);
+function vx(tipo, props) {
+  if (!Arena.vx) Arena.vx = [];
+  if (Arena.vx.length > 90) Arena.vx.shift();
+  const f = Object.assign({ tipo, t: 0, dur: 0.3 }, props);
+  Arena.vx.push(f); return f;
+}
+function atualizarVx(dt) {
+  const L = Arena.vx || [];
+  for (let i = L.length - 1; i >= 0; i--) { const f = L[i]; f.t += dt; if (f.atraso) { f.atraso -= dt; f.t = 0; continue; } if (f.t >= f.dur) L.splice(i, 1); }
+}
+const easeOut = (k) => 1 - Math.pow(1 - k, 3);
+const rgba = (hex, a) => { const [r, g, b] = hexRgb(hex); return `rgba(${r},${g},${b},${clamp(a, 0, 1)})`; };
+function desenharVxChao(c) {
+  // EV5: aura da evolução no chão (pulsa devagar)
+  if (Arena.b) for (const u of Arena.b.units) {
+    if (!u.vivo || !u.evo) continue;
+    const cor = corEvo(u); if (!cor) continue;
+    c.save(); c.globalCompositeOperation = 'lighter';
+    brilhoRadial(c, u.x, u.y, 13 + Math.sin(Arena.t * 3 + u.anim.fase) * 1.5, cor, 0.35, 5);
+    c.restore();
+  }
+  for (const f of Arena.vx || []) if (!f.atraso && VX_CHAO.has(f.tipo)) desenharVx(c, f);
+}
+const corEvo = (u) => { const d = spriteSet(u.look).def; return d && d.evoCor; };
+function desenharVxAr(c) {
+  for (const f of Arena.vx || []) if (!f.atraso && !VX_CHAO.has(f.tipo)) desenharVx(c, f);
+  // escudo ativo: bolha fina e brilhante em volta do boneco
+  if (Arena.b) for (const u of Arena.b.units) if (u.vivo && u.st.shield) {
+    const [ox, oy] = deslocVis(u), x = u.x + ox, y = u.y + oy - 19, a = 0.45 + 0.15 * Math.sin(Arena.t * 6);
+    c.save(); c.globalCompositeOperation = 'lighter'; c.lineWidth = 0.9; c.strokeStyle = rgba('#9fd3ff', a);
+    c.beginPath(); c.ellipse(x, y, 14, 21, 0, 0, Math.PI * 2); c.stroke();
+    c.fillStyle = rgba('#7fbcf0', 0.08); c.fill(); c.restore();
+  }
+  if (Arena.b) for (const p of Arena.b.projs) desenharProjetilVx(c, p);
+}
+
+/* ---- primitivas ---- */
+// Meia-lua de luz: varre de a0 a a1 em volta de (x, y); grossa no meio, fina nas pontas
+function caminhoMeiaLua(c, x, y, r, a0, a1, esp, achata = 0.72) {
+  const n = 18;
+  c.beginPath();
+  for (let i = 0; i <= n; i++) { const t = i / n, a = a0 + (a1 - a0) * t; c.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r * achata); }
+  for (let i = n; i >= 0; i--) { const t = i / n, a = a0 + (a1 - a0) * t, w = esp * Math.sin(t * Math.PI) ** 0.8; c.lineTo(x + Math.cos(a) * (r - w), y + Math.sin(a) * (r - w) * achata); }
+  c.closePath();
+}
+function estrela(c, x, y, n, r0, r1, rot, ach = 1) {
+  c.beginPath();
+  for (let i = 0; i < n * 2; i++) { const a = rot + (i / (n * 2)) * Math.PI * 2, r = i % 2 ? r0 : r1; c.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r * ach); }
+  c.closePath();
+}
+function brilhoRadial(c, x, y, r, cor, a = 1, ry = r) {
+  const g = c.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, rgba('#ffffff', a)); g.addColorStop(0.25, rgba(cor, a * 0.85)); g.addColorStop(1, rgba(cor, 0));
+  c.fillStyle = g;
+  c.save(); c.translate(x, y); c.scale(1, ry / r); c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.restore(); c.fill();
+}
+
+/* ---- desenho de cada efeito ---- */
+function desenharVx(c, f) {
+  const k = clamp(f.t / f.dur, 0, 1);
+  c.save();
+  switch (f.tipo) {
+    case 'corte': {   // corte em meia-lua: varre rápido, fica um instante e afina
+      const varre = easeOut(Math.min(1, k / 0.45)), some = k > 0.45 ? (k - 0.45) / 0.55 : 0;
+      const a0 = f.ang - f.sentido * f.abre / 2, a1 = a0 + f.sentido * f.abre * varre;
+      const ini = a0 + f.sentido * f.abre * some * 0.9;
+      const esp = f.esp * (1 - some * 0.8);
+      c.globalCompositeOperation = 'lighter';
+      caminhoMeiaLua(c, f.x, f.y, f.r + 1.2, ini, a1, esp + 2.4, f.achata); c.fillStyle = rgba(f.cor, 0.45 * (1 - some)); c.fill();
+      c.globalCompositeOperation = 'source-over';
+      caminhoMeiaLua(c, f.x, f.y, f.r, ini, a1, esp, f.achata); c.fillStyle = rgba('#ffffff', 0.95 * (1 - some * some)); c.fill();
+      if (f.duplo) { caminhoMeiaLua(c, f.x, f.y, f.r - esp - 1.5, ini, a1, esp * 0.5, f.achata); c.fillStyle = rgba(f.cor, 0.8 * (1 - some)); c.fill(); }
+      break;
+    }
+    case 'faisca': {   // estrela de impacto: nasce grande e branca, gira um pouco e some
+      const e = easeOut(Math.min(1, k * 2.2)), a = 1 - k;
+      c.globalCompositeOperation = 'lighter';
+      brilhoRadial(c, f.x, f.y, f.r * (0.8 + e * 0.6), f.cor, 0.55 * a);
+      c.globalCompositeOperation = 'source-over';
+      estrela(c, f.x, f.y, f.n, f.r * 0.12 * (1 - k), f.r * e * (1 - k * 0.3), f.rot + k * 0.6); c.fillStyle = rgba(f.cor, 0.95 * a); c.fill();
+      estrela(c, f.x, f.y, f.n, f.r * 0.06, f.r * 0.62 * e * (1 - k * 0.5), f.rot + k * 0.6); c.fillStyle = rgba('#ffffff', a); c.fill();
+      break;
+    }
+    case 'anel': case 'anelChao': {   // onda de choque: elipse que abre e afina
+      const e = easeOut(k), r = f.r0 + (f.r1 - f.r0) * e;
+      c.lineWidth = Math.max(0.3, f.esp * (1 - k)); c.strokeStyle = rgba(f.cor, 0.95 * (1 - k * k));
+      c.beginPath(); c.ellipse(f.x, f.y, r, r * (f.ach || 0.45), 0, 0, Math.PI * 2); c.stroke();
+      if (f.brilho !== false) { c.globalCompositeOperation = 'lighter'; c.lineWidth = Math.max(0.3, f.esp * 2.4 * (1 - k)); c.strokeStyle = rgba(f.cor, 0.25 * (1 - k)); c.stroke(); }
+      break;
+    }
+    case 'feixe': {   // feixe/estocada: faixa afunilada de p0 a p1 que acende e se estreita
+      const surge = Math.min(1, k / 0.25), some = k > 0.35 ? (k - 0.35) / 0.65 : 0;
+      const x0 = f.x0, y0 = f.y0, x1 = f.x0 + (f.x1 - f.x0) * easeOut(surge), y1 = f.y0 + (f.y1 - f.y0) * easeOut(surge);
+      const dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L, w = f.larg * (1 - some);
+      const faixa = (ww) => { c.beginPath(); c.moveTo(x0 + nx * ww * 0.25, y0 + ny * ww * 0.25); c.lineTo(x1 + nx * ww, y1 + ny * ww); c.lineTo(x1 + (dx / L) * ww * 2.2, y1 + (dy / L) * ww * 2.2); c.lineTo(x1 - nx * ww, y1 - ny * ww); c.lineTo(x0 - nx * ww * 0.25, y0 - ny * ww * 0.25); c.closePath(); };
+      c.globalCompositeOperation = 'lighter'; faixa(w * 2.2); c.fillStyle = rgba(f.cor, 0.5 * (1 - some)); c.fill();
+      c.globalCompositeOperation = 'source-over'; faixa(w * 0.8); c.fillStyle = rgba('#ffffff', 0.95 * (1 - some)); c.fill();
+      break;
+    }
+    case 'pilar': {   // coluna de luz do céu até o alvo
+      const x = f.alvo ? f.alvo.x : f.x, base = f.alvo ? f.alvo.y : f.y;
+      const abre = Math.min(1, k / 0.15), fecha = k > 0.6 ? (k - 0.6) / 0.4 : 0, w = f.larg * abre * (1 - fecha);
+      const g = c.createLinearGradient(x - w, 0, x + w, 0);
+      g.addColorStop(0, rgba(f.cor, 0)); g.addColorStop(0.3, rgba(f.cor, 0.55)); g.addColorStop(0.5, rgba('#ffffff', 0.95)); g.addColorStop(0.7, rgba(f.cor, 0.55)); g.addColorStop(1, rgba(f.cor, 0));
+      c.globalCompositeOperation = 'lighter'; c.fillStyle = g; c.fillRect(x - w, base - 240, w * 2, 240);
+      brilhoRadial(c, x, base - 2, w * 2.4 + 4, f.cor, 0.6 * (1 - fecha), (w * 2.4 + 4) * 0.4);
+      for (let i = 0; i < 3; i++) { const yy = base - ((f.t * 70 + i * 22) % 60); c.lineWidth = 0.8; c.strokeStyle = rgba('#ffffff', 0.7 * (1 - fecha)); c.beginPath(); c.ellipse(x, yy, w + 4, 2.2, 0, 0, Math.PI * 2); c.stroke(); }
+      break;
+    }
+    case 'circuloMagico': {   // círculo no chão que gira, com marcas
+      const abre = easeOut(Math.min(1, k / 0.2)), fecha = k > 0.75 ? (k - 0.75) / 0.25 : 0, r = f.r * abre, a = 1 - fecha;
+      c.globalCompositeOperation = 'lighter';
+      brilhoRadial(c, f.x, f.y, r * 1.1, f.cor, 0.35 * a, r * 0.5);
+      c.lineWidth = 0.9; c.strokeStyle = rgba(f.cor, 0.95 * a);
+      c.beginPath(); c.ellipse(f.x, f.y, r, r * 0.45, 0, 0, Math.PI * 2); c.stroke();
+      c.beginPath(); c.ellipse(f.x, f.y, r * 0.72, r * 0.72 * 0.45, 0, 0, Math.PI * 2); c.stroke();
+      const n = 8, rot = f.t * (f.giro || 2.2);
+      for (let i = 0; i < n; i++) { const an = rot + (i / n) * Math.PI * 2; const px = f.x + Math.cos(an) * r * 0.86, py = f.y + Math.sin(an) * r * 0.86 * 0.45; c.fillStyle = rgba('#ffffff', a); c.fillRect(px - 0.7, py - 0.7, 1.4, 1.4); }
+      c.beginPath(); for (let i = 0; i <= 3; i++) { const an = -rot * 0.7 + (i / 3) * Math.PI * 2; const px = f.x + Math.cos(an) * r * 0.72, py = f.y + Math.sin(an) * r * 0.72 * 0.45; i ? c.lineTo(px, py) : c.moveTo(px, py); } c.stroke();
+      break;
+    }
+    case 'marcaV': {   // aviso no chão (onde vai cair): anel tracejado + preenchimento que cresce
+      const a = 1 - (k > 0.85 ? (k - 0.85) / 0.15 : 0);
+      c.setLineDash([2.5, 2]); c.lineDashOffset = -f.t * 12; c.lineWidth = 0.9; c.strokeStyle = rgba(f.cor, 0.95 * a);
+      c.beginPath(); c.ellipse(f.x, f.y, f.r, f.r * 0.45, 0, 0, Math.PI * 2); c.stroke(); c.setLineDash([]);
+      c.fillStyle = rgba(f.cor, 0.22 * a); c.beginPath(); c.ellipse(f.x, f.y, f.r * Math.min(1, k * 1.2), f.r * 0.45 * Math.min(1, k * 1.2), 0, 0, Math.PI * 2); c.fill();
+      break;
+    }
+    case 'explosao': {   // clarão → bola de fogo → fumaça clara
+      const e = easeOut(Math.min(1, k * 1.6)), r = f.r * (0.4 + e * 0.8), a = 1 - k;
+      c.globalCompositeOperation = 'lighter';
+      brilhoRadial(c, f.x, f.y, r * 1.6, f.cor2, 0.5 * a, r * 1.1);
+      brilhoRadial(c, f.x, f.y - r * 0.15, r, f.cor, 0.95 * a, r * 0.8);
+      if (k < 0.18) { c.fillStyle = rgba('#ffffff', 0.9 * (1 - k / 0.18)); c.beginPath(); c.ellipse(f.x, f.y, r * 0.7, r * 0.55, 0, 0, Math.PI * 2); c.fill(); }
+      break;
+    }
+    case 'brilho': { c.globalCompositeOperation = 'lighter'; const a = (f.a ?? 1) * (k < 0.2 ? k / 0.2 : 1 - (k - 0.2) / 0.8); brilhoRadial(c, f.alvo ? f.alvo.x : f.x, (f.alvo ? f.alvo.y - 18 : f.y), f.r, f.cor, a, f.r * (f.ach || 1)); break; }
+    case 'raioV': {   // raio: linha quebrada com núcleo branco e brilho
+      const x1 = f.de.x, y1 = f.de.y - 18, x2 = f.para.x, y2 = f.para.y - 18, a = 1 - k;
+      if (!f.pts || Math.floor(f.t * 30) !== f.q) { f.q = Math.floor(f.t * 30); f.pts = []; for (let i = 0; i <= 7; i++) { const t = i / 7; f.pts.push([x1 + (x2 - x1) * t + (i && i < 7 ? rnd(-5, 5) : 0), y1 + (y2 - y1) * t + (i && i < 7 ? rnd(-4, 4) : 0)]); } }
+      const linha = () => { c.beginPath(); f.pts.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); };
+      c.lineJoin = 'round'; c.globalCompositeOperation = 'lighter'; linha(); c.lineWidth = 3.4; c.strokeStyle = rgba(f.cor, 0.5 * a); c.stroke();
+      c.globalCompositeOperation = 'source-over'; linha(); c.lineWidth = 1.1; c.strokeStyle = rgba('#ffffff', a); c.stroke();
+      break;
+    }
+    case 'cupula': {   // escudo em cúpula
+      const abre = easeOut(Math.min(1, k / 0.18)), a = 1 - (k > 0.7 ? (k - 0.7) / 0.3 : 0), x = f.alvo ? f.alvo.x : f.x, y = f.alvo ? f.alvo.y : f.y, r = f.r * abre;
+      const g = c.createRadialGradient(x, y - r * 0.5, r * 0.2, x, y - r * 0.4, r * 1.1);
+      g.addColorStop(0, rgba(f.cor, 0.05 * a)); g.addColorStop(0.8, rgba(f.cor, 0.3 * a)); g.addColorStop(1, rgba('#ffffff', 0.8 * a));
+      c.globalCompositeOperation = 'lighter'; c.fillStyle = g;
+      c.beginPath(); c.ellipse(x, y, r, r * 1.25, 0, Math.PI, 0); c.ellipse(x, y, r, r * 0.42, 0, 0, Math.PI); c.fill();
+      c.lineWidth = 0.9; c.strokeStyle = rgba('#ffffff', 0.85 * a); c.beginPath(); c.ellipse(x, y, r, r * 1.25, 0, Math.PI, 0); c.stroke();
+      c.strokeStyle = rgba(f.cor, 0.9 * a); c.beginPath(); c.ellipse(x, y, r, r * 0.42, 0, 0, Math.PI * 2); c.stroke();
+      // hexágonos
+      c.lineWidth = 0.5; c.strokeStyle = rgba('#ffffff', 0.35 * a);
+      for (let i = -2; i <= 2; i++) { c.beginPath(); c.ellipse(x, y - r * 0.55, Math.abs(r * Math.cos(i * 0.5)) * 0.95, r * 0.7, 0, Math.PI * 1.05, Math.PI * 1.95); c.stroke(); }
+      break;
+    }
+    case 'linhas': {   // linhas de velocidade em volta de um ponto (SUPREMO, arrancadas)
+      const a = 1 - k; c.globalCompositeOperation = 'lighter'; c.strokeStyle = rgba(f.cor, 0.7 * a);
+      for (const L of f.ls || (f.ls = Array.from({ length: f.n || 16 }, () => ({ ang: rnd(0, Math.PI * 2), r0: rnd(18, 30), len: rnd(14, 34), w: rnd(0.5, 1.4) })))) {
+        const r0 = L.r0 + k * 30; c.lineWidth = L.w; c.beginPath(); c.moveTo(f.x + Math.cos(L.ang) * r0, f.y + Math.sin(L.ang) * r0 * 0.7); c.lineTo(f.x + Math.cos(L.ang) * (r0 + L.len), f.y + Math.sin(L.ang) * (r0 + L.len) * 0.7); c.stroke();
+      }
+      break;
+    }
+    case 'chama': {   // labareda subindo (Pira, queimaduras grandes)
+      const x = f.alvo ? f.alvo.x : f.x, y = f.alvo ? f.alvo.y : f.y, a = 1 - (k > 0.6 ? (k - 0.6) / 0.4 : 0), h = f.h * easeOut(Math.min(1, k * 3));
+      c.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 7; i++) { const t = i / 6, yy = y - h * t, ww = f.larg * (1 - t * 0.75) * (0.85 + 0.15 * Math.sin(f.t * 30 + i)); brilhoRadial(c, x + Math.sin(f.t * 18 + i * 1.7) * 2 * t, yy, ww, t < 0.3 ? '#ffd23f' : t < 0.65 ? '#ff8c1a' : '#ff4a1f', 0.75 * a, ww * 1.3); }
+      break;
+    }
+    case 'gelo': {   // estalactites de gelo vetoriais
+      const cresce = easeOut(Math.min(1, k * 3)), some = k > 0.7 ? (k - 0.7) / 0.3 : 0;
+      for (let i = 0; i < f.n; i++) {
+        const an = (i / f.n) * Math.PI * 2 + 0.4, d = f.r * (i % 2 ? 0.55 : 1), px = f.x + Math.cos(an) * d, py = f.y + Math.sin(an) * d * 0.45, h = (8 + (i % 3) * 5) * cresce * (1 - some), w = 2.2 + (i % 2);
+        c.beginPath(); c.moveTo(px - w, py); c.lineTo(px + (i % 2 ? 1 : -1), py - h); c.lineTo(px + w, py); c.closePath();
+        const g = c.createLinearGradient(px, py, px, py - h); g.addColorStop(0, rgba('#3a9fd6', 0.95)); g.addColorStop(1, rgba('#ffffff', 0.95)); c.fillStyle = g; c.fill();
+        c.lineWidth = 0.4; c.strokeStyle = rgba('#e8fbff', 0.9); c.stroke();
+      }
+      break;
+    }
+    case 'notas': {   // anéis de música (Hino)
+      const a = 1 - k;
+      for (let i = 0; i < 3; i++) { const kk = clamp(k * 1.4 - i * 0.18, 0, 1); if (kk <= 0) continue; const r = 6 + kk * f.r; c.lineWidth = 1.2 * (1 - kk); c.strokeStyle = rgba(i % 2 ? '#ffffff' : f.cor, 0.9 * (1 - kk)); c.beginPath(); c.ellipse(f.x, f.y, r, r * 0.6, 0, 0, Math.PI * 2); c.stroke(); }
+      c.globalAlpha = a; break;
+    }
+    case 'rastroArco': {   // trilha luminosa (flecha certeira, arrancadas)
+      const a = 1 - k, x0 = f.x0, y0 = f.y0, x1 = f.x1, y1 = f.y1;
+      const g = c.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, rgba(f.cor, 0)); g.addColorStop(1, rgba(f.cor, 0.85 * a));
+      c.globalCompositeOperation = 'lighter'; c.lineCap = 'round';
+      c.strokeStyle = g; c.lineWidth = f.larg * 2.5 * (1 - k * 0.5); c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke();
+      const g2 = c.createLinearGradient(x0, y0, x1, y1); g2.addColorStop(0, rgba('#ffffff', 0)); g2.addColorStop(1, rgba('#ffffff', a));
+      c.strokeStyle = g2; c.lineWidth = f.larg * (1 - k * 0.5); c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke();
+      break;
+    }
+    case 'mira': {   // linha de mira (antes do Tiro Certeiro)
+      const a = Math.min(1, k * 3) * (1 - (k > 0.85 ? (k - 0.85) / 0.15 : 0)), x2 = f.alvo.x, y2 = f.alvo.y - 18;
+      c.setLineDash([3, 2]); c.lineDashOffset = -f.t * 30; c.lineWidth = 0.6; c.strokeStyle = rgba(f.cor, 0.9 * a);
+      c.beginPath(); c.moveTo(f.u.x + f.u.face * 10, f.u.y - 19); c.lineTo(x2, y2); c.stroke(); c.setLineDash([]);
+      const r = 7 - k * 3; c.lineWidth = 0.8; c.beginPath(); c.arc(x2, y2, r, 0, Math.PI * 2); c.stroke();
+      c.beginPath(); c.moveTo(x2 - r - 3, y2); c.lineTo(x2 - r + 2, y2); c.moveTo(x2 + r - 2, y2); c.lineTo(x2 + r + 3, y2); c.moveTo(x2, y2 - r - 3); c.lineTo(x2, y2 - r + 2); c.moveTo(x2, y2 + r - 2); c.lineTo(x2, y2 + r + 3); c.stroke();
+      break;
+    }
+    case 'juntar': {   // partículas de energia que convergem para um ponto (carga)
+      const px = f.u ? f.u.x + f.u.face * (f.dx || 10) : f.x, py = f.u ? f.u.y - (f.dy || 19) : f.y;
+      c.globalCompositeOperation = 'lighter';
+      for (const q of f.qs || (f.qs = Array.from({ length: 10 }, () => ({ ang: rnd(0, Math.PI * 2), d: rnd(14, 26) })))) {
+        const d = q.d * (1 - easeOut(k)); c.fillStyle = rgba(f.cor, 0.9); c.beginPath(); c.arc(px + Math.cos(q.ang) * d, py + Math.sin(q.ang) * d, 0.9, 0, Math.PI * 2); c.fill();
+      }
+      brilhoRadial(c, px, py, 3 + k * 5, f.cor, 0.8);
+      break;
+    }
+  }
+  c.restore();
+}
+
+/* ---- projéteis com brilho (por cima do desenho em pixel) ---- */
+function desenharProjetilVx(c, p) {
+  const cor = { flecha: '#ffffff', fagulha: '#ff8c1a', bolaFogo: '#ff8c1a', bolaFogoG: '#ff8c1a', gelinho: '#7fd6ff', gelo: '#9fe6ff', geloG: '#9fe6ff', luzinha: '#ffe48a', osso: '#7dff9a', nota: '#5fe0c8', veneno: '#8be05a' }[p.tipo] || '#ffffff';
+  const certeiro = p.vis === 'tiro';
+  // rastro: guarda as últimas posições
+  p.hist = p.hist || []; p.hist.push([p.x, p.y]); if (p.hist.length > (certeiro ? 9 : 6)) p.hist.shift();
+  c.save(); c.globalCompositeOperation = 'lighter'; c.lineCap = 'round';
+  const h = p.hist;
+  if (h.length > 1) {
+    const g = c.createLinearGradient(h[0][0], h[0][1], p.x, p.y); g.addColorStop(0, rgba(certeiro ? '#ffd84a' : cor, 0)); g.addColorStop(1, rgba(certeiro ? '#ffd84a' : cor, certeiro ? 0.95 : 0.6));
+    c.strokeStyle = g; c.lineWidth = certeiro ? 4 : p.tipo === 'flecha' ? 1.4 : 3; c.beginPath(); h.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.stroke();
+    if (certeiro) { c.strokeStyle = rgba('#ffffff', 0.9); c.lineWidth = 1.3; c.beginPath(); h.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.stroke(); }
+  }
+  if (p.tipo !== 'flecha' || certeiro) brilhoRadial(c, p.x, p.y, certeiro ? 9 : p.tipo === 'bolaFogoG' || p.tipo === 'geloG' ? 10 : p.tipo === 'bolaFogo' || p.tipo === 'gelo' ? 7 : 4.5, certeiro ? '#ffd84a' : cor, 0.85);
+  c.restore();
+}
+
+/* ---- disparadores usados pelos eventos ---- */
+// Corte de arma corpo a corpo: meia-lua do lado do golpe, na cor da arma
+const COR_ARMA = { espada: '#cfe6ff', espadao: '#d4a6ff', machado: '#ffb36b', martelo: '#ffb36b', lanca: '#ffd27a', adagas: '#c48bff', punho: '#ffd27a', cajado: '#9fd3ff', alaude: '#5fe0c8', arco: '#c8e6a0' };
+function vxCorte(u, alvo, forte) {
+  const def = spriteSet(u.look).def || {}, arma = def.golem ? 'punho' : def.arma || 'espada';
+  const ang = Math.atan2((alvo.y - 18) - (u.y - 18), alvo.x - u.x), cor = COR_ARMA[arma] || '#ffffff';
+  const d = Math.min(12, dist(u, alvo) * 0.55), x = u.x + Math.cos(ang) * d, y = u.y - 18 + Math.sin(ang) * d * 0.6;
+  if (arma === 'lanca' || arma === 'punho') {   // estocada / soco: feixe reto
+    vx('feixe', { x0: u.x + u.face * 6, y0: u.y - 17, x1: alvo.x - Math.cos(ang) * 2, y1: alvo.y - 18, larg: forte ? 2.6 : 1.6, cor, dur: forte ? 0.22 : 0.16 });
+    return;
+  }
+  const sentido = (u.atkN || 0) % 2 ? 1 : -1;
+  vx('corte', { x, y, ang, r: forte ? 17 : arma === 'adagas' ? 10 : 13, abre: Math.PI * (forte ? 1.05 : 0.85), esp: forte ? 5 : arma === 'adagas' ? 2.6 : 3.6, sentido, cor, achata: 0.75, dur: forte ? 0.24 : 0.17, duplo: forte });
+  if (arma === 'adagas') vx('corte', { x, y: y + 2, ang, r: 9, abre: Math.PI * 0.8, esp: 2.2, sentido: -sentido, cor, achata: 0.75, dur: 0.17, atraso: 0.05 });
+}
+// Impacto no alvo: faísca + onda; o tamanho acompanha a força
+function vxImpacto(a, cor, forca = 1, crit = false) {
+  const x = a.x + rnd(-2, 2), y = a.y - 18 + rnd(-3, 3);
+  vx('faisca', { x, y, r: 7 + forca * 5, n: crit ? 8 : 6, rot: rnd(0, 1), cor, dur: 0.16 + forca * 0.05 });
+  if (forca >= 1.5 || crit) vx('anel', { x, y, r0: 3, r1: 12 + forca * 6, esp: 1.6, cor: crit ? '#ffd84a' : cor, ach: 0.75, dur: 0.24 });
+}
 /* ============================ ESTADO E SAVE ============================ */
 const SAVE_KEY = 'ligaDasLaminas.save.v1';   // mesma chave da Fase 1: a versão fica dentro do save
-const VERSAO = 14;   // v14 (E5a): m.evolucao (null | 'a' | 'b'), nota das evoluções; v13 (E5a): v13 (E5a): mesmo formato; teto 30 → 60 → 100 vem das Ascensões que o mercenário já tem (nada a migrar) e marca a nota; v12 (E4 e): v12 (E4 e): stats.rodadas (lutas = partidas; rodadas = lutas dentro delas) e a nota da partida melhor de 3; v11 (E4 d): só marcava a nota da câmera nova; v10 (E4 d): formato igual ao v9, só marca a nota da tela de formação; v9 (E4 c): pos (casa na formação 3×3) e postura; v8 só marcava a nota do cérebro novo
+const VERSAO = 15;   // v15 (EV): m.ap = aparência (raça, pele, penteado, cabelo, barba, roupa, corRoupa), só visual; v14 (E5a): m.evolucao (null | 'a' | 'b'), nota das evoluções; v13 (E5a): v13 (E5a): mesmo formato; teto 30 → 60 → 100 vem das Ascensões que o mercenário já tem (nada a migrar) e marca a nota; v12 (E4 e): v12 (E4 e): stats.rodadas (lutas = partidas; rodadas = lutas dentro delas) e a nota da partida melhor de 3; v11 (E4 d): só marcava a nota da câmera nova; v10 (E4 d): formato igual ao v9, só marca a nota da tela de formação; v9 (E4 c): pos (casa na formação 3×3) e postura; v8 só marcava a nota do cérebro novo
 const consumiveisZerados = () => Object.fromEntries(Object.keys(CONSUMIVEIS).map((k) => [k, 0]));
 const criadorPadrao = () => ({ liberado: false, usado: false, sorteMult: 1, tempoMult: 1 });
 const statsPadrao = () => ({
@@ -4827,6 +5365,14 @@ function normalizarMerc(m) {
   if (!m.tatica) m.tatica = 'auto';
   m.nivel = clamp(m.nivel | 0 || 1, 1, NIVEL_TETO);
   if (m.evolucao !== 'a' && m.evolucao !== 'b') m.evolucao = null;
+  // v15: aparência (só visual). Inválida → refeita a partir do id; quem não tem ganha uma estável (mesma cor de cabelo de antes)
+  if (m.ap && (typeof m.ap !== 'object' || !RACAS[m.ap.raca] || !PENTEADOS[m.ap.penteado])) delete m.ap;
+  if (m.ap) {
+    const A = m.ap, Rc = RACAS[A.raca];
+    A.pele = clamp(A.pele | 0, 0, Rc.peles.length - 1); A.cabelo = clamp(A.cabelo | 0, 0, CABELOS_TODOS.length - 1);
+    A.barba = clamp(A.barba | 0, 0, 3); A.roupa = clamp(A.roupa | 0, 0, 2); A.corRoupa = clamp(A.corRoupa | 0, 0, 3);
+  }
+  garantirAparencia(m);
   m.xp = Math.max(0, +m.xp || 0);
   m.stats = Object.assign(statsMercPadrao(), m.stats || {});
   return m;
@@ -4888,6 +5434,7 @@ function validarSave(s) {
   if (versaoAntiga < 12 && !nov.includes(12) && st.stats.lutas > 0) nov.push(12);
   if (versaoAntiga < 13 && !nov.includes(13) && st.stats.lutas > 0) nov.push(13);
   if (versaoAntiga < 14 && !nov.includes(14) && st.stats.lutas > 0) nov.push(14);
+  if (versaoAntiga < 15 && !nov.includes(15) && st.stats.lutas > 0) nov.push(15);
   st.novidades = nov.filter((f) => f >= 2 && NOVIDADES[f]).sort((a, b) => a - b);   // só fases com nota (antes: teto fixo que esquecia a nota nova)
   if (versaoAntiga < 12) st.stats.rodadas = st.stats.lutas;   // até o v11 toda partida tinha uma luta só
   if (versaoAntiga < 3 && st.tutorial >= 4) st.tutorial = 99;   // quem já viu o tutorial antigo não o repete
@@ -5919,6 +6466,7 @@ function atualizarModais() {
     else if (d.reliquias) atualizarModal(w, htmlEscolhaReliquia());
     else if (d.estatisticas) atualizarModal(w, htmlEstatisticas());
     else if (d.intervalo) atualizarModal(w, htmlIntervalo());
+    else if (d.aparencia) { const m = mercPorId(d.aparencia); if (!m) removerModal(w); else atualizarModal(w, htmlAparencia(m)); }
   }
 }
 
@@ -6249,7 +6797,8 @@ function htmlFicha(m, modo) {
     </div>`;
   return `
   <div class="ficha-topo">
-    <div class="retrato ${m.campeao ? 'campeao' : ''}">${canvasLook(lookMeu(m), 108)}</div>
+    <div class="retrato-col"><div class="retrato ${m.campeao ? 'campeao' : ''}">${canvasLook(lookMeu(m), 108)}</div>
+      ${!deFora && !m.campeao ? `<button class="btn pequeno" data-act="aparencia" data-id="${m.id}">Aparência</button>` : ''}</div>
     <div>
       <h2>${nomeMerc(m)} ${badgePot(m.pot)} ${cap && !deFora ? canvasIcone('coroa', 14) : ''}</h2>
       ${m.campeao ? `<small class="ouro-tx">Campeão Lendário · ${CAMPEOES[m.campeao].titulo}</small>` : ''}
@@ -6272,6 +6821,23 @@ function htmlFicha(m, modo) {
   ${htmlEvolucao(m, deFora)}
   ${s.unicos.map((u) => `<div class="hab"><div class="hab-cab"><b style="color:var(--ouro)">★ ${UNICOS[u].nome}</b><span class="tag ouro">Lendário</span></div><p>${UNICOS[u].desc}</p></div>`).join('')}
   ${rodape}`;
+}
+// EV2: editor de aparência (só visual). Raça, pele, cabelo, barba, roupa e cor da roupa
+function htmlAparencia(m) {
+  garantirAparencia(m);
+  const ap = m.ap, Rc = RACAS[ap.raca];
+  const chip = (k, v, nome, on) => `<button class="chip-btn alto ${on ? 'on' : ''}" data-act="ap-set" data-id="${m.id}" data-k="${k}" data-v="${v}">${nome}</button>`;
+  const cor = (k, v, hex, on) => `<button class="ap-cor ${on ? 'on' : ''}" data-act="ap-set" data-id="${m.id}" data-k="${k}" data-v="${v}" style="--c:${hex}" aria-label="cor ${v + 1}"></button>`;
+  return `<h2>Aparência · ${esc(m.nome)}</h2>
+  <div class="ap-prev"><div class="retrato">${canvasLook(lookMeu(m), 96)}</div><small class="muted">Só visual: não muda atributos. ${CLASSES[m.classe].nome} ${Rc.nome.toLowerCase()}${ap.raca === 'anao' ? '' : ''}.</small></div>
+  <span class="rot">Raça</span><div class="ap-linha">${RACAS_IDS.map((r) => chip('raca', r, RACAS[r].nome, ap.raca === r)).join('')}</div>
+  <span class="rot">${ap.raca === 'felino' ? 'Pelagem' : 'Pele'}</span><div class="ap-linha">${Rc.peles.map((pi, i) => cor('pele', i, PELES_TODAS[pi][1], ap.pele === i)).join('')}</div>
+  <span class="rot">Cabelo</span><div class="ap-linha">${PENTEADOS_IDS.map((pe) => chip('penteado', pe, PENTEADOS[pe].nome, ap.penteado === pe)).join('')}</div>
+  <span class="rot">Cor do cabelo</span><div class="ap-linha">${CABELOS_TODOS.map((h, i) => cor('cabelo', i, h, ap.cabelo === i)).join('')}</div>
+  <span class="rot">Barba</span><div class="ap-linha">${['Sem', 'Curta', 'Longa', 'Bigode'].map((n, i) => chip('barba', i, n, ap.barba === i)).join('')}</div>
+  <span class="rot">Roupa</span><div class="ap-linha">${(ROUPAS[m.classe] || []).map((r, i) => chip('roupa', i, r.nome, ap.roupa === i)).join('')}</div>
+  <span class="rot">Cor da roupa</span><div class="ap-linha">${(CORES_ROUPA[m.classe] || []).map((h, i) => cor('corRoupa', i, h, ap.corRoupa === i)).join('')}</div>
+  <div class="confirmar"><button class="btn" data-act="ap-sortear" data-id="${m.id}">Sortear</button><button class="btn primario" data-act="fechar-modal">Pronto</button></div>`;
 }
 function htmlPergaminhosFicha(m, s) {
   const n = slotsPergaminho(m), partes = [];
@@ -6964,6 +7530,11 @@ function mostrarTutorial() {
   el.innerHTML = `<div class="tut-balao"><small>${p === 0 ? 'Primeiros passos' : `Luta ${p} de ${TUT_FIM} · menu liberado`}</small><p>${T.txt}</p><button class="btn primario pequeno" data-act="tutorial-prox">${p === TUT_FIM ? 'Começar' : 'Entendi'}</button></div>`;
 }
 const NOVIDADES = {
+  15: [
+    ['guilda', 'Cada mercenário é único', 'Agora existem 7 raças (humano, elfo, anão, orc, ogro, porcino e felino), vários cabelos, barbas, tons de pele e 3 roupas por classe. Abra a ficha e toque em Aparência para mudar o visual de quem quiser.'],
+    ['espada', 'Lutas com mais impacto', 'Golpes deixam cortes de luz, acertos fortes param o tempo por um instante e empurram o alvo, quem é atordoado cai no chão, esquivas e investidas têm animação própria e cada habilidade (e cada evolução) tem efeito próprio.'],
+    ['estatisticas', 'Mais nítido e legível', 'A arena agora tem a mesma nitidez de perto e de longe, a letra do jogo ficou mais fácil de ler e os números de dano não cobrem mais os personagens.'],
+  ],
   14: [
     ['estrela', 'Evoluções no nível 15', 'Cada classe agora escolhe um de dois caminhos no nível 15, para sempre: o Guardião vira Bastião ou Égide, a Arqueira vira Atiradora de Elite ou Batedora, e assim por diante. A escolha muda a habilidade (e às vezes a passiva). Abra a ficha de quem já passou do 15.'],
     ['liga', 'Rivais evoluídos', 'Os rivais a partir do nível 15 também vêm com um caminho sorteado. Repare no que muda na luta.'],
@@ -7028,7 +7599,7 @@ const NOVIDADES = {
     ['engrenagem', 'Save na sua conta', 'Jogando dentro do Claude com a sua conta, o progresso também fica salvo nela e você continua de outro aparelho. Veja em Configurações onde o seu progresso está salvo.'],
   ],
 };
-const ROTULO_FASE = { 5: '4.1', 6: '5 · Veldria', 7: '6 · Recordes', 8: '7 · Cérebro', 10: '8 · Formação', 11: '9 · Câmera', 12: '10 · Melhor de 3', 13: '11 · Rumo ao 100', 14: '12 · Evoluções' };
+const ROTULO_FASE = { 5: '4.1', 6: '5 · Veldria', 7: '6 · Recordes', 8: '7 · Cérebro', 10: '8 · Formação', 11: '9 · Câmera', 12: '10 · Melhor de 3', 13: '11 · Rumo ao 100', 14: '12 · Evoluções', 15: '13 · Visuais' };
 function mostrarNovidades() {
   const fases = (STATE.novidades || []).slice().sort((a, b) => b - a);
   const bloco = (f) => `${fases.length > 1 ? `<span class="rot">Fase ${ROTULO_FASE[f] || f}</span>` : ''}<div class="lista novidades">${NOVIDADES[f].map(([ic, t, d]) => `<div class="card">${canvasIcone(ic, 28, ic === 'torre' ? { a: '#e9dfc9', b: '#a99bb8' } : null)}<div class="card-corpo"><b>${t}</b><small>${d}</small></div></div>`).join('')}</div>`;
@@ -7065,7 +7636,7 @@ function abrirConfig() {
     <button class="btn" data-act="estatisticas">${canvasIcone('estatisticas', 16)} Ver estatísticas completas</button>
     ${STATE.criador.liberado ? `<button class="btn criador-btn" data-act="criador">${canvasIcone('criador', 16)} Modo Criador</button>` : ''}
     <button class="btn perigo" data-act="reiniciar">Reiniciar jogo</button>
-    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.12.1 (EV1)</button>`, { dados: { config: true } });
+    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.13</button>`, { dados: { config: true } });
 }
 function mostrarResumoOffline(r) {
   if (!r || r.minutos < 1) return;
@@ -7335,6 +7906,16 @@ const ACOES = {
   'time-rem': (el) => { STATE.time = STATE.time.filter((x) => x !== +el.dataset.id); ajustarTime(); aposMudanca(); },
   capitao: (el) => { STATE.capitao = +el.dataset.id; toast('Novo capitão definido.', 'ok'); aposMudanca(); },
   linha: (el) => { const m = mercPorId(+el.dataset.id); m.pos = posDe(el.dataset.v === 'frente' ? 0 : 2, posFileira(m.pos)); m.linha = linhaDePos(m.pos); aposMudanca(); },
+  aparencia: (el) => { const m = mercPorId(+el.dataset.id); if (m) abrirModal(htmlAparencia(m), { dados: { aparencia: m.id } }); },
+  'ap-set': (el) => {
+    const m = mercPorId(+el.dataset.id); if (!m) return;
+    garantirAparencia(m);
+    const k = el.dataset.k, v = el.dataset.v;
+    m.ap[k] = k === 'raca' || k === 'penteado' ? v : +v;
+    if (k === 'raca') m.ap.pele = Math.min(m.ap.pele, RACAS[v].peles.length - 1);
+    aposMudanca();
+  },
+  'ap-sortear': (el) => { const m = mercPorId(+el.dataset.id); if (!m) return; m.ap = sortearAparencia(m.classe, m.nome); aposMudanca(); },
   tatica: (el) => { mercPorId(+el.dataset.id).tatica = el.dataset.v; aposMudanca(); },
   postura: (el) => { mercPorId(+el.dataset.id).postura = POSTURAS[el.dataset.v] ? el.dataset.v : 'auto'; aposMudanca(); },
   // grade de formação: 1º toque seleciona o mercenário; 2º toque numa casa move (ou troca de lugar com quem está lá)

@@ -78,6 +78,7 @@ function atualizarModais() {
     else if (d.reliquias) atualizarModal(w, htmlEscolhaReliquia());
     else if (d.estatisticas) atualizarModal(w, htmlEstatisticas());
     else if (d.intervalo) atualizarModal(w, htmlIntervalo());
+    else if (d.aparencia) { const m = mercPorId(d.aparencia); if (!m) removerModal(w); else atualizarModal(w, htmlAparencia(m)); }
   }
 }
 

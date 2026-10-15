@@ -23,12 +23,15 @@ function rolarCresc(cls, pot) {
   return CLASSES[cls].cresc.map(([lo, hi]) => Math.round((lo + (hi - lo) * rnd(faixa[0], faixa[1])) * 100) / 100);
 }
 function gerarMerc(cls, nivel, pot, evitar = []) {
-  return {
+  const m = {
     id: novoId(), nome: nomeLivre(evitar), classe: cls, nivel, xp: 0, pot, cresc: rolarCresc(cls, pot), tracos: rolarTracos(pot),
     equip: { arma: null, armadura: null, amuleto: null }, pergaminhos: [], ascensoes: 0, evolucao: null,
     linha: CLASSES_FRENTE.includes(cls) ? 'frente' : 'tras', pos: CLASSES_FRENTE.includes(cls) ? 1 : 7, postura: 'auto', tatica: 'auto',
     pele: rint(0, 3), cabelo: CABELO_PADRAO[cls] != null && Math.random() < 0.5 ? CABELO_PADRAO[cls] : rint(0, 5),
   };
+  // EV2: aparência estável pelo id (não usa Math.random: o simulador, que não carrega a parte visual, gera os mesmos mercenários)
+  if (typeof garantirAparencia === 'function') garantirAparencia(m);
+  return m;
 }
 // Campeão Lendário: base 25% maior, potencial mínimo A e habilidade própria
 function gerarCampeao(id, nivel) {

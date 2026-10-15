@@ -63,6 +63,11 @@ function mostrarTutorial() {
   el.innerHTML = `<div class="tut-balao"><small>${p === 0 ? 'Primeiros passos' : `Luta ${p} de ${TUT_FIM} · menu liberado`}</small><p>${T.txt}</p><button class="btn primario pequeno" data-act="tutorial-prox">${p === TUT_FIM ? 'Começar' : 'Entendi'}</button></div>`;
 }
 const NOVIDADES = {
+  15: [
+    ['guilda', 'Cada mercenário é único', 'Agora existem 7 raças (humano, elfo, anão, orc, ogro, porcino e felino), vários cabelos, barbas, tons de pele e 3 roupas por classe. Abra a ficha e toque em Aparência para mudar o visual de quem quiser.'],
+    ['espada', 'Lutas com mais impacto', 'Golpes deixam cortes de luz, acertos fortes param o tempo por um instante e empurram o alvo, quem é atordoado cai no chão, esquivas e investidas têm animação própria e cada habilidade (e cada evolução) tem efeito próprio.'],
+    ['estatisticas', 'Mais nítido e legível', 'A arena agora tem a mesma nitidez de perto e de longe, a letra do jogo ficou mais fácil de ler e os números de dano não cobrem mais os personagens.'],
+  ],
   14: [
     ['estrela', 'Evoluções no nível 15', 'Cada classe agora escolhe um de dois caminhos no nível 15, para sempre: o Guardião vira Bastião ou Égide, a Arqueira vira Atiradora de Elite ou Batedora, e assim por diante. A escolha muda a habilidade (e às vezes a passiva). Abra a ficha de quem já passou do 15.'],
     ['liga', 'Rivais evoluídos', 'Os rivais a partir do nível 15 também vêm com um caminho sorteado. Repare no que muda na luta.'],
@@ -127,7 +132,7 @@ const NOVIDADES = {
     ['engrenagem', 'Save na sua conta', 'Jogando dentro do Claude com a sua conta, o progresso também fica salvo nela e você continua de outro aparelho. Veja em Configurações onde o seu progresso está salvo.'],
   ],
 };
-const ROTULO_FASE = { 5: '4.1', 6: '5 · Veldria', 7: '6 · Recordes', 8: '7 · Cérebro', 10: '8 · Formação', 11: '9 · Câmera', 12: '10 · Melhor de 3', 13: '11 · Rumo ao 100', 14: '12 · Evoluções' };
+const ROTULO_FASE = { 5: '4.1', 6: '5 · Veldria', 7: '6 · Recordes', 8: '7 · Cérebro', 10: '8 · Formação', 11: '9 · Câmera', 12: '10 · Melhor de 3', 13: '11 · Rumo ao 100', 14: '12 · Evoluções', 15: '13 · Visuais' };
 function mostrarNovidades() {
   const fases = (STATE.novidades || []).slice().sort((a, b) => b - a);
   const bloco = (f) => `${fases.length > 1 ? `<span class="rot">Fase ${ROTULO_FASE[f] || f}</span>` : ''}<div class="lista novidades">${NOVIDADES[f].map(([ic, t, d]) => `<div class="card">${canvasIcone(ic, 28, ic === 'torre' ? { a: '#e9dfc9', b: '#a99bb8' } : null)}<div class="card-corpo"><b>${t}</b><small>${d}</small></div></div>`).join('')}</div>`;
@@ -164,7 +169,7 @@ function abrirConfig() {
     <button class="btn" data-act="estatisticas">${canvasIcone('estatisticas', 16)} Ver estatísticas completas</button>
     ${STATE.criador.liberado ? `<button class="btn criador-btn" data-act="criador">${canvasIcone('criador', 16)} Modo Criador</button>` : ''}
     <button class="btn perigo" data-act="reiniciar">Reiniciar jogo</button>
-    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.12.1 (EV1)</button>`, { dados: { config: true } });
+    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.13</button>`, { dados: { config: true } });
 }
 function mostrarResumoOffline(r) {
   if (!r || r.minutos < 1) return;

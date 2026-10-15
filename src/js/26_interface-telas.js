@@ -221,7 +221,8 @@ function htmlFicha(m, modo) {
     </div>`;
   return `
   <div class="ficha-topo">
-    <div class="retrato ${m.campeao ? 'campeao' : ''}">${canvasLook(lookMeu(m), 108)}</div>
+    <div class="retrato-col"><div class="retrato ${m.campeao ? 'campeao' : ''}">${canvasLook(lookMeu(m), 108)}</div>
+      ${!deFora && !m.campeao ? `<button class="btn pequeno" data-act="aparencia" data-id="${m.id}">Aparência</button>` : ''}</div>
     <div>
       <h2>${nomeMerc(m)} ${badgePot(m.pot)} ${cap && !deFora ? canvasIcone('coroa', 14) : ''}</h2>
       ${m.campeao ? `<small class="ouro-tx">Campeão Lendário · ${CAMPEOES[m.campeao].titulo}</small>` : ''}
@@ -244,6 +245,23 @@ function htmlFicha(m, modo) {
   ${htmlEvolucao(m, deFora)}
   ${s.unicos.map((u) => `<div class="hab"><div class="hab-cab"><b style="color:var(--ouro)">★ ${UNICOS[u].nome}</b><span class="tag ouro">Lendário</span></div><p>${UNICOS[u].desc}</p></div>`).join('')}
   ${rodape}`;
+}
+// EV2: editor de aparência (só visual). Raça, pele, cabelo, barba, roupa e cor da roupa
+function htmlAparencia(m) {
+  garantirAparencia(m);
+  const ap = m.ap, Rc = RACAS[ap.raca];
+  const chip = (k, v, nome, on) => `<button class="chip-btn alto ${on ? 'on' : ''}" data-act="ap-set" data-id="${m.id}" data-k="${k}" data-v="${v}">${nome}</button>`;
+  const cor = (k, v, hex, on) => `<button class="ap-cor ${on ? 'on' : ''}" data-act="ap-set" data-id="${m.id}" data-k="${k}" data-v="${v}" style="--c:${hex}" aria-label="cor ${v + 1}"></button>`;
+  return `<h2>Aparência · ${esc(m.nome)}</h2>
+  <div class="ap-prev"><div class="retrato">${canvasLook(lookMeu(m), 96)}</div><small class="muted">Só visual: não muda atributos. ${CLASSES[m.classe].nome} ${Rc.nome.toLowerCase()}${ap.raca === 'anao' ? '' : ''}.</small></div>
+  <span class="rot">Raça</span><div class="ap-linha">${RACAS_IDS.map((r) => chip('raca', r, RACAS[r].nome, ap.raca === r)).join('')}</div>
+  <span class="rot">${ap.raca === 'felino' ? 'Pelagem' : 'Pele'}</span><div class="ap-linha">${Rc.peles.map((pi, i) => cor('pele', i, PELES_TODAS[pi][1], ap.pele === i)).join('')}</div>
+  <span class="rot">Cabelo</span><div class="ap-linha">${PENTEADOS_IDS.map((pe) => chip('penteado', pe, PENTEADOS[pe].nome, ap.penteado === pe)).join('')}</div>
+  <span class="rot">Cor do cabelo</span><div class="ap-linha">${CABELOS_TODOS.map((h, i) => cor('cabelo', i, h, ap.cabelo === i)).join('')}</div>
+  <span class="rot">Barba</span><div class="ap-linha">${['Sem', 'Curta', 'Longa', 'Bigode'].map((n, i) => chip('barba', i, n, ap.barba === i)).join('')}</div>
+  <span class="rot">Roupa</span><div class="ap-linha">${(ROUPAS[m.classe] || []).map((r, i) => chip('roupa', i, r.nome, ap.roupa === i)).join('')}</div>
+  <span class="rot">Cor da roupa</span><div class="ap-linha">${(CORES_ROUPA[m.classe] || []).map((h, i) => cor('corRoupa', i, h, ap.corRoupa === i)).join('')}</div>
+  <div class="confirmar"><button class="btn" data-act="ap-sortear" data-id="${m.id}">Sortear</button><button class="btn primario" data-act="fechar-modal">Pronto</button></div>`;
 }
 function htmlPergaminhosFicha(m, s) {
   const n = slotsPergaminho(m), partes = [];

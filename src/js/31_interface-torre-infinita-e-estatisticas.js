@@ -56,7 +56,7 @@ function htmlEstatisticas() {
   const kpis = [
     tile('Vitórias', fmt(S.vitorias), `${fmt(S.lutas)} lutas · ${taxa}%`),
     tile('Temporadas', fmt(S.temporadas), `${fmt(S.copas)} ${S.copas === 1 ? 'Copa' : 'Copas'} · ${fmt(S.promocoes)} ${S.promocoes === 1 ? 'promoção' : 'promoções'}`),
-    tile('Recorde da Torre', STATE.torre.recorde ? `andar ${STATE.torre.recorde}` : '—', `${fmt(S.guardioes)} ${S.guardioes === 1 ? 'Guardião vencido' : 'Guardiões vencidos'}`),
+    tile('Guardiões', fmt(S.guardioes), `${fmt(S.torreLutas)} lutas na Torre`),
     tile('Maior golpe', fmt(S.maiorGolpe), `${fmt(S.supremos)} supremos`),
     tile('Dano total', fmtCompacto(S.dano), `${fmt(S.abates)} abates · ${fmt(S.mortes)} quedas`),
     tile('Cura total', fmtCompacto(S.cura), `${fmtTempo(S.tempoLuta * 1000)} em luta`),
@@ -74,11 +74,57 @@ function htmlEstatisticas() {
   const hist = STATE.historico.slice().reverse();
   const linhasHist = hist.map((h) => { const d = DIVISOES[h.div] || DIVISOES[0]; return `<tr><td>${h.t}</td><td><span class="div-tag" style="--dc:${d.cor}">${d.nome}</span></td><td><b>${h.pos}º</b></td><td>${h.copa ? COPA_TXT[h.copa] : '—'}</td><td class="${h.mov}">${h.mov === 'sobe' ? 'Subiu' : h.mov === 'cai' ? 'Caiu' : '—'}</td></tr>`; }).join('');
   return `<h2>${canvasIcone('estatisticas', 22)} Estatísticas</h2>
-    <div class="kpis">${kpis.join('')}</div>
+    ${htmlRastro(tile)}
+    ${htmlMelhoresTemporada()}
+    <section class="est-sec"><h3>Totais da guilda</h3><div class="kpis">${kpis.join('')}</div></section>
     <section class="est-sec"><h3>Mercenários</h3><p class="dica">Dano total causado por cada um desde que entrou na guilda.</p>
       ${linhasMerc || '<p class="vazio">Sem lutas ainda.</p>'}</section>
+    ${htmlUltimasLutas()}
     <section class="est-sec"><h3>Temporadas</h3>
       ${hist.length ? `<div class="tabela-wrap"><table class="tabela"><thead><tr><th>Temp.</th><th>Divisão</th><th>Posição</th><th>Copa</th><th>Divisão seguinte</th></tr></thead><tbody>${linhasHist}</tbody></table></div>` : '<p class="vazio">O histórico aparece quando a primeira temporada terminar.</p>'}</section>`;
+}
+// Ficha de rastro: sequência, Torre, Líder mais derrotado e tempo de jogo
+function htmlRastro(tile) {
+  const S = STATE.stats, lv = Object.entries(S.lideresVencidos || {}).sort((a, b) => b[1] - a[1])[0];
+  const lider = lv && LIDERES.find((l) => l.id === lv[0]);
+  return `<section class="est-sec"><h3>Recordes</h3><div class="kpis">
+    ${tile('Sequência de vitórias', fmt(S.seqAtual), `recorde: ${fmt(S.seqRecorde)}`)}
+    ${tile('Melhor andar da Torre', STATE.torre.recorde ? `andar ${STATE.torre.recorde}` : '—', `${fmt(S.guardioes)} ${S.guardioes === 1 ? 'Guardião vencido' : 'Guardiões vencidos'}`)}
+    ${tile('Líder mais derrotado', lider ? esc(lider.nome) : '—', lider ? `${fmt(lv[1])} ${lv[1] === 1 ? 'vitória' : 'vitórias'} na final` : S.lideres ? 'conta a partir da v0.6' : 'vença a final da Copa')}
+    ${tile('Tempo de jogo', fmtDuracao((S.tempoJogo || 0) / 60000), 'com o jogo aberto, desde a v0.6')}
+  </div></section>`;
+}
+// Melhores da temporada: 5 categorias, filtro por função, meus heróis contra os das guildas rivais
+function htmlMelhoresTemporada() {
+  const f = UI.recFuncao && (UI.recFuncao === 'todas' || FUNCOES[UI.recFuncao]) ? UI.recFuncao : 'todas';
+  const R = STATE.temporadaRec, t = STATE.liga ? STATE.liga.temporada : 1;
+  const chips = [['todas', 'Todas'], ...Object.entries(FUNCOES)].map(([id, n]) => `<button class="chip-btn alto ${f === id ? 'on' : ''}" data-act="rec-funcao" data-id="${id}">${n}</button>`).join('');
+  const linha = (c) => ({ h, pos }) => `<div class="rec-linha ${h.meu ? 'meu' : ''}"><span class="rec-pos">${pos}º</span>${canvasLook(h.look, 26)}
+    <div class="rec-nome"><b>${esc(h.nome)}</b><small>${h.meu ? 'sua guilda' : esc(h.guilda)} · ${FUNCOES[funcaoDe(h.cls)]}</small></div><span class="rec-valor">${c.txt(h)}</span></div>`;
+  const cards = CATEGORIAS_TEMPORADA.map((c) => {
+    const top = rankingTemporada(c, f);
+    return `<div class="rec-cat" data-cat="${c.id}"><div class="rec-cab"><b>${c.nome}</b>${c.dica ? `<small>${c.dica}</small>` : ''}</div>
+      ${top.length ? top.map(linha(c)).join('') : '<p class="vazio">Ninguém ainda.</p>'}</div>`;
+  }).join('');
+  return `<section class="est-sec melhores"><h3>Melhores da temporada ${t}</h3>
+    <p class="dica">Seus heróis contra os das guildas rivais, em todas as lutas desta temporada. Os seus aparecem destacados.</p>
+    <div class="filtros">${chips}</div>
+    ${R && Object.keys(R.herois).length ? cards : '<p class="vazio">Os melhores aparecem depois da primeira luta da temporada.</p>'}</section>`;
+}
+const TIPO_LUTA = { liga: 'Liga', copa: 'Copa', torre: 'Torre', amistoso: 'Amistoso' };
+function htmlUltimasLutas() {
+  const lista = STATE.partidas.slice(-10).reverse();
+  if (!lista.length) return '<section class="est-sec"><h3>Últimas lutas</h3><p class="vazio">O registro começa na próxima luta.</p></section>';
+  const linhas = lista.map((p) => {
+    const mvp = p.times[0].find((u) => u.mvp) || p.times[0][0];
+    return `<div class="partida"><span class="tag ${p.vit ? 'vit' : 'der'}">${p.vit ? 'V' : 'D'}</span>
+      <div class="pt-corpo"><b>${TIPO_LUTA[p.tipo] || p.tipo}${p.tipo === 'torre' && p.andar ? ` ${p.andar}` : ''} · ${esc(p.rival)}</b>
+        <small>Luta nº ${p.n} · ${fmtTempo(p.tempo * 1000)} · destaque: ${esc(mvp ? mvp.nome : '—')}${p.criador ? ' · Modo Criador' : ''}</small></div>
+      ${p.replay ? `<button class="btn pequeno" data-act="conferir-partida" data-n="${p.n}">Conferir</button>` : ''}</div>`;
+  }).join('');
+  return `<section class="est-sec"><h3>Últimas lutas</h3>
+    <p class="dica">Cada luta fica registrada com a semente e os times. "Conferir" roda a luta de novo, sem tela, e confere se o resultado é idêntico.</p>
+    ${linhas}</section>`;
 }
 function abrirEstatisticas() { abrirModal(htmlEstatisticas(), { dados: { estatisticas: true } }); }
 

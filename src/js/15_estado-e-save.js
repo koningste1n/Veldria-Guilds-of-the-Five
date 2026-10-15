@@ -1,14 +1,19 @@
 /* ============================ ESTADO E SAVE ============================ */
 const SAVE_KEY = 'ligaDasLaminas.save.v1';   // mesma chave da Fase 1: a versão fica dentro do save
-const VERSAO = 6;
+const VERSAO = 7;
 const consumiveisZerados = () => Object.fromEntries(Object.keys(CONSUMIVEIS).map((k) => [k, 0]));
 const criadorPadrao = () => ({ liberado: false, usado: false, sorteMult: 1, tempoMult: 1 });
 const statsPadrao = () => ({
   lutas: 0, vitorias: 0, maiorGolpe: 0, lendarios: 0, temporadas: 0, copas: 0, promocoes: 0, expedicoes: 0, lideres: 0,
   dano: 0, cura: 0, abates: 0, mortes: 0, supremos: 0, baus: 0, ouroGanho: 0, tempoLuta: 0, torreLutas: 0, guardioes: 0,
+  // v7 (E3): ficha de rastro
+  seqAtual: 0, seqRecorde: 0, tempoJogo: 0, lideresVencidos: {}, partidasN: 0,
 });
 const torrePadrao = () => ({ recorde: 0, inimigo: null, tributoDia: '', lutas: 0 });
 const configPadrao = () => ({ vel: 1, auto: true, dif: 'normal', som: 0.7, musica: false, vibrar: true, lenta: true });
+const PARTIDAS_MAX = 50;   // registros guardados no save
+const REPLAYS_MAX = 10;    // dos quais os mais recentes guardam tudo para reproduzir a luta
+const PARTIDAS_BYTES = 90000;   // teto do registro dentro do save
 const statsMercPadrao = () => ({ lutas: 0, vitorias: 0, abates: 0, dano: 0, cura: 0, mvp: 0 });
 
 function estadoNovo(guilda) {
@@ -24,6 +29,7 @@ function estadoNovo(guilda) {
     stats: statsPadrao(), torre: torrePadrao(), historico: [],
     pity: { semEpico: 0, semLendario: 0 }, tutorial: TUTORIAL_LIGADO ? 0 : 99, tutorialVisto: -1,
     criador: criadorPadrao(), novidades: [],
+    partidas: [], temporadaRec: null,
   };
 }
 function iniciarJogoNovo(guilda) {
@@ -93,6 +99,11 @@ function validarSave(s) {
   st.config.som = clamp(+st.config.som || 0, 0, 1);
   if (!DIFICULDADES[st.config.dif]) st.config.dif = 'normal';
   st.stats = Object.assign(statsPadrao(), s.stats || {});
+  if (!st.stats.lideresVencidos || typeof st.stats.lideresVencidos !== 'object') st.stats.lideresVencidos = {};
+  // v7: registro de partidas e melhores da temporada
+  st.partidas = (Array.isArray(st.partidas) ? st.partidas : []).filter((p) => p && Array.isArray(p.times)).slice(-PARTIDAS_MAX);
+  st.partidas.forEach((p, i) => { if (i < st.partidas.length - REPLAYS_MAX) delete p.replay; });
+  if (!st.temporadaRec || typeof st.temporadaRec !== 'object' || !st.temporadaRec.herois) st.temporadaRec = null;
   st.torre = Object.assign(torrePadrao(), s.torre || {});
   st.torre.recorde = Math.max(0, st.torre.recorde | 0);
   if (st.torre.inimigo) { st.torre.inimigo.mercs = mercsValidos(st.torre.inimigo.mercs); if (!st.torre.inimigo.mercs.length) st.torre.inimigo = null; }
@@ -126,7 +137,8 @@ function validarSave(s) {
   if (versaoAntiga < 4 && !nov.includes(4)) nov.push(4);
   if (versaoAntiga < 5 && !nov.includes(5)) nov.push(5);
   if (versaoAntiga < 6 && !nov.includes(6) && (st.stats.lutas > 0 || st.tutorial >= 4)) nov.push(6);
-  st.novidades = nov.filter((f) => f >= 2 && f <= 6).sort();
+  if (versaoAntiga < 7 && !nov.includes(7) && st.stats.lutas > 0) nov.push(7);
+  st.novidades = nov.filter((f) => f >= 2 && f <= 7).sort();
   if (versaoAntiga < 3 && st.tutorial >= 4) st.tutorial = 99;   // quem já viu o tutorial antigo não o repete
   // v6: tutorial progressivo. Quem já lutou (ou terminou o tutorial antigo) não repete nada.
   if (versaoAntiga < 6) { st.tutorial = (st.tutorial >= 4 || st.stats.lutas > 0) ? 99 : 0; st.tutorialVisto = -1; }

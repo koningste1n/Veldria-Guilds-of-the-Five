@@ -4,7 +4,7 @@
 
 **Como trabalhar:** `docs/PROMPT-MAE.md` (papéis, regras, roteiro das etapas com critérios de pronto, handoff).
 
-_Atualizado em 14/10/2026 (noite)._
+_Atualizado em 15/10/2026 (E3)._
 
 ## O que existe (v0.4, Fase 4.1)
 
@@ -49,8 +49,8 @@ Os testes Playwright antigos (`luta.py`, `lideres.py`, `nuvem.py`, `perf.py`…)
 |---|---|---|---|---|
 | E1 | Código recuperado, no GitHub e publicado | — | — | ✅ |
 | E2 | Nome Veldria no jogo, save v6 (tutorial progressivo feito e **desligado** — ver Pendências) | 1 | Opus 5.5 | ✅ 15/10 |
-| E3 | Registro de partidas, ficha de recordes + melhores da temporada, simulador de balanço em Node | 1–2 | Opus 5.5 | **próxima** |
-| E4 | Motor novo: IA de utilidade, 3×3 + posturas, câmera, 3v3 melhor de 3; decisão de orientação de tela | 3–4 | **Fable 5.1** | |
+| E3 | Registro de partidas, ficha de recordes + melhores da temporada, simulador de balanço em Node | 1 | Opus 5.5 | ✅ 15/10 (aguarda teste do Kevin no celular) |
+| E4 | Motor novo: IA de utilidade, 3×3 + posturas, câmera, 3v3 melhor de 3; decisão de orientação de tela | 3–4 | **Fable 5.1** | **próxima** |
 | E5a | Curva 1→100, Ascensão como portão, maestrias 20/50, Rank S, A/B nv. 15, catálogo com raridades, pity | 2 | **Fable 5.1** | |
 | E5b | Personalidades visíveis, rivais, identidade de build, relíquias 24+, renome, contrato diário, eventos semanais | 2 | Opus 5.5 | |
 | E6 | Classes novas em lotes de 2–4 | 1–2 | Opus 5.5 | |
@@ -75,6 +75,58 @@ O que mudou no código:
 - `30_…`: `resultado-ok` chama `encerrarLuta()` por último, para o tutorial levar à aba recém-liberada.
 - `src/shell.html`: título novo. Chave do save inalterada.
 
+## E3 — concluída em 15/10/2026 (v0.6, save v7)
+
+| # | Critério de pronto | Resultado |
+|---|---|---|
+| 1 | Reproduzir uma luta a partir do registro dá o mesmo resultado | ✅ `node sim/replay.js`: 300/300 lutas variadas (itens, pergaminhos, Campeões, fênix, bomba, toques do jogador) idênticas. `testes/registro.py`: 2 lutas assistidas com toques manuais + 3 puladas, todas idênticas ao reproduzir do save; botão "Conferir" confirma na tela |
+| 2 | Tela de recordes mostra os 5 melhores da temporada | ✅ MVP, Mais abates, Melhor KDA, Mais dano, Mais cura; filtro por função; heróis rivais lado a lado com os seus (destacados) |
+| 3 | `node sim/balanco.js` imprime matriz 10×10 em < 1 min | ✅ 43 s (11.000 lutas, 2 núcleos) |
+| 4 | Save v6 abre em v7 sem perda; fumaça passa | ✅ mercs, ouro e lutas preservados; mostra "Novidades da Fase 6 · Recordes"; fumaça 0 erros |
+
+### O que mudou no código
+
+| Arquivo | Mudança |
+|---|---|
+| `10_combate.js` | `REGRAS_COMBATE = 1` (versão das regras); contador de passos `b.n`; `mortes` por lutador; toques do jogador viram entradas com o número do passo (`entradaJogador`); `ladoParaRegistro`, `reproduzirPartida`, `assinaturaLuta`. Nenhuma regra de luta mudou |
+| `23_estatisticas.js` | `registrarPartida` (registro + sequência + Líderes vencidos + melhores da temporada), `conferirPartida`, `rankingTemporada` |
+| `15_…` | `VERSAO = 7`; `partidas`, `temporadaRec`; stats `seqAtual`, `seqRecorde`, `tempoJogo`, `lideresVencidos` |
+| `27_…`, `30_…` | semente sorteada antes da luta e retrato dos lados; Auto/Manual, alvo e SUPREMO passam por `entradaJogador` |
+| `21_liga.js` | lutas entre rivais (simuladas na rodada) entram nos melhores da temporada |
+| `31_…` | Estatísticas: Recordes, Melhores da temporada, Totais, Mercenários, Últimas lutas (com Conferir), Temporadas |
+| `02_dados.js` | `FUNCOES` e `FUNCAO_CLASSE` (as 6 funções do D1) |
+| `sim/` | `carregar.js` (lê `src/js/` direto, sem cópia), `balanco.js`, `replay.js`, `resultados/` (linha de base) |
+
+### Decisões técnicas da E3
+
+| Decisão | Por quê |
+|---|---|
+| Guardar 50 partidas; só as 10 mais recentes levam os dados completos de reprodução; teto de 90 KB para o registro | O save na conta aceita ~234 KB. Medido: 1,1 KB por partida resumida, 3,7 KB com reprodução → save estimado de ~100 KB com 50 partidas |
+| O registro guarda só os campos do mercenário que afetam o combate | O teste confere que os atributos calculados do retrato são idênticos aos do mercenário real (0 divergências em 1.500 mercenários) |
+| Toques do jogador gravados com o número do passo | Sem isso, uma luta em modo Manual não seria reproduzível |
+| Luta encerrada pelo "Vencer agora" (Modo Criador) não guarda reprodução | Ela mata inimigos fora da simulação |
+| "Melhores da temporada" contam todas as lutas da temporada; rivais entram pelas lutas da liga (inclusive as simuladas entre eles); Líderes e Torre não entram como rivais | Comparação justa entre heróis de guildas |
+| KDA = abates ÷ quedas, mínimo de 3 lutas | O combate não tem assistências |
+| Sequência de vitórias, Líder mais derrotado e tempo de jogo contam a partir da v0.6 | O save antigo não tinha esses dados |
+| Simulador em paralelo (um processo por núcleo) e cada par de classes rodado uma vez só (o inverso é o complemento) | Ficou em 43 s sem mexer em nenhuma conta do combate |
+
+### Linha de base do motor atual (para a E4 vencer)
+
+Mercenário padrão da classe (crescimento no meio da faixa, sem traços e sem itens), nível 10. Arquivos em `sim/resultados/`.
+
+| Formato | Ranking (taxa média de vitória) | Desvio em relação a 50% |
+|---|---|---|
+| 1v1, 200 lutas por par | Machadeiro 87 · Criomante 64 · Lanceira 61 · Guardião 60 · Lâmina 58 · Invocador 56 · Arqueira 48 · Piromante 38 · Clériga 28 · Bardo 0 | 22,3 pontos |
+| 3v3 da mesma classe, 100 por par | Machadeiro 95 · Lanceira 84 · Bardo 68 · Lâmina 56 · Invocador 54 · Arqueira 42 · Guardião 39 · Criomante 33 · Clériga 15 · Piromante 13 | 25,6 pontos |
+
+Leitura: o Machadeiro domina nos dois formatos; Piromante e Clériga ficam no fundo. Times de uma classe só são artificiais (Clériga e Bardo dependem de aliados), mas o Machadeiro já é um sinal claro. Não mexi em balanceamento: isso fica para depois do motor novo (E4), comparando com esta linha de base.
+
+### A confirmar com o Kevin
+
+| Item | Proposta do Claude |
+|---|---|
+| Função principal de cada classe (D1) | Guardião = Tanque · Machadeiro e Lanceira = Corpo a corpo · Arqueira e Piromante = Distância · Criomante e Invocador = Controle · Clériga e Bardo = Suporte · Lâmina = Assassino |
+
 ## Pendências (adiadas pelo Kevin)
 
 ### Tutorial do jogador novo — desligado em 15/10/2026
@@ -91,7 +143,9 @@ Como está agora: `TUTORIAL_LIGADO = false` em `28_…`. Todo jogador (novo ou a
 
 Hoje, quem começa do zero não tem tutorial nenhum (o tutorial antigo de 6 dicas foi substituído). A confirmar com o Kevin se isso basta por enquanto ou se volta o tour antigo de 6 dicas.
 
-## Próxima conversa começa por… (E3, Opus 5.5)
+## Próxima conversa começa por… (E4, **Fable 5.1**)
 
-1. Ler `10_combate.js` (`resumoBatalha`) e `23_estatisticas.js` / `31_…` para ver o que já é medido por lutador (dano, cura, abates, MVP já existem em `statsMercPadrao`).
-2. Escrever no `ESTADO.md` o critério de pronto da E3 (seção 5 do prompt-mãe) e começar pelo **simulador em Node** (`sim/balanco.js`), porque ele exige isolar o combate do desenho — o mesmo corte que o registro de partidas precisa.
+1. Ler `10_combate.js` inteiro (o motor atual, ~840 linhas) e `sim/balanco.js` / `sim/carregar.js`.
+2. Escrever no `ESTADO.md` o critério de pronto da E4 (seção 5 do prompt-mãe) e a ordem interna (a)–(e).
+3. Começar o motor novo isolado (`src/js/10b_…` ou equivalente), com IA de utilidade em 1v1, e acrescentar ao simulador um modo "motor novo × motor atual" para medir contra a linha de base acima (meta: vencer ≥ 55 % em média).
+4. Ao mudar qualquer regra de combate, subir `REGRAS_COMBATE` (as reproduções antigas passam a avisar que são de outra versão).

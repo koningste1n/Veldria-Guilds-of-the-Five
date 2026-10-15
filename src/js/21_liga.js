@@ -133,6 +133,7 @@ function registrarRodada(vitoria, abatesEu, abatesEles) {
     const bt = criarBatalha(ladoDeGuilda(gA, 1), ladoDeGuilda(gB, 1), { silencioso: true });
     simularAteFim(bt);
     const r = resumoBatalha(bt);
+    somarLutaRivais(bt, r, gA.nome, gB.nome);
     marcar(gA, gB, r.vencedor === 0, r.abates[0], r.abates[1]);
   }
   L.resultados = res;

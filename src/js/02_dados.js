@@ -61,6 +61,14 @@ const CLASSES = {
 };
 const CLASSES_RECRUTAVEIS = Object.keys(CLASSES);
 const CLASSES_FRENTE = ['guardiao', 'machadeiro', 'lanceira'];
+// Funções (D1): etiquetas sobre as classes. Cada classe tem uma função principal.
+// Proposta da E3 (15/10/2026), a confirmar pelo Kevin.
+const FUNCOES = { tanque: 'Tanque', corpo: 'Corpo a corpo', assassino: 'Assassino', distancia: 'Distância', controle: 'Controle', suporte: 'Suporte' };
+const FUNCAO_CLASSE = {
+  guardiao: 'tanque', machadeiro: 'corpo', lanceira: 'corpo', arqueira: 'distancia', piromante: 'distancia',
+  criomante: 'controle', clerica: 'suporte', lamina: 'assassino', bardo: 'suporte', invocador: 'controle',
+};
+const funcaoDe = (cls) => FUNCAO_CLASSE[cls] || 'corpo';
 
 // Habilidades ativas (CD = recarga em segundos). desc recebe os atributos atuais.
 const SKILLS = {

@@ -474,6 +474,25 @@ input[type=number] { width: 100%; min-width: 0; min-height: 40px; font-family: v
 .em-barra { height: 6px; background: var(--linha-esc); }
 .em-barra i { display: block; height: 100%; background: var(--tocha); }
 .est-merc small { color: var(--muted); font-size: 12px; }
+.chip-btn.alto { min-height: 44px; }
+.rec-cat { background: var(--painel2); padding: 8px 10px; clip-path: var(--entalhe); display: flex; flex-direction: column; gap: 4px; }
+.rec-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.rec-cab b { font-family: var(--f-display); font-size: 12px; color: var(--ouro); }
+.rec-cab small { color: var(--fraco); font-size: 11px; }
+.rec-linha { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 2px 4px; }
+.rec-linha.meu { background: #3a2f17; box-shadow: inset 3px 0 0 var(--ouro); }
+.rec-pos { font-family: var(--f-display); font-size: 11px; color: var(--muted); width: 22px; flex: none; }
+.rec-nome { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.rec-nome b, .rec-nome small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rec-nome small { color: var(--muted); font-size: 11px; }
+.rec-valor { font-family: var(--f-display); font-size: 12px; font-variant-numeric: tabular-nums; flex: none; text-align: right; }
+.partida { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.partida .pt-corpo { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.partida .pt-corpo b, .partida .pt-corpo small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.partida small { color: var(--muted); font-size: 12px; }
+.partida .btn { min-height: 44px; flex: none; }
+.tag.vit { background: #1f3a2b; color: #a7f0a0; }
+.tag.der { background: #432026; color: #ffb3a8; }
 .tabela td.sobe { color: var(--bom); }
 .tabela td.cai { color: var(--ruim); }
 
@@ -601,6 +620,14 @@ const CLASSES = {
 };
 const CLASSES_RECRUTAVEIS = Object.keys(CLASSES);
 const CLASSES_FRENTE = ['guardiao', 'machadeiro', 'lanceira'];
+// Funções (D1): etiquetas sobre as classes. Cada classe tem uma função principal.
+// Proposta da E3 (15/10/2026), a confirmar pelo Kevin.
+const FUNCOES = { tanque: 'Tanque', corpo: 'Corpo a corpo', assassino: 'Assassino', distancia: 'Distância', controle: 'Controle', suporte: 'Suporte' };
+const FUNCAO_CLASSE = {
+  guardiao: 'tanque', machadeiro: 'corpo', lanceira: 'corpo', arqueira: 'distancia', piromante: 'distancia',
+  criomante: 'controle', clerica: 'suporte', lamina: 'assassino', bardo: 'suporte', invocador: 'controle',
+};
+const funcaoDe = (cls) => FUNCAO_CLASSE[cls] || 'corpo';
 
 // Habilidades ativas (CD = recarga em segundos). desc recebe os atributos atuais.
 const SKILLS = {
@@ -2139,6 +2166,9 @@ function gerarDrop(raridade, nivel) {
 const ARENA = { w: 384, h: 216, chao: 78, fundo: 206 };
 const E = 256 / 180;   // escala das distâncias (valores calibrados na arena anterior)
 const DT = 1 / 30;
+// Versão das regras de combate: sobe a cada mudança que altere o resultado de uma luta.
+// Um registro só é reproduzível com a mesma versão (ver reproduzirPartida).
+const REGRAS_COMBATE = 1;
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const minPor = (arr, f) => { let best = null, bv = Infinity; for (const o of arr) { const v = f(o); if (v < bv) { bv = v; best = o; } } return best; };
 const PAPEIS_CONJURADORES = ['mago', 'curandeira', 'suporte', 'invocador'];
@@ -2155,7 +2185,7 @@ function unidadeBase(b, team, props) {
     folegoUsado: false, renasceu: false, regenT: 0, curaAcc: 0, curaEmit: 0, dotAcc: {}, dotEmit: 0,
     anim: { atk: 0, cast: 0, hurt: 0, flash: 0, dash: 0, empurrao: 0, moveu: false, morteT: 0, fase: b.rng() * 10 },
     vx: 0, vy: 0, vista: 'lado', vistaT: 0, flanco: 0, ronda: 1, rondaT: 0,
-    dano: 0, cura: 0, recebido: 0, abates: 0,
+    dano: 0, cura: 0, recebido: 0, abates: 0, mortes: 0,
   }, props);
 }
 function novaUnidade(b, m, team, lado) {
@@ -2186,7 +2216,7 @@ function novaUnidade(b, m, team, lado) {
 // lado = { nome, cor1, cor2, simbolo, mercs, capitaoId, mult, mods, bomba, lider }
 function criarBatalha(A, B, opts = {}) {
   const b = {
-    t: 0, rng: mulberry32(opts.seed ?? ((Math.random() * 1e9) | 0)), units: [], projs: [], atrasos: [], eventos: [],
+    t: 0, n: 0, entradas: [], roteiro: null, criador: false, rng: mulberry32(opts.seed ?? ((Math.random() * 1e9) | 0)), units: [], projs: [], atrasos: [], eventos: [],
     fim: false, vencedor: -1, uidN: 1, silencioso: !!opts.silencioso, furia: 1, lados: [A, B],
     modoAuto: opts.modoAuto !== false, focoCapitao: null, pedirSupremo: false, eclipse: 0,
     fenix: [false, false], fenixUsada: [false, false], supremos: [0, 0],
@@ -2257,6 +2287,9 @@ const timeDePe = (b, team) => b.units.some((u) => u.team === team && !u.invocaca
 /* ---- passo principal ---- */
 function passo(b) {
   if (b.fim) return;
+  // reprodução: aplica os toques do jogador no mesmo passo em que aconteceram
+  if (b.roteiro) while (b.roteiro.length && b.roteiro[0].n <= b.n) aplicarEntrada(b, b.roteiro.shift());
+  b.n++;
   b.t += DT;
   b.furia = b.t > b.furiaInicio ? 1 + (b.t - b.furiaInicio) / 30 : 1;
   b.eclipse = Math.max(0, b.eclipse - DT);
@@ -2589,6 +2622,7 @@ function morrer(b, u, src, expirou = false) {
   u.vivo = false; u.vida = 0; u.anim.morteT = 0.0001; u.st.shield = null; u.st.dots = []; u.st.buffs = []; u.st.debuffs = [];
   emit(b, { tipo: expirou ? 'expirou' : 'morte', u });
   if (expirou) return;
+  if (!u.invocacao) u.mortes++;
   if (src && src !== u) src.abates++;
   if (u.invocacao) return;
   for (const o of b.units) {
@@ -2917,6 +2951,48 @@ function resumoBatalha(b) {
   return { vencedor: b.vencedor, tempo: b.t, unidades: porTime, abates };
 }
 
+/* ============================ REGISTRO DE PARTIDAS (reprodução) ============================
+   Uma luta é reproduzível com: semente + lados (só o que afeta o combate) + opções + toques do jogador.
+   Os toques (Auto/Manual, alvo do capitão, SUPREMO) entram pelo entradaJogador e ficam com o número do passo. */
+function aplicarEntrada(b, e) {
+  if (e.tipo === 'auto') { b.modoAuto = !!e.v; if (e.v) { b.focoCapitao = null; b.pedirSupremo = false; } }
+  else if (e.tipo === 'foco') b.focoCapitao = b.units.find((u) => u.uid === e.uid) || null;
+  else if (e.tipo === 'supremo') b.pedirSupremo = true;
+}
+function entradaJogador(b, e) { e.n = b.n; b.entradas.push(e); aplicarEntrada(b, e); }
+// Campos do mercenário que afetam o combate (atributos, habilidades, posição, tática) + aparência para exibir
+const CAMPOS_MERC_REG = ['id', 'nome', 'classe', 'nivel', 'pot', 'cresc', 'tracos', 'ascensoes', 'campeao', 'chefe', 'skillFixa', 'bonusCriador', 'linha', 'tatica', 'visual', 'pele', 'cabelo'];
+function mercParaRegistro(m) {
+  const o = {};
+  for (const k of CAMPOS_MERC_REG) if (m[k] != null) o[k] = m[k];
+  o.equip = {};
+  for (const k of ['arma', 'armadura', 'amuleto']) {
+    const it = m.equip && m.equip[k];
+    o.equip[k] = it ? { nome: it.nome, raridade: it.raridade, bonus: it.bonus, aprim: it.aprim || 0, unico: it.unico || null } : null;
+  }
+  o.pergaminhos = (m.pergaminhos || []).map((p) => ({ pid: p.pid }));
+  return o;
+}
+function ladoParaRegistro(l) {
+  const { mercs, ...resto } = l;
+  return JSON.parse(JSON.stringify({ ...resto, mercs: mercs.map(mercParaRegistro) }));
+}
+// Impressão digital de uma luta terminada: vencedor, passos e números de cada lutador
+function assinaturaLuta(b, res) {
+  const lut = [];
+  for (const time of res.unidades) for (const u of time) lut.push([u.uid, Math.round(u.dano), Math.round(u.cura), Math.round(u.recebido), u.abates, u.mortes]);
+  return { vencedor: b.vencedor, passos: b.n, lutadores: lut };
+}
+function reproduzirPartida(reg) {
+  const R = reg.replay;
+  if (!R) return { erro: 'sem-dados' };
+  if (reg.regras !== REGRAS_COMBATE) return { erro: 'regras' };
+  const b = criarBatalha(R.A, R.B, { ...R.opts, seed: reg.seed, silencioso: true });
+  b.roteiro = (R.entradas || []).map((e) => ({ ...e }));
+  simularAteFim(b);
+  return assinaturaLuta(b, resumoBatalha(b));
+}
+const mesmaAssinatura = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 /* ============================ ARENA (desenho) ============================
    Transforma o estado da simulação e os eventos em pixels: sprites animados,
    projéteis, partículas, números de dano, tremor de tela e "congelamento". */
@@ -3976,15 +4052,20 @@ function fxPonta(c, x, y, cor) { for (let i = 0; i < 6; i++) { const a = (i / 6)
 
 /* ============================ ESTADO E SAVE ============================ */
 const SAVE_KEY = 'ligaDasLaminas.save.v1';   // mesma chave da Fase 1: a versão fica dentro do save
-const VERSAO = 6;
+const VERSAO = 7;
 const consumiveisZerados = () => Object.fromEntries(Object.keys(CONSUMIVEIS).map((k) => [k, 0]));
 const criadorPadrao = () => ({ liberado: false, usado: false, sorteMult: 1, tempoMult: 1 });
 const statsPadrao = () => ({
   lutas: 0, vitorias: 0, maiorGolpe: 0, lendarios: 0, temporadas: 0, copas: 0, promocoes: 0, expedicoes: 0, lideres: 0,
   dano: 0, cura: 0, abates: 0, mortes: 0, supremos: 0, baus: 0, ouroGanho: 0, tempoLuta: 0, torreLutas: 0, guardioes: 0,
+  // v7 (E3): ficha de rastro
+  seqAtual: 0, seqRecorde: 0, tempoJogo: 0, lideresVencidos: {}, partidasN: 0,
 });
 const torrePadrao = () => ({ recorde: 0, inimigo: null, tributoDia: '', lutas: 0 });
 const configPadrao = () => ({ vel: 1, auto: true, dif: 'normal', som: 0.7, musica: false, vibrar: true, lenta: true });
+const PARTIDAS_MAX = 50;   // registros guardados no save
+const REPLAYS_MAX = 10;    // dos quais os mais recentes guardam tudo para reproduzir a luta
+const PARTIDAS_BYTES = 90000;   // teto do registro dentro do save
 const statsMercPadrao = () => ({ lutas: 0, vitorias: 0, abates: 0, dano: 0, cura: 0, mvp: 0 });
 
 function estadoNovo(guilda) {
@@ -4000,6 +4081,7 @@ function estadoNovo(guilda) {
     stats: statsPadrao(), torre: torrePadrao(), historico: [],
     pity: { semEpico: 0, semLendario: 0 }, tutorial: TUTORIAL_LIGADO ? 0 : 99, tutorialVisto: -1,
     criador: criadorPadrao(), novidades: [],
+    partidas: [], temporadaRec: null,
   };
 }
 function iniciarJogoNovo(guilda) {
@@ -4069,6 +4151,11 @@ function validarSave(s) {
   st.config.som = clamp(+st.config.som || 0, 0, 1);
   if (!DIFICULDADES[st.config.dif]) st.config.dif = 'normal';
   st.stats = Object.assign(statsPadrao(), s.stats || {});
+  if (!st.stats.lideresVencidos || typeof st.stats.lideresVencidos !== 'object') st.stats.lideresVencidos = {};
+  // v7: registro de partidas e melhores da temporada
+  st.partidas = (Array.isArray(st.partidas) ? st.partidas : []).filter((p) => p && Array.isArray(p.times)).slice(-PARTIDAS_MAX);
+  st.partidas.forEach((p, i) => { if (i < st.partidas.length - REPLAYS_MAX) delete p.replay; });
+  if (!st.temporadaRec || typeof st.temporadaRec !== 'object' || !st.temporadaRec.herois) st.temporadaRec = null;
   st.torre = Object.assign(torrePadrao(), s.torre || {});
   st.torre.recorde = Math.max(0, st.torre.recorde | 0);
   if (st.torre.inimigo) { st.torre.inimigo.mercs = mercsValidos(st.torre.inimigo.mercs); if (!st.torre.inimigo.mercs.length) st.torre.inimigo = null; }
@@ -4102,7 +4189,8 @@ function validarSave(s) {
   if (versaoAntiga < 4 && !nov.includes(4)) nov.push(4);
   if (versaoAntiga < 5 && !nov.includes(5)) nov.push(5);
   if (versaoAntiga < 6 && !nov.includes(6) && (st.stats.lutas > 0 || st.tutorial >= 4)) nov.push(6);
-  st.novidades = nov.filter((f) => f >= 2 && f <= 6).sort();
+  if (versaoAntiga < 7 && !nov.includes(7) && st.stats.lutas > 0) nov.push(7);
+  st.novidades = nov.filter((f) => f >= 2 && f <= 7).sort();
   if (versaoAntiga < 3 && st.tutorial >= 4) st.tutorial = 99;   // quem já viu o tutorial antigo não o repete
   // v6: tutorial progressivo. Quem já lutou (ou terminou o tutorial antigo) não repete nada.
   if (versaoAntiga < 6) { st.tutorial = (st.tutorial >= 4 || st.stats.lutas > 0) ? 99 : 0; st.tutorialVisto = -1; }
@@ -4563,6 +4651,7 @@ function registrarRodada(vitoria, abatesEu, abatesEles) {
     const bt = criarBatalha(ladoDeGuilda(gA, 1), ladoDeGuilda(gB, 1), { silencioso: true });
     simularAteFim(bt);
     const r = resumoBatalha(bt);
+    somarLutaRivais(bt, r, gA.nome, gB.nome);
     marcar(gA, gB, r.vencedor === 0, r.abates[0], r.abates[1]);
   }
   L.resultados = res;
@@ -4755,6 +4844,100 @@ function registrarEstatisticas(b, res, vit) {
   return mvp;
 }
 
+
+/* ---- registro de partidas (E3) ----
+   Cada luta grava semente, versão das regras, times, vencedor, duração e os números de cada lutador.
+   As REPLAYS_MAX mais recentes guardam também os lados e os toques do jogador para reproduzir a luta. */
+function prepararRegistro(A, B, opts, seed) {
+  return { seed, regras: REGRAS_COMBATE, replay: { A: ladoParaRegistro(A), B: ladoParaRegistro(B), opts: JSON.parse(JSON.stringify(opts)), entradas: [] } };
+}
+function registrarPartida(b, res, ctx, vit, mvp, reg) {
+  const snap = {};
+  for (const lado of [reg.replay.A, reg.replay.B]) for (const m of lado.mercs) snap[m.id] = m;
+  const lut = (u) => {
+    const m = u.merc && snap[u.merc.id];
+    return {
+      uid: u.uid, id: u.merc ? u.merc.id : null, nome: u.nome, cls: u.cls, nv: m ? m.nivel : 0,
+      itens: m ? ['arma', 'armadura', 'amuleto'].map((k) => m.equip[k] && m.equip[k].nome).filter(Boolean) : [],
+      dano: Math.round(u.dano), cura: Math.round(u.cura), rec: Math.round(u.recebido), ab: u.abates, mo: u.mortes, mvp: u === mvp ? 1 : 0,
+    };
+  };
+  const S = STATE.stats;
+  const p = {
+    n: ++S.partidasN, quando: Date.now(), tipo: ctx.tipo, rival: ctx.rival.nome, andar: ctx.rival.andar || null,
+    seed: reg.seed, regras: reg.regras, vit, vencedor: b.vencedor, tempo: Math.round(b.t * 10) / 10, passos: b.n,
+    criador: !!b.criador, times: res.unidades.map((t) => t.map(lut)),
+  };
+  // Luta encerrada pelo Modo Criador ("Vencer agora") não é reproduzível
+  if (!b.criador) { reg.replay.entradas = b.entradas.map((e) => ({ ...e })); p.replay = reg.replay; }
+  STATE.partidas.push(p);
+  while (STATE.partidas.length > PARTIDAS_MAX) STATE.partidas.shift();
+  STATE.partidas.forEach((x, i) => { if (i < STATE.partidas.length - REPLAYS_MAX) delete x.replay; });
+  // teto de tamanho (o save na conta aceita ~234 KB): times grandes descartam primeiro os dados de reprodução mais antigos
+  while (JSON.stringify(STATE.partidas).length > PARTIDAS_BYTES) {
+    const velho = STATE.partidas.find((x) => x.replay && x !== p);
+    if (velho) delete velho.replay; else if (STATE.partidas.length > 1) STATE.partidas.shift(); else break;
+  }
+  // ficha de rastro
+  S.seqAtual = vit ? S.seqAtual + 1 : 0;
+  S.seqRecorde = Math.max(S.seqRecorde, S.seqAtual);
+  if (vit && ctx.rival.lider) S.lideresVencidos[ctx.rival.lider] = (S.lideresVencidos[ctx.rival.lider] || 0) + 1;
+  // melhores da temporada: meus heróis em toda luta; rivais só quando são guildas da liga
+  somarHerois(res.unidades[0], STATE.guilda.nome, true, vit);
+  if (ctx.tipo !== 'torre') somarHerois(res.unidades[1], ctx.rival.nome, false, !vit);
+  return p;
+}
+// O que aconteceu na tela, no mesmo formato de assinaturaLuta
+const assinaturaRegistro = (p) => ({ vencedor: p.vencedor, passos: p.passos, lutadores: p.times.flat().map((u) => [u.uid, u.dano, u.cura, u.rec, u.ab, u.mo]) });
+// Reproduz uma partida do registro e compara com o que aconteceu na tela
+function conferirPartida(p) {
+  if (!p.replay) return p.criador ? 'criador' : 'sem-dados';
+  const r = reproduzirPartida(p);
+  if (r.erro) return r.erro;
+  return mesmaAssinatura(r, assinaturaRegistro(p)) ? 'igual' : 'diferente';
+}
+
+/* ---- melhores da temporada ---- */
+function recTemporada() {
+  const t = STATE.liga ? STATE.liga.temporada : 1;
+  if (!STATE.temporadaRec || STATE.temporadaRec.t !== t) STATE.temporadaRec = { t, herois: {} };
+  return STATE.temporadaRec;
+}
+function somarHerois(unidades, guilda, meu, venceu) {
+  const lista = unidades.filter((u) => u.merc && !u.chefe && !u.invocacao);
+  if (!lista.length) return;
+  const R = recTemporada(), mvp = mvpDe(lista);
+  for (const u of lista) {
+    const k = (meu ? 'm' : 'r') + u.merc.id;
+    const h = R.herois[k] || (R.herois[k] = { meu, guilda, nome: u.nome, cls: u.cls, look: u.look, lutas: 0, vit: 0, dano: 0, cura: 0, abates: 0, mortes: 0, mvp: 0 });
+    h.nome = u.nome; h.look = u.look; h.guilda = guilda;
+    h.lutas++; if (venceu) h.vit++;
+    h.dano += Math.round(u.dano); h.cura += Math.round(u.cura); h.abates += u.abates; h.mortes += u.mortes;
+    if (u === mvp) h.mvp++;
+  }
+}
+// Lutas entre duas guildas rivais (simuladas na rodada da liga) também contam
+function somarLutaRivais(bt, res, nomeA, nomeB) {
+  somarHerois(res.unidades[0], nomeA, false, bt.vencedor === 0);
+  somarHerois(res.unidades[1], nomeB, false, bt.vencedor === 1);
+}
+const kdaDe = (h) => h.abates / Math.max(1, h.mortes);
+const CATEGORIAS_TEMPORADA = [
+  { id: 'mvp', nome: 'MVP', valor: (h) => h.mvp, txt: (h) => `${fmt(h.mvp)} ${h.mvp === 1 ? 'vez' : 'vezes'}` },
+  { id: 'abates', nome: 'Mais abates', valor: (h) => h.abates, txt: (h) => fmt(h.abates) },
+  { id: 'kda', nome: 'Melhor KDA', valor: (h) => (h.lutas >= 3 ? kdaDe(h) : -1), txt: (h) => `${fmt1(kdaDe(h))} (${fmt(h.abates)}/${fmt(h.mortes)})`, dica: 'abates ÷ quedas, mín. 3 lutas' },
+  { id: 'dano', nome: 'Mais dano', valor: (h) => h.dano, txt: (h) => fmtCompacto(h.dano) },
+  { id: 'cura', nome: 'Mais cura', valor: (h) => h.cura, txt: (h) => fmtCompacto(h.cura) },
+];
+// Ranking de uma categoria: os 3 primeiros e, se nenhum for meu, o meu melhor com a posição
+function rankingTemporada(cat, funcao) {
+  const R = STATE.temporadaRec;
+  const lista = R ? Object.values(R.herois).filter((h) => (funcao === 'todas' || funcaoDe(h.cls) === funcao) && cat.valor(h) > 0) : [];
+  lista.sort((a, b) => cat.valor(b) - cat.valor(a) || b.dano - a.dano);
+  const top = lista.slice(0, 3).map((h, i) => ({ h, pos: i + 1 }));
+  if (!top.some((x) => x.h.meu)) { const i = lista.findIndex((h) => h.meu); if (i >= 0) top.push({ h: lista[i], pos: i + 1 }); }
+  return top;
+}
 /* ============================ SAVE NA CONTA (Fase 4.1) ============================
    Quando o jogo roda dentro do Claude, com a pessoa conectada e com permissão de escrita,
    o progresso também fica guardado na conta dela: um documento privado em
@@ -5643,8 +5826,10 @@ function iniciarLuta(ctx) {
   if (ctx.tipo === 'torre') ({ A, B, opts } = ladosTorre(preparo));
   else { A = ladoJogador(preparo); B = ladoDeGuilda(ctx.rival, multAdversario()); }
   salvar();
-  const b = criarBatalha(A, B, { modoAuto: STATE.config.auto, ...opts });
-  Luta = { b, ctx, vel: STATE.config.vel, pausado: false, rodando: false, acc: 0, ultimo: 0, fimT: 0, terminou: false, raf: 0, ativo: true };
+  const seed = (Math.random() * 1e9) | 0, optsLuta = { modoAuto: STATE.config.auto, ...opts };
+  const reg = prepararRegistro(A, B, optsLuta, seed);   // retrato dos lados antes da luta, para o registro
+  const b = criarBatalha(A, B, { ...optsLuta, seed });
+  Luta = { b, ctx, reg, vel: STATE.config.vel, pausado: false, rodando: false, acc: 0, ultimo: 0, fimT: 0, terminou: false, raf: 0, ativo: true };
   montarTelaLuta(b);
   $('#luta').hidden = false; $('#app').hidden = true; $('#abas').hidden = true; $('#tutorial').hidden = true;
   window.scrollTo(0, 0);
@@ -5719,7 +5904,7 @@ function tocarArena(e) {
   const [x, y] = telaParaMundo(((e.clientX - r.left) / r.width) * VISTA.w, ((e.clientY - r.top) / r.height) * VISTA.h);
   const d = (u) => Math.hypot(u.x - x, u.y - 19 - y);
   const alvo = minPor(b.units.filter((u) => u.vivo && u.team === 1), d);
-  if (alvo && d(alvo) < 28) b.focoCapitao = alvo;
+  if (alvo && d(alvo) < 28) entradaJogador(b, { tipo: 'foco', uid: alvo.uid });
 }
 function mostrarBanner(titulo, sub) {
   const el = $('#banner'); if (!el) return;
@@ -5789,6 +5974,7 @@ function pularLuta() {
 function vencerAgora() {
   const b = Luta.b;
   if (Luta.terminou || b.fim) return;
+  b.criador = true;
   b.fenix[1] = false;
   for (const u of b.units) if (u.team === 1 && u.vivo) { u.flags.delete('renascer'); morrer(b, u, null); }
   for (const u of b.units) if (u.team === 1) u.reviver = 0;
@@ -5811,6 +5997,7 @@ function finalizarLuta() {
   STATE.stats.lutas++; if (vit) STATE.stats.vitorias++;
   if (tutorialAtivo() && STATE.tutorial < TUT_FIM) STATE.tutorial++;   // cada luta do tutorial libera um menu
   const mvp = registrarEstatisticas(b, res, vit);
+  registrarPartida(b, res, ctx, vit, mvp, Luta.reg);
   if (ctx.tipo === 'torre') {
     torre = registrarAndar(vit);
     if (torre.bau >= 0) drop = darDrop(rolarRaridade(sorteGuilda(), torre.bau), nv);
@@ -5938,6 +6125,10 @@ function mostrarTutorial() {
   el.innerHTML = `<div class="tut-balao"><small>${p === 0 ? 'Primeiros passos' : `Luta ${p} de ${TUT_FIM} · menu liberado`}</small><p>${T.txt}</p><button class="btn primario pequeno" data-act="tutorial-prox">${p === TUT_FIM ? 'Começar' : 'Entendi'}</button></div>`;
 }
 const NOVIDADES = {
+  7: [
+    ['estatisticas', 'Recordes e melhores da temporada', 'Em Estatísticas: sequência de vitórias, Líder mais derrotado, tempo de jogo e os melhores da temporada (MVP, abates, KDA, dano e cura), com filtro por função e os heróis das guildas rivais para comparar.'],
+    ['pergaminho', 'Registro de lutas', 'Cada luta fica registrada com a semente e os times. Nas Estatísticas, "Conferir" roda a luta de novo e confere se o resultado é idêntico.'],
+  ],
   6: [
     ['coroa', 'Agora é Veldria: Guilds of the Five', 'O jogo ganhou nome novo. Seu save, seus mercenários e sua divisão continuam iguais.'],
     ['engrenagem', 'Exportar e importar save', 'Em Configurações: copie o código do save para guardar ou continuar em outro aparelho.'],
@@ -5958,7 +6149,7 @@ const NOVIDADES = {
     ['som', 'Sons e música', 'Golpes, magias, curas, moedas e fanfarras sintetizados na hora. Música chiptune opcional nas lutas.'],
     ['estrela', 'Câmera lenta', 'O golpe final de cada luta ganha zoom e câmera lenta.'],
     ['engrenagem', 'Vibração', 'Críticos, SUPREMO, quedas e vitórias vibram o celular (Android).'],
-    ['estatisticas', 'Estatísticas', 'Totais da guilda, dano e MVPs de cada mercenário e o histórico de temporadas.'],
+    ['estatisticas', 'Estatísticas', 'Recordes, melhores da temporada, totais da guilda, últimas lutas e histórico de temporadas.'],
   ],
   4: [
     ['estrela', 'Personagens 32×40 em 3 vistas', 'Corpos refeitos com joelhos, cotovelos, mãos e botas. Cada herói agora tem vista de lado, de frente e de costas: anda para cima, para baixo e para os lados, sempre virado para quem enfrenta.'],
@@ -5975,7 +6166,7 @@ const NOVIDADES = {
     ['engrenagem', 'Save na sua conta', 'Jogando dentro do Claude com a sua conta, o progresso também fica salvo nela e você continua de outro aparelho. Veja em Configurações onde o seu progresso está salvo.'],
   ],
 };
-const ROTULO_FASE = { 5: '4.1', 6: '5 · Veldria' };
+const ROTULO_FASE = { 5: '4.1', 6: '5 · Veldria', 7: '6 · Recordes' };
 function mostrarNovidades() {
   const fases = (STATE.novidades || []).slice().sort((a, b) => b - a);
   const bloco = (f) => `${fases.length > 1 ? `<span class="rot">Fase ${ROTULO_FASE[f] || f}</span>` : ''}<div class="lista novidades">${NOVIDADES[f].map(([ic, t, d]) => `<div class="card">${canvasIcone(ic, 28, ic === 'torre' ? { a: '#e9dfc9', b: '#a99bb8' } : null)}<div class="card-corpo"><b>${t}</b><small>${d}</small></div></div>`).join('')}</div>`;
@@ -6012,7 +6203,7 @@ function abrirConfig() {
     <button class="btn" data-act="estatisticas">${canvasIcone('estatisticas', 16)} Ver estatísticas completas</button>
     ${STATE.criador.liberado ? `<button class="btn criador-btn" data-act="criador">${canvasIcone('criador', 16)} Modo Criador</button>` : ''}
     <button class="btn perigo" data-act="reiniciar">Reiniciar jogo</button>
-    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.5</button>`, { dados: { config: true } });
+    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.6</button>`, { dados: { config: true } });
 }
 function mostrarResumoOffline(r) {
   if (!r || r.minutos < 1) return;
@@ -6438,6 +6629,14 @@ const ACOES = {
   'lutar-torre': () => { UI.voltarPara = 'torre'; iniciarLuta({ tipo: 'torre', rival: inimigoDaTorre() }); },
   tributo: () => { const v = coletarTributo(); if (v) { somTocar('moeda'); toast(`Tributo da Torre: +${fmt(v)} ouro`, 'ouro'); aposMudanca(); } },
   estatisticas: () => abrirEstatisticas(),
+  'rec-funcao': (el) => { UI.recFuncao = el.dataset.id; atualizarModais(); },
+  'conferir-partida': (el) => {
+    const p = STATE.partidas.find((x) => x.n === +el.dataset.n); if (!p) return;
+    const r = conferirPartida(p);
+    const msg = { igual: ['Reprodução idêntica: mesmo vencedor, mesma duração e os mesmos números de cada lutador.', 'ok'], diferente: ['A reprodução deu um resultado diferente. Anote o número da luta para o Claude investigar.', 'erro'],
+      regras: ['Esta luta é de uma versão anterior das regras de combate e não pode mais ser reproduzida.', ''], criador: ['Luta encerrada pelo Modo Criador: não dá para reproduzir.', ''], 'sem-dados': ['Só as 10 lutas mais recentes guardam os dados para reproduzir.', ''] }[r];
+    toast(msg[0], msg[1]);
+  },
   'som-luta': () => {
     STATE.config.musica = !STATE.config.musica; somIniciar(); somVolume(); salvar();
     if (STATE.config.musica && Luta && Luta.rodando && !Luta.terminou) musicaIniciar(); else musicaParar();
@@ -6464,8 +6663,7 @@ const ACOES = {
   'resultado-ok': () => { fecharTodosModais(); UI.aba = UI.voltarPara || 'liga'; UI.voltarPara = null; encerrarLuta(); render(); window.scrollTo(0, 0); },   // encerrarLuta por último: o tutorial pode levar à aba recém-liberada
   'luta-vel': (el) => { Luta.vel = +el.dataset.v; STATE.config.vel = Luta.vel; $$('.seg-btn').forEach((b) => b.classList.toggle('on', +b.dataset.v === Luta.vel)); },
   'luta-auto': () => {
-    const b = Luta.b; b.modoAuto = !b.modoAuto; STATE.config.auto = b.modoAuto;
-    if (b.modoAuto) { b.focoCapitao = null; b.pedirSupremo = false; }
+    const b = Luta.b; entradaJogador(b, { tipo: 'auto', v: !b.modoAuto }); STATE.config.auto = b.modoAuto;
     $('#btn-auto').textContent = b.modoAuto ? 'Auto' : 'Manual'; $('#dica-luta').textContent = dicaModo(b);
   },
   'luta-pausa': () => { Luta.pausado = !Luta.pausado; $('#btn-pausa').textContent = Luta.pausado ? 'Continuar' : 'Pausar'; },
@@ -6473,8 +6671,8 @@ const ACOES = {
   'luta-vencer': () => vencerAgora(),
   supremo: () => {
     const b = Luta.b, cap = b.units.find((u) => u.team === 0 && u.capitao);
-    if (b.modoAuto || !cap || !cap.vivo || cap.energia < 100) return;
-    b.pedirSupremo = true;
+    if (b.modoAuto || !cap || !cap.vivo || cap.energia < 100 || b.pedirSupremo) return;
+    entradaJogador(b, { tipo: 'supremo' });
   },
 
   /* --- configurações, save e criador --- */
@@ -6639,7 +6837,7 @@ function htmlEstatisticas() {
   const kpis = [
     tile('Vitórias', fmt(S.vitorias), `${fmt(S.lutas)} lutas · ${taxa}%`),
     tile('Temporadas', fmt(S.temporadas), `${fmt(S.copas)} ${S.copas === 1 ? 'Copa' : 'Copas'} · ${fmt(S.promocoes)} ${S.promocoes === 1 ? 'promoção' : 'promoções'}`),
-    tile('Recorde da Torre', STATE.torre.recorde ? `andar ${STATE.torre.recorde}` : '—', `${fmt(S.guardioes)} ${S.guardioes === 1 ? 'Guardião vencido' : 'Guardiões vencidos'}`),
+    tile('Guardiões', fmt(S.guardioes), `${fmt(S.torreLutas)} lutas na Torre`),
     tile('Maior golpe', fmt(S.maiorGolpe), `${fmt(S.supremos)} supremos`),
     tile('Dano total', fmtCompacto(S.dano), `${fmt(S.abates)} abates · ${fmt(S.mortes)} quedas`),
     tile('Cura total', fmtCompacto(S.cura), `${fmtTempo(S.tempoLuta * 1000)} em luta`),
@@ -6657,11 +6855,57 @@ function htmlEstatisticas() {
   const hist = STATE.historico.slice().reverse();
   const linhasHist = hist.map((h) => { const d = DIVISOES[h.div] || DIVISOES[0]; return `<tr><td>${h.t}</td><td><span class="div-tag" style="--dc:${d.cor}">${d.nome}</span></td><td><b>${h.pos}º</b></td><td>${h.copa ? COPA_TXT[h.copa] : '—'}</td><td class="${h.mov}">${h.mov === 'sobe' ? 'Subiu' : h.mov === 'cai' ? 'Caiu' : '—'}</td></tr>`; }).join('');
   return `<h2>${canvasIcone('estatisticas', 22)} Estatísticas</h2>
-    <div class="kpis">${kpis.join('')}</div>
+    ${htmlRastro(tile)}
+    ${htmlMelhoresTemporada()}
+    <section class="est-sec"><h3>Totais da guilda</h3><div class="kpis">${kpis.join('')}</div></section>
     <section class="est-sec"><h3>Mercenários</h3><p class="dica">Dano total causado por cada um desde que entrou na guilda.</p>
       ${linhasMerc || '<p class="vazio">Sem lutas ainda.</p>'}</section>
+    ${htmlUltimasLutas()}
     <section class="est-sec"><h3>Temporadas</h3>
       ${hist.length ? `<div class="tabela-wrap"><table class="tabela"><thead><tr><th>Temp.</th><th>Divisão</th><th>Posição</th><th>Copa</th><th>Divisão seguinte</th></tr></thead><tbody>${linhasHist}</tbody></table></div>` : '<p class="vazio">O histórico aparece quando a primeira temporada terminar.</p>'}</section>`;
+}
+// Ficha de rastro: sequência, Torre, Líder mais derrotado e tempo de jogo
+function htmlRastro(tile) {
+  const S = STATE.stats, lv = Object.entries(S.lideresVencidos || {}).sort((a, b) => b[1] - a[1])[0];
+  const lider = lv && LIDERES.find((l) => l.id === lv[0]);
+  return `<section class="est-sec"><h3>Recordes</h3><div class="kpis">
+    ${tile('Sequência de vitórias', fmt(S.seqAtual), `recorde: ${fmt(S.seqRecorde)}`)}
+    ${tile('Melhor andar da Torre', STATE.torre.recorde ? `andar ${STATE.torre.recorde}` : '—', `${fmt(S.guardioes)} ${S.guardioes === 1 ? 'Guardião vencido' : 'Guardiões vencidos'}`)}
+    ${tile('Líder mais derrotado', lider ? esc(lider.nome) : '—', lider ? `${fmt(lv[1])} ${lv[1] === 1 ? 'vitória' : 'vitórias'} na final` : S.lideres ? 'conta a partir da v0.6' : 'vença a final da Copa')}
+    ${tile('Tempo de jogo', fmtDuracao((S.tempoJogo || 0) / 60000), 'com o jogo aberto, desde a v0.6')}
+  </div></section>`;
+}
+// Melhores da temporada: 5 categorias, filtro por função, meus heróis contra os das guildas rivais
+function htmlMelhoresTemporada() {
+  const f = UI.recFuncao && (UI.recFuncao === 'todas' || FUNCOES[UI.recFuncao]) ? UI.recFuncao : 'todas';
+  const R = STATE.temporadaRec, t = STATE.liga ? STATE.liga.temporada : 1;
+  const chips = [['todas', 'Todas'], ...Object.entries(FUNCOES)].map(([id, n]) => `<button class="chip-btn alto ${f === id ? 'on' : ''}" data-act="rec-funcao" data-id="${id}">${n}</button>`).join('');
+  const linha = (c) => ({ h, pos }) => `<div class="rec-linha ${h.meu ? 'meu' : ''}"><span class="rec-pos">${pos}º</span>${canvasLook(h.look, 26)}
+    <div class="rec-nome"><b>${esc(h.nome)}</b><small>${h.meu ? 'sua guilda' : esc(h.guilda)} · ${FUNCOES[funcaoDe(h.cls)]}</small></div><span class="rec-valor">${c.txt(h)}</span></div>`;
+  const cards = CATEGORIAS_TEMPORADA.map((c) => {
+    const top = rankingTemporada(c, f);
+    return `<div class="rec-cat" data-cat="${c.id}"><div class="rec-cab"><b>${c.nome}</b>${c.dica ? `<small>${c.dica}</small>` : ''}</div>
+      ${top.length ? top.map(linha(c)).join('') : '<p class="vazio">Ninguém ainda.</p>'}</div>`;
+  }).join('');
+  return `<section class="est-sec melhores"><h3>Melhores da temporada ${t}</h3>
+    <p class="dica">Seus heróis contra os das guildas rivais, em todas as lutas desta temporada. Os seus aparecem destacados.</p>
+    <div class="filtros">${chips}</div>
+    ${R && Object.keys(R.herois).length ? cards : '<p class="vazio">Os melhores aparecem depois da primeira luta da temporada.</p>'}</section>`;
+}
+const TIPO_LUTA = { liga: 'Liga', copa: 'Copa', torre: 'Torre', amistoso: 'Amistoso' };
+function htmlUltimasLutas() {
+  const lista = STATE.partidas.slice(-10).reverse();
+  if (!lista.length) return '<section class="est-sec"><h3>Últimas lutas</h3><p class="vazio">O registro começa na próxima luta.</p></section>';
+  const linhas = lista.map((p) => {
+    const mvp = p.times[0].find((u) => u.mvp) || p.times[0][0];
+    return `<div class="partida"><span class="tag ${p.vit ? 'vit' : 'der'}">${p.vit ? 'V' : 'D'}</span>
+      <div class="pt-corpo"><b>${TIPO_LUTA[p.tipo] || p.tipo}${p.tipo === 'torre' && p.andar ? ` ${p.andar}` : ''} · ${esc(p.rival)}</b>
+        <small>Luta nº ${p.n} · ${fmtTempo(p.tempo * 1000)} · destaque: ${esc(mvp ? mvp.nome : '—')}${p.criador ? ' · Modo Criador' : ''}</small></div>
+      ${p.replay ? `<button class="btn pequeno" data-act="conferir-partida" data-n="${p.n}">Conferir</button>` : ''}</div>`;
+  }).join('');
+  return `<section class="est-sec"><h3>Últimas lutas</h3>
+    <p class="dica">Cada luta fica registrada com a semente e os times. "Conferir" roda a luta de novo, sem tela, e confere se o resultado é idêntico.</p>
+    ${linhas}</section>`;
 }
 function abrirEstatisticas() { abrirModal(htmlEstatisticas(), { dados: { estatisticas: true } }); }
 
@@ -6672,6 +6916,7 @@ function tickOcioso() {
   if (!STATE) return;
   const agora = Date.now(), min = (agora - ultimoTick) / 60000;
   ultimoTick = agora;
+  if (!document.hidden && min < 0.1) STATE.stats.tempoJogo += min * 60000;   // tempo de jogo: só com a tela aberta
   const r = aplicarTempo(min);
   if (min > 5) mostrarResumoOffline(r);           // voltou depois de um tempo em segundo plano
   else if (r.subidas.length) {

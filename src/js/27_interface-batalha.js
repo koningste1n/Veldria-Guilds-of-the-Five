@@ -8,8 +8,10 @@ function iniciarLuta(ctx) {
   if (ctx.tipo === 'torre') ({ A, B, opts } = ladosTorre(preparo));
   else { A = ladoJogador(preparo); B = ladoDeGuilda(ctx.rival, multAdversario()); }
   salvar();
-  const b = criarBatalha(A, B, { modoAuto: STATE.config.auto, ...opts });
-  Luta = { b, ctx, vel: STATE.config.vel, pausado: false, rodando: false, acc: 0, ultimo: 0, fimT: 0, terminou: false, raf: 0, ativo: true };
+  const seed = (Math.random() * 1e9) | 0, optsLuta = { modoAuto: STATE.config.auto, ...opts };
+  const reg = prepararRegistro(A, B, optsLuta, seed);   // retrato dos lados antes da luta, para o registro
+  const b = criarBatalha(A, B, { ...optsLuta, seed });
+  Luta = { b, ctx, reg, vel: STATE.config.vel, pausado: false, rodando: false, acc: 0, ultimo: 0, fimT: 0, terminou: false, raf: 0, ativo: true };
   montarTelaLuta(b);
   $('#luta').hidden = false; $('#app').hidden = true; $('#abas').hidden = true; $('#tutorial').hidden = true;
   window.scrollTo(0, 0);
@@ -84,7 +86,7 @@ function tocarArena(e) {
   const [x, y] = telaParaMundo(((e.clientX - r.left) / r.width) * VISTA.w, ((e.clientY - r.top) / r.height) * VISTA.h);
   const d = (u) => Math.hypot(u.x - x, u.y - 19 - y);
   const alvo = minPor(b.units.filter((u) => u.vivo && u.team === 1), d);
-  if (alvo && d(alvo) < 28) b.focoCapitao = alvo;
+  if (alvo && d(alvo) < 28) entradaJogador(b, { tipo: 'foco', uid: alvo.uid });
 }
 function mostrarBanner(titulo, sub) {
   const el = $('#banner'); if (!el) return;
@@ -154,6 +156,7 @@ function pularLuta() {
 function vencerAgora() {
   const b = Luta.b;
   if (Luta.terminou || b.fim) return;
+  b.criador = true;
   b.fenix[1] = false;
   for (const u of b.units) if (u.team === 1 && u.vivo) { u.flags.delete('renascer'); morrer(b, u, null); }
   for (const u of b.units) if (u.team === 1) u.reviver = 0;
@@ -176,6 +179,7 @@ function finalizarLuta() {
   STATE.stats.lutas++; if (vit) STATE.stats.vitorias++;
   if (tutorialAtivo() && STATE.tutorial < TUT_FIM) STATE.tutorial++;   // cada luta do tutorial libera um menu
   const mvp = registrarEstatisticas(b, res, vit);
+  registrarPartida(b, res, ctx, vit, mvp, Luta.reg);
   if (ctx.tipo === 'torre') {
     torre = registrarAndar(vit);
     if (torre.bau >= 0) drop = darDrop(rolarRaridade(sorteGuilda(), torre.bau), nv);

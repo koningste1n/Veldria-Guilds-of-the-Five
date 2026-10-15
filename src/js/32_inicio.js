@@ -5,6 +5,7 @@ function tickOcioso() {
   if (!STATE) return;
   const agora = Date.now(), min = (agora - ultimoTick) / 60000;
   ultimoTick = agora;
+  if (!document.hidden && min < 0.1) STATE.stats.tempoJogo += min * 60000;   // tempo de jogo: só com a tela aberta
   const r = aplicarTempo(min);
   if (min > 5) mostrarResumoOffline(r);           // voltou depois de um tempo em segundo plano
   else if (r.subidas.length) {

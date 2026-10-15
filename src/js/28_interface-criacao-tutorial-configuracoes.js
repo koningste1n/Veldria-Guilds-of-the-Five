@@ -63,6 +63,10 @@ function mostrarTutorial() {
   el.innerHTML = `<div class="tut-balao"><small>${p === 0 ? 'Primeiros passos' : `Luta ${p} de ${TUT_FIM} · menu liberado`}</small><p>${T.txt}</p><button class="btn primario pequeno" data-act="tutorial-prox">${p === TUT_FIM ? 'Começar' : 'Entendi'}</button></div>`;
 }
 const NOVIDADES = {
+  7: [
+    ['estatisticas', 'Recordes e melhores da temporada', 'Em Estatísticas: sequência de vitórias, Líder mais derrotado, tempo de jogo e os melhores da temporada (MVP, abates, KDA, dano e cura), com filtro por função e os heróis das guildas rivais para comparar.'],
+    ['pergaminho', 'Registro de lutas', 'Cada luta fica registrada com a semente e os times. Nas Estatísticas, "Conferir" roda a luta de novo e confere se o resultado é idêntico.'],
+  ],
   6: [
     ['coroa', 'Agora é Veldria: Guilds of the Five', 'O jogo ganhou nome novo. Seu save, seus mercenários e sua divisão continuam iguais.'],
     ['engrenagem', 'Exportar e importar save', 'Em Configurações: copie o código do save para guardar ou continuar em outro aparelho.'],
@@ -83,7 +87,7 @@ const NOVIDADES = {
     ['som', 'Sons e música', 'Golpes, magias, curas, moedas e fanfarras sintetizados na hora. Música chiptune opcional nas lutas.'],
     ['estrela', 'Câmera lenta', 'O golpe final de cada luta ganha zoom e câmera lenta.'],
     ['engrenagem', 'Vibração', 'Críticos, SUPREMO, quedas e vitórias vibram o celular (Android).'],
-    ['estatisticas', 'Estatísticas', 'Totais da guilda, dano e MVPs de cada mercenário e o histórico de temporadas.'],
+    ['estatisticas', 'Estatísticas', 'Recordes, melhores da temporada, totais da guilda, últimas lutas e histórico de temporadas.'],
   ],
   4: [
     ['estrela', 'Personagens 32×40 em 3 vistas', 'Corpos refeitos com joelhos, cotovelos, mãos e botas. Cada herói agora tem vista de lado, de frente e de costas: anda para cima, para baixo e para os lados, sempre virado para quem enfrenta.'],
@@ -100,7 +104,7 @@ const NOVIDADES = {
     ['engrenagem', 'Save na sua conta', 'Jogando dentro do Claude com a sua conta, o progresso também fica salvo nela e você continua de outro aparelho. Veja em Configurações onde o seu progresso está salvo.'],
   ],
 };
-const ROTULO_FASE = { 5: '4.1', 6: '5 · Veldria' };
+const ROTULO_FASE = { 5: '4.1', 6: '5 · Veldria', 7: '6 · Recordes' };
 function mostrarNovidades() {
   const fases = (STATE.novidades || []).slice().sort((a, b) => b - a);
   const bloco = (f) => `${fases.length > 1 ? `<span class="rot">Fase ${ROTULO_FASE[f] || f}</span>` : ''}<div class="lista novidades">${NOVIDADES[f].map(([ic, t, d]) => `<div class="card">${canvasIcone(ic, 28, ic === 'torre' ? { a: '#e9dfc9', b: '#a99bb8' } : null)}<div class="card-corpo"><b>${t}</b><small>${d}</small></div></div>`).join('')}</div>`;
@@ -137,7 +141,7 @@ function abrirConfig() {
     <button class="btn" data-act="estatisticas">${canvasIcone('estatisticas', 16)} Ver estatísticas completas</button>
     ${STATE.criador.liberado ? `<button class="btn criador-btn" data-act="criador">${canvasIcone('criador', 16)} Modo Criador</button>` : ''}
     <button class="btn perigo" data-act="reiniciar">Reiniciar jogo</button>
-    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.5</button>`, { dados: { config: true } });
+    <button class="versao" data-act="versao">Veldria: Guilds of the Five · v0.6</button>`, { dados: { config: true } });
 }
 function mostrarResumoOffline(r) {
   if (!r || r.minutos < 1) return;

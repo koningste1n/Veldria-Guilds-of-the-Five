@@ -6,6 +6,9 @@
 const ARENA = { w: 384, h: 216, chao: 78, fundo: 206 };
 const E = 256 / 180;   // escala das distâncias (valores calibrados na arena anterior)
 const DT = 1 / 30;
+// Versão das regras de combate: sobe a cada mudança que altere o resultado de uma luta.
+// Um registro só é reproduzível com a mesma versão (ver reproduzirPartida).
+const REGRAS_COMBATE = 1;
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const minPor = (arr, f) => { let best = null, bv = Infinity; for (const o of arr) { const v = f(o); if (v < bv) { bv = v; best = o; } } return best; };
 const PAPEIS_CONJURADORES = ['mago', 'curandeira', 'suporte', 'invocador'];
@@ -22,7 +25,7 @@ function unidadeBase(b, team, props) {
     folegoUsado: false, renasceu: false, regenT: 0, curaAcc: 0, curaEmit: 0, dotAcc: {}, dotEmit: 0,
     anim: { atk: 0, cast: 0, hurt: 0, flash: 0, dash: 0, empurrao: 0, moveu: false, morteT: 0, fase: b.rng() * 10 },
     vx: 0, vy: 0, vista: 'lado', vistaT: 0, flanco: 0, ronda: 1, rondaT: 0,
-    dano: 0, cura: 0, recebido: 0, abates: 0,
+    dano: 0, cura: 0, recebido: 0, abates: 0, mortes: 0,
   }, props);
 }
 function novaUnidade(b, m, team, lado) {
@@ -53,7 +56,7 @@ function novaUnidade(b, m, team, lado) {
 // lado = { nome, cor1, cor2, simbolo, mercs, capitaoId, mult, mods, bomba, lider }
 function criarBatalha(A, B, opts = {}) {
   const b = {
-    t: 0, rng: mulberry32(opts.seed ?? ((Math.random() * 1e9) | 0)), units: [], projs: [], atrasos: [], eventos: [],
+    t: 0, n: 0, entradas: [], roteiro: null, criador: false, rng: mulberry32(opts.seed ?? ((Math.random() * 1e9) | 0)), units: [], projs: [], atrasos: [], eventos: [],
     fim: false, vencedor: -1, uidN: 1, silencioso: !!opts.silencioso, furia: 1, lados: [A, B],
     modoAuto: opts.modoAuto !== false, focoCapitao: null, pedirSupremo: false, eclipse: 0,
     fenix: [false, false], fenixUsada: [false, false], supremos: [0, 0],
@@ -124,6 +127,9 @@ const timeDePe = (b, team) => b.units.some((u) => u.team === team && !u.invocaca
 /* ---- passo principal ---- */
 function passo(b) {
   if (b.fim) return;
+  // reprodução: aplica os toques do jogador no mesmo passo em que aconteceram
+  if (b.roteiro) while (b.roteiro.length && b.roteiro[0].n <= b.n) aplicarEntrada(b, b.roteiro.shift());
+  b.n++;
   b.t += DT;
   b.furia = b.t > b.furiaInicio ? 1 + (b.t - b.furiaInicio) / 30 : 1;
   b.eclipse = Math.max(0, b.eclipse - DT);
@@ -456,6 +462,7 @@ function morrer(b, u, src, expirou = false) {
   u.vivo = false; u.vida = 0; u.anim.morteT = 0.0001; u.st.shield = null; u.st.dots = []; u.st.buffs = []; u.st.debuffs = [];
   emit(b, { tipo: expirou ? 'expirou' : 'morte', u });
   if (expirou) return;
+  if (!u.invocacao) u.mortes++;
   if (src && src !== u) src.abates++;
   if (u.invocacao) return;
   for (const o of b.units) {
@@ -784,3 +791,45 @@ function resumoBatalha(b) {
   return { vencedor: b.vencedor, tempo: b.t, unidades: porTime, abates };
 }
 
+/* ============================ REGISTRO DE PARTIDAS (reprodução) ============================
+   Uma luta é reproduzível com: semente + lados (só o que afeta o combate) + opções + toques do jogador.
+   Os toques (Auto/Manual, alvo do capitão, SUPREMO) entram pelo entradaJogador e ficam com o número do passo. */
+function aplicarEntrada(b, e) {
+  if (e.tipo === 'auto') { b.modoAuto = !!e.v; if (e.v) { b.focoCapitao = null; b.pedirSupremo = false; } }
+  else if (e.tipo === 'foco') b.focoCapitao = b.units.find((u) => u.uid === e.uid) || null;
+  else if (e.tipo === 'supremo') b.pedirSupremo = true;
+}
+function entradaJogador(b, e) { e.n = b.n; b.entradas.push(e); aplicarEntrada(b, e); }
+// Campos do mercenário que afetam o combate (atributos, habilidades, posição, tática) + aparência para exibir
+const CAMPOS_MERC_REG = ['id', 'nome', 'classe', 'nivel', 'pot', 'cresc', 'tracos', 'ascensoes', 'campeao', 'chefe', 'skillFixa', 'bonusCriador', 'linha', 'tatica', 'visual', 'pele', 'cabelo'];
+function mercParaRegistro(m) {
+  const o = {};
+  for (const k of CAMPOS_MERC_REG) if (m[k] != null) o[k] = m[k];
+  o.equip = {};
+  for (const k of ['arma', 'armadura', 'amuleto']) {
+    const it = m.equip && m.equip[k];
+    o.equip[k] = it ? { nome: it.nome, raridade: it.raridade, bonus: it.bonus, aprim: it.aprim || 0, unico: it.unico || null } : null;
+  }
+  o.pergaminhos = (m.pergaminhos || []).map((p) => ({ pid: p.pid }));
+  return o;
+}
+function ladoParaRegistro(l) {
+  const { mercs, ...resto } = l;
+  return JSON.parse(JSON.stringify({ ...resto, mercs: mercs.map(mercParaRegistro) }));
+}
+// Impressão digital de uma luta terminada: vencedor, passos e números de cada lutador
+function assinaturaLuta(b, res) {
+  const lut = [];
+  for (const time of res.unidades) for (const u of time) lut.push([u.uid, Math.round(u.dano), Math.round(u.cura), Math.round(u.recebido), u.abates, u.mortes]);
+  return { vencedor: b.vencedor, passos: b.n, lutadores: lut };
+}
+function reproduzirPartida(reg) {
+  const R = reg.replay;
+  if (!R) return { erro: 'sem-dados' };
+  if (reg.regras !== REGRAS_COMBATE) return { erro: 'regras' };
+  const b = criarBatalha(R.A, R.B, { ...R.opts, seed: reg.seed, silencioso: true });
+  b.roteiro = (R.entradas || []).map((e) => ({ ...e }));
+  simularAteFim(b);
+  return assinaturaLuta(b, resumoBatalha(b));
+}
+const mesmaAssinatura = (a, b) => JSON.stringify(a) === JSON.stringify(b);

@@ -4,7 +4,7 @@
 
 Jogo de gestão de guilda de mercenários com batalhas automáticas em arena, pixel art desenhada por código e feito para celular em pé. HTML + CSS + JavaScript puro, sem bibliotecas e sem nada externo.
 
-**Versão atual:** v0.5 (etapa E2) · save versão 6.
+**Versão atual:** v0.6 (etapa E3) · save versão 7.
 
 ## Como montar
 
@@ -23,7 +23,16 @@ Testes (precisam de Playwright):
 
 ```
 python3 testes/fumaca.py dist/index.html     # abre, cria guilda, sem erros, sem rolagem lateral, save sobrevive
-python3 testes/tutorial.py dist/index.html   # tutorial das 5 lutas + migração de save v5 → v6
+python3 testes/tutorial.py dist/index.html   # tutorial das 5 lutas + migração de save v5 → v6 (pulado com o tutorial desligado)
+python3 testes/registro.py dist/index.html   # registro de partidas, reprodução, recordes e migração v6 → v7
+```
+
+Simulador (Node, sem tela, usa o mesmo código de `src/js/`):
+
+```
+node sim/balanco.js            # matriz 10×10 de vitória por classe (1v1, nível 10, 200 lutas por par) em < 1 min
+node sim/balanco.js --tam 3 --n 100 --salvar   # 3v3; grava sim/resultados/*.json e .csv
+node sim/replay.js             # 300 lutas variadas com toques do jogador: reproduzir do registro dá o mesmo resultado
 ```
 
 ## Estrutura
@@ -38,7 +47,7 @@ python3 testes/tutorial.py dist/index.html   # tutorial das 5 lutas + migração
 |---|---|
 | `src/js/00_cabecalho.js` | 9 |
 | `src/js/01_util.js` | 37 |
-| `src/js/02_dados.js` | 232 |
+| `src/js/02_dados.js` | 240 |
 | `src/js/03_dados-da-fase-2.js` | 113 |
 | `src/js/04_dados-da-torre.js` | 37 |
 | `src/js/05_pixel.js` | 119 |
@@ -46,29 +55,29 @@ python3 testes/tutorial.py dist/index.html   # tutorial das 5 lutas + migração
 | `src/js/07_motor-de-bonecos-v3.js` | 556 |
 | `src/js/08_vistas-de-frente-e-de-costas.js` | 202 |
 | `src/js/09_mercenarios-e-itens.js` | 225 |
-| `src/js/10_combate.js` | 786 |
+| `src/js/10_combate.js` | 835 |
 | `src/js/11_arena.js` | 576 |
 | `src/js/12_som-musica-e-vibracao.js` | 174 |
 | `src/js/13_cenarios-da-arena.js` | 131 |
 | `src/js/14_vfx-direcionais.js` | 176 |
-| `src/js/15_estado-e-save.js` | 199 |
+| `src/js/15_estado-e-save.js` | 217 |
 | `src/js/16_reliquias-e-preparo.js` | 70 |
 | `src/js/17_ocioso.js` | 36 |
 | `src/js/18_expedicoes.js` | 50 |
 | `src/js/19_forja-pergaminhos-e-ascensao.js` | 38 |
 | `src/js/20_mercado.js` | 55 |
-| `src/js/21_liga.js` | 248 |
+| `src/js/21_liga.js` | 249 |
 | `src/js/22_torre-infinita.js` | 59 |
-| `src/js/23_estatisticas.js` | 20 |
+| `src/js/23_estatisticas.js` | 114 |
 | `src/js/24_save-na-conta.js` | 176 |
 | `src/js/25_interface-base.js` | 186 |
 | `src/js/26_interface-telas.js` | 516 |
-| `src/js/27_interface-batalha.js` | 239 |
-| `src/js/28_interface-criacao-tutorial-configuracoes.js` | 161 |
+| `src/js/27_interface-batalha.js` | 244 |
+| `src/js/28_interface-criacao-tutorial-configuracoes.js` | 181 |
 | `src/js/29_modo-criador.js` | 153 |
-| `src/js/30_interface-acoes.js` | 376 |
-| `src/js/31_interface-torre-infinita-e-estatisticas.js` | 84 |
-| `src/js/32_inicio.js` | 55 |
+| `src/js/30_interface-acoes.js` | 385 |
+| `src/js/31_interface-torre-infinita-e-estatisticas.js` | 130 |
+| `src/js/32_inicio.js` | 56 |
 
 ## Saves
 

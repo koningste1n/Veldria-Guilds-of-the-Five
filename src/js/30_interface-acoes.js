@@ -233,6 +233,14 @@ const ACOES = {
   'lutar-torre': () => { UI.voltarPara = 'torre'; iniciarLuta({ tipo: 'torre', rival: inimigoDaTorre() }); },
   tributo: () => { const v = coletarTributo(); if (v) { somTocar('moeda'); toast(`Tributo da Torre: +${fmt(v)} ouro`, 'ouro'); aposMudanca(); } },
   estatisticas: () => abrirEstatisticas(),
+  'rec-funcao': (el) => { UI.recFuncao = el.dataset.id; atualizarModais(); },
+  'conferir-partida': (el) => {
+    const p = STATE.partidas.find((x) => x.n === +el.dataset.n); if (!p) return;
+    const r = conferirPartida(p);
+    const msg = { igual: ['Reprodução idêntica: mesmo vencedor, mesma duração e os mesmos números de cada lutador.', 'ok'], diferente: ['A reprodução deu um resultado diferente. Anote o número da luta para o Claude investigar.', 'erro'],
+      regras: ['Esta luta é de uma versão anterior das regras de combate e não pode mais ser reproduzida.', ''], criador: ['Luta encerrada pelo Modo Criador: não dá para reproduzir.', ''], 'sem-dados': ['Só as 10 lutas mais recentes guardam os dados para reproduzir.', ''] }[r];
+    toast(msg[0], msg[1]);
+  },
   'som-luta': () => {
     STATE.config.musica = !STATE.config.musica; somIniciar(); somVolume(); salvar();
     if (STATE.config.musica && Luta && Luta.rodando && !Luta.terminou) musicaIniciar(); else musicaParar();
@@ -259,8 +267,7 @@ const ACOES = {
   'resultado-ok': () => { fecharTodosModais(); UI.aba = UI.voltarPara || 'liga'; UI.voltarPara = null; encerrarLuta(); render(); window.scrollTo(0, 0); },   // encerrarLuta por último: o tutorial pode levar à aba recém-liberada
   'luta-vel': (el) => { Luta.vel = +el.dataset.v; STATE.config.vel = Luta.vel; $$('.seg-btn').forEach((b) => b.classList.toggle('on', +b.dataset.v === Luta.vel)); },
   'luta-auto': () => {
-    const b = Luta.b; b.modoAuto = !b.modoAuto; STATE.config.auto = b.modoAuto;
-    if (b.modoAuto) { b.focoCapitao = null; b.pedirSupremo = false; }
+    const b = Luta.b; entradaJogador(b, { tipo: 'auto', v: !b.modoAuto }); STATE.config.auto = b.modoAuto;
     $('#btn-auto').textContent = b.modoAuto ? 'Auto' : 'Manual'; $('#dica-luta').textContent = dicaModo(b);
   },
   'luta-pausa': () => { Luta.pausado = !Luta.pausado; $('#btn-pausa').textContent = Luta.pausado ? 'Continuar' : 'Pausar'; },
@@ -268,8 +275,8 @@ const ACOES = {
   'luta-vencer': () => vencerAgora(),
   supremo: () => {
     const b = Luta.b, cap = b.units.find((u) => u.team === 0 && u.capitao);
-    if (b.modoAuto || !cap || !cap.vivo || cap.energia < 100) return;
-    b.pedirSupremo = true;
+    if (b.modoAuto || !cap || !cap.vivo || cap.energia < 100 || b.pedirSupremo) return;
+    entradaJogador(b, { tipo: 'supremo' });
   },
 
   /* --- configurações, save e criador --- */
